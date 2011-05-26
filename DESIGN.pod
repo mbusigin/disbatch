@@ -1,0 +1,32 @@
+=head1 Overview
+
+The Synacor Migration Framework provides a multi-threaded execution harness
+for doing very large jobs with comprise of many smaller self-similar tasks.
+
+Written in Perl, you can extend it execute tasks very easily.
+
+Built-in is a web-server & JSON based web services API for controlling the
+flow of execution.
+
+=head1 Process Architecture
+
+                        migrated.pl |  synmig.pl
+  --------------------------------------------------------------------
+                                    |
+  /----------\   /---------------\  |  /-------------------\
+  | migrated |---| HTTP JSON API |--|--| synmig CLI client |
+  \----------/   \---------------/  |  \-------------------/
+       |                            |
+       |                            |
+    /----------------\              |
+    | Worker Threads |              |
+    \----------------/              |
+      /  |  \                       |
+    ...........                     |
+     .........                      |
+      .......                       |
+
+
+It all starts with I<migrated>:  this automatically spins up threads to
+complete its tasks.  Control over I<migrated> is excercised through its
+HTTP/JSON API.  Even the internal I<synmig> tool uses this method.
