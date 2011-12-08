@@ -55,11 +55,17 @@ $config->{'pluginclasses'} = \@pluginclasses;
 Module::Reload::Selective->reload(@{$config->{'pluginclasses'}});
 
 my $engine = Synacor::Disbatch::Engine->new( $config );
-$engine->register_queue_constructor( 'Synacor::Migration::Plugins::IMAP2IMAP', \&Synacor::Migration::Plugins::IMAP2IMAP::new );
-$engine->register_queue_constructor( 'Synacor::Migration::Plugins::Zimbra::ContactImport', \&Synacor::Migration::Plugins::Zimbra::ContactImport::new );
-$engine->register_queue_constructor( 'Synacor::Migration::Plugins::Zimbra::UserImport', \&Synacor::Migration::Plugins::Zimbra::UserImport::new );
-$engine->register_queue_constructor( 'Synacor::Migration::Plugins::Zimbra::CalendarImport', \&Synacor::Migration::Plugins::Zimbra::CalendarImport::new );
-$engine->register_queue_constructor( 'Synacor::Disbatch::Queue::Enclosure', \&Synacor::Disbatch::Queue::Enclosure::new );
+
+print Dumper( \@pluginclasses );
+foreach my $pluginclass (@pluginclasses)
+{
+    my $load_plugin = 
+      "use $pluginclass;\n" .
+      "\$engine->register_queue_constructor( '$pluginclass', \\&" . $pluginclass . "::new );\n";
+    print $load_plugin . "\n";
+    eval $load_plugin;
+}
+
 
 if ( exists($config->{'activequeues'}) )
 {
