@@ -21,7 +21,6 @@
 		9375E6F3149284950091013A /* ChunkedTaskFactory.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = ChunkedTaskFactory.pm; sourceTree = "<group>"; };
 		9375E6F4149284950091013A /* Engine.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = Engine.pm; sourceTree = "<group>"; };
 		9375E6F5149284950091013A /* HTTP.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = HTTP.pm; sourceTree = "<group>"; };
-		9375E6F7149284950091013A /* Users.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = Users.pm; sourceTree = "<group>"; };
 		9375E6F9149284950091013A /* Enclosure.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = Enclosure.pm; sourceTree = "<group>"; };
 		9375E6FA149284950091013A /* Queue.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = Queue.pm; sourceTree = "<group>"; };
 		9375E6FB149284950091013A /* Task.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = Task.pm; sourceTree = "<group>"; };
@@ -117,7 +116,6 @@
 				9375E6F3149284950091013A /* ChunkedTaskFactory.pm */,
 				9375E6F4149284950091013A /* Engine.pm */,
 				9375E6F5149284950091013A /* HTTP.pm */,
-				9375E6F6149284950091013A /* Input */,
 				9375E6F8149284950091013A /* Queue */,
 				9375E6FA149284950091013A /* Queue.pm */,
 				9375E6FB149284950091013A /* Task.pm */,
@@ -125,14 +123,6 @@
 				9375E6FD149284950091013A /* WorkerThread.pm */,
 			);
 			path = Disbatch;
-			sourceTree = "<group>";
-		};
-		9375E6F6149284950091013A /* Input */ = {
-			isa = PBXGroup;
-			children = (
-				9375E6F7149284950091013A /* Users.pm */,
-			);
-			path = Input;
 			sourceTree = "<group>";
 		};
 		9375E6F8149284950091013A /* Queue */ = {
