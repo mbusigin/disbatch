@@ -60,12 +60,10 @@ sub new
     my $config = shift;
 
     my @queues;
-    my %groups;
     my %queue_constructors;
 
     my $self =
     {
-        'groups'		=> \%groups,
         'queues'		=> \@queues,
         'queue_constructors'	=> \%queue_constructors,
         'config'		=> $config,

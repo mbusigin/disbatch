@@ -15,7 +15,7 @@ synmig - Synacor Migration Framework - Client CLI Tool
 =head1 DESCRIPTION
 
 This tool interfaces with the migrated process via the JSON API.  It   
-allows you create new queues, spin off new tasks, manage users, and
+allows you create new queues, spin off new tasks, and
 alter the parameters of the migration engine while in operation.
 
 =head1 USAGE
@@ -39,16 +39,9 @@ alter the parameters of the migration engine while in operation.
     queue set <queue> <key> <value>
     queue start <type> <name>
     queue task <queue> {[value], ...}
-    queue tasks <queue> <group> <filter> [<col1>, ...]
+    queue tasks <queue> <collection> <filter> [<col1>, ...]
 
-    enclosure <queue> <group> <filter> [<col1>, ...]
-
-
-    user groups
-    user list <group> [<filter>]
-    user add <group> <user> <password> [<key> <value>, ...]
-    user get <group> <username>
-    user set <group> <username> [<key> <value>, ...]
+    enclosure <queue> <collection> <filter> [<col1>, ...]
 
 =head1 EXAMPLES
 
@@ -100,7 +93,7 @@ Synacor Migration Framework - Client CLI Tool
 DESCRPTION
 
     This tool interfaces with the migrated process via the JSON API.  It
-    allows you create new queues, spin off new task, manage users, and
+    allows you create new queues, spin off new task, and
     alter the parameters of the migration engine while in operation.
 
 USAGE
@@ -122,17 +115,10 @@ USAGE
                queue set <queue> <key> <value>
                queue start <type> <name>
                queue task <queue> {[value], ...}
-               queue tasks <queue> <group> <filter> [<col1>, ...]
+               queue tasks <queue> <collection> <filter> [<col1>, ...]
                queue search <queue> <filter>
 
-               enclosure <queue> <group> <filter> [<col1>, ...]
-
-               user groups
-               user list <group> [<filter>]
-               user add <group> <user> <password> [<key> <value>, ...]
-               user get <group> <username>
-               user set <group> <username> [<key> <value>, ...]
-
+               enclosure <queue> <collection> <filter> [<col1>, ...]
 /;
 
 
@@ -150,7 +136,6 @@ my %commands =
 (
     'status'		=> \&parse_status,
     'queue'		=> \&parse_queue,
-    'user'		=> \&parse_user,
     'reloadqueues'	=> \&parse_reloadqueues,
     'enclosure'		=> \&parse_enclosure,
 );
@@ -198,7 +183,7 @@ sub parse_enclosure
     
     $params->{ 'execute' } = \&queue_tasks;
     $params->{ 'queueid' } = shift @ARGS;
-    $params->{ 'group' } = shift @ARGS;
+    $params->{ 'collection' } = shift @ARGS;
     $params->{ 'filter' } = shift @ARGS;
     unshift @ARGS, $perl;
     
@@ -285,125 +270,12 @@ sub parse_queue_task
 sub parse_queue_tasks
 {
     my ( $params, @ARGS) = @_;
-    return( (0, "Item takes at least 3 arguments: queueid, group, filter") ) if scalar(@ARGS) < 3;
+    return( (0, "Item takes at least 3 arguments: queueid, collection, filter") ) if scalar(@ARGS) < 3;
     $params->{ 'execute' } = \&queue_tasks;
     $params->{ 'queueid' } = shift @ARGS;
-    $params->{ 'group' } = shift @ARGS;
+    $params->{ 'collection' } = shift @ARGS;
     $params->{ 'filter' } = shift @ARGS;
     $params->{ 'columns' } = $json->encode( \@ARGS );
-    return( (1, undef) );
-}
-
-
-sub parse_user
-{
-    my $params = shift;
-    my (@ARGS) = @_;
-
-    my %queue_commands =
-    (
-        'groups'	=> \&parse_user_groups,
-        'list'		=> \&parse_user_list,
-        'add'		=> \&parse_user_add,
-        'get'		=> \&parse_user_get,
-        'set'		=> \&parse_user_set,
-    );
-
-    return( (0, "Command '$params->{command}' needs a sub-command.  Options: " . join(' ', keys %queue_commands)) ) if scalar(@ARGS) < 1 or !defined($ARGS[0]);
-
-    my $command = shift @ARGS;
-    return( (0, "Queue sub-command '$command' does not exist.") ) if !exists($queue_commands{$command});
-
-    my $func = $queue_commands{ $command };
-    return &$func( $params, @ARGS );
-}
-
-
-sub parse_user_set
-{
-    my $params = shift;
-    my (@ARGS) = @_;
-    
-    return( (0, 'Need at least group, username, and one key/value pair') ) if scalar(@ARGS) < 4;
-    return( (0, 'Must be an even number of arguments:  after group & username, alternating key & value arguments are expected ') ) if scalar(@ARGS) % 2 != 0;
-    
-    $params->{ 'group' } = shift @ARGS;
-    $params->{ 'username' } = shift @ARGS;
-
-    my %user;
-    while( (my $key = shift @ARGS) )
-    {
-        my $value = shift @ARGS;
-        $user{ $key } = $value;
-    }
-    $params->{ 'user' } = \%user;
-    $params->{ 'execute' } = \&user_set;
-}
-
-
-sub parse_user_add
-{
-    my $params = shift;
-    my (@ARGS) = @_;
-    
-    return( (0, 'At least one argument is required:  group') ) if scalar(@ARGS) == 0;
-    return( (0, 'Either call this with one argument (group) and supply user data via stdin in CSV form, or supply:  group, username, password & alternating key/value pairs') ) if scalar(@ARGS) > 1 and scalar(@ARGS) < 3;
-    return( (0, 'Must be an odd number of arguments:  after group, username & password, alternating key & value arguments are expected') ) if scalar(@ARGS) % 2 == 0;
-    
-    $params->{ 'execute' } = \&user_add;
-    $params->{ 'group' } = shift @ARGS;
-    
-    # We're taking it in
-    if ( scalar(@ARGS) == 0 )
-    {
-      my $buf = '';
-      while( <STDIN> ) { $buf .= $_; }
-      $params->{ 'users_csv' } = $buf;
-      $params->{ 'users' } = {};
-=head1 commented out
-      my $csv = Text::CSV_XS->new({ sep_char => ",", eol => $/, binary => 1 }); 
-      $csv->column_names( $csv->getline(*STDIN) );
-      my @users;
-      while( my $row = $csv->getline_hr(*STDIN) )
-      {
-          push @users, $row;
-#          warn Dumper( $row );
-      }
-      
-      $params->{ 'users' } = \@users;
-      warn "Users: " . scalar(@users) . "\n";
-=cut
-    }
-    else
-    {
-        my %user;
-        $user{ 'username' } = shift @ARGS;
-        $user{ 'password' } = shift @ARGS;
-        while( (my $key = shift @ARGS) )
-        {
-            my $value = shift @ARGS;
-            $user{ $key } = $value;
-        }
-        $params->{ 'users' } = [ \%user ];
-    }
-}
-
-
-sub parse_user_groups
-{
-    my ( $params, @ARGS ) = @_;
-    $params->{ 'execute' } = \&user_groups;
-    return( (1, undef) );
-}
-
-
-sub parse_user_list
-{
-    my ( $params, @ARGS ) = @_;
-    return( (0, 'List requires at least one argument:  group') ) if scalar(@ARGS) < 1;
-    $params->{ 'execute' } = \&user_list;
-    $params->{ 'group' } = shift @ARGS;
-    $params->{ 'filter' } = shift @ARGS if scalar(@ARGS) > 0;
     return( (1, undef) );
 }
 
@@ -647,12 +519,12 @@ sub queue_task
 sub queue_tasks
 {
     my $params = shift;
-    my $url = api_url . '/queue-create-tasks-from-users-json';
+    my $url = api_url . '/queue-create-tasks-from-query-json';
     my $lwp = LWP::UserAgent->new;
     my $r = $lwp->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
-                            'group'		=> $params->{ 'group' },
+                            'collection'	=> $params->{ 'collection' },
                             'filter'		=> $params->{ 'filter' },
                             'columns'		=> $params->{ 'columns' },
                         ]
@@ -662,118 +534,6 @@ sub queue_tasks
         print $r->decoded_content;
 #        my @ret = @{ $json->decode($r->decoded_content) };
 #        print "New task #$ret[2]\n";
-    }
-    else
-    {
-        print "Unable to connect to:  $url\n";
-    }
-}
-
-
-sub user_groups
-{
-    my $params = shift;
-    my $url = api_url . '/list-user-groups-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url );
-    if ( $r->is_success )
-    {
-        my $obj = $json->decode( $r->decoded_content );
-        foreach my $o (@{$obj})
-        {
-            print "$o\n";
-        }
-    }
-    else
-    {
-        print "Unable to connect to:  $url\n";
-    }
-}
-
-
-sub user_list
-{
-    my $params = shift;
-    my $url = api_url . '/list-users-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url,
-                        [
-                            'group'		=> $params->{ 'group' },
-                            'filter'		=> $params->{ 'filter' },
-                        ] 
-                      );
-    if ( $r->is_success )
-    {
-        my $obj = $json->decode( $r->decoded_content );
-        my $first = 1;
-        foreach my $username (sort keys %{ $obj })
-        {
-            my $user = $obj->{ $username };
-            if ( $first )
-            {
-                $first = 0;
-                foreach my $col (sort keys %{ $user })
-                {
-                    print "$col\t";
-                }
-                print "\n";
-            }
-            foreach my $col (sort keys %{ $user })
-            {
-                print "$user->{$col}\t";
-            }
-            print "\n";
-        }
-    }
-    else
-    {
-        print "Unable to connect to:  $url\n";
-    }
-}
-
-
-sub user_add
-{
-    warn "user_add\n";
-    my $params = shift;
-    my $url = api_url . '/add-users-json';
-    my $lwp = LWP::UserAgent->new;
-    warn "Posting...\n";
-    my $r = $lwp->post( $url,
-                        [
-                            'group'		=> $params->{ 'group' },
-                            'users'		=> $json->encode( $params->{'users'} ),
-                            'users_csv'		=> $params->{ 'users_csv' },
-                        ] 
-                      );
-    if ( $r->is_success )
-    {
-        print $r->decoded_content;
-#        my $obj = $json->decode( $r->decoded_content );
-    }
-    else
-    {
-        print "Unable to connect to:  $url\n";
-    }
-}
-
-
-sub user_set
-{
-    my $params = shift;
-    my $url = api_url . '/set-user-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url,
-                        [
-                            'group'		=> $params->{ 'group' },
-                            'id'		=> $params->{ 'username' },
-                            'object'		=> $json->encode( $params->{'user'} ),
-                        ] 
-                      );
-    if ( $r->is_success )
-    {
-        print $r->decoded_content;
-#        my $obj = $json->decode( $r->decoded_content );
     }
     else
     {
