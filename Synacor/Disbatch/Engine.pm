@@ -83,7 +83,7 @@ sub new
     $self->{ 'eb' }->{ 'methods' }{ 'set_queue_attr' } = \&set_queue_attr;
     $self->{ 'eb' }->{ 'methods' }{ 'construct_queue' } = \&construct_queue;
     $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks'} = \&queue_create_tasks;
-    $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks_from_users' } = \&queue_create_tasks_from_users;
+    $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks_from_query' } = \&queue_create_tasks_from_query;
     $self->{ 'eb' }->{ 'methods' }{ 'queue_prototypes' } = \&queue_prototypes;
     $self->{ 'eb' }->{ 'methods' }{ 'search_tasks' } = \&search_tasks;
     $self->{ 'eb' }->{ 'methods' }{ 'delete_queue' } = \&delete_queue;

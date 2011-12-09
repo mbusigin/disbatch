@@ -107,7 +107,6 @@ else
     $engine->{'ctfquantum'} = 0.3;
 }
 
-$engine->load_users;
 $engine->load_queues;
 warn "loaded queues";
 

@@ -407,7 +407,7 @@ sub queue_create_tasks_from_query_json
         $f = shared_clone( $json->decode($filter) );
         $filter = $f;
     }
-    
+
     return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $columns );
 }
 

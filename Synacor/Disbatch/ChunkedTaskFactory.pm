@@ -8,13 +8,14 @@ use Data::Dumper;
 sub new
 {
     my $class = shift;
+    
     my ( $engine, $queueid, $collection, $filter, $columns_arrayref ) = @_;
 
     my $self =
     {
         'engine'	=> $engine,
         'queueid'	=> $queueid,
-        'collection'=> $collection,
+        'collection'	=> $collection,
         'filter'	=> $filter,
         'columns'	=> $columns_arrayref,
     };
