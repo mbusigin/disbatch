@@ -28,6 +28,7 @@ sub connect_mongo
                                             auto_reconnect => 1,
                                             auto_connect => 1,
                                             query_timeout => 30000,
+                                            find_master => 1,
                                         );
     }
     else
@@ -108,7 +109,11 @@ sub update_collection
     eval
     {
         my $collection = $mongo->get_collection( $cid );
-        $collection->update( $where, $update, $options );
+        my $ret = $collection->update( $where, $update, $options );
+        if ( !$ret )
+        {
+            die "Couldn't write!!!!";
+        }
     };
     
     if ( $@ )	

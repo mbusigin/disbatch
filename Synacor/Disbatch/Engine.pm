@@ -197,11 +197,11 @@ sub report_task_done
     my $self = shift;
     my ( $queueid, $task, $status, $stdout, $stderr ) = @_;
 
-#    warn "Reporting done:  queue #$queueid/$task\n";
+    warn "Reporting done:  queue #$queueid/$task\n";
 
     if ( $self->{'task_observers'}->{$task} )
     {
-#        warn "There IS an observer.  Enqueuing status.";
+        warn "There IS an observer.  Enqueuing status.";
         $self->{'task_observers'}->{$task}->enqueue( $status );
         delete $self->{ 'task_observers' }->{ $task };
     }
@@ -329,11 +329,10 @@ NOT an object-oriented method for Engine.
 
 sub filter_users
 {
-    my ( $users, $filter ) = @_;
-    my $type = $_[2];
+    my ( $users, $filter, $type ) = @_;
     $type ||= "hash";
     warn "filter_users(): $type";
-
+            
 #     return $users if !$filter or $filter eq '';
     my $hr = {};
     if ( ref($filter) eq 'HASH' )
@@ -346,7 +345,15 @@ sub filter_users
     }
     else
     {
-        $hr = eval $filter;
+        eval
+        {
+            $hr = eval $filter;
+            if ( $@ )
+            {
+                warn 'filter_users($users, $filter) = ' . $@;
+                return {};
+            }
+        };
         if ( $@ )
         {
             warn 'filter_users($users, $filter) = ' . $@;

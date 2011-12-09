@@ -34,8 +34,10 @@ sub init
     return 0 if !$self->{ 'queue' };
 #    $self->{ 'users' } = $self->{ 'engine' }->{ 'groups' }->{ $self->{'group'} };
 #    return 0 if !$self->{ 'users' };
+    print "init $self->{filter}\n";
     $self->{ 'cursor' } = Synacor::Disbatch::Engine::filter_users( $self->{'users'}, $self->{'filter'}, 'query' );
-    return 0 if !$self->{ 'cursor' };
+    warn Dumper(ref($self->{'cursor'}));
+    return 0 if !$self->{ 'cursor' } or (ref($self->{cursor}) eq 'HASH' and !%{$self->{cursor}});
     $self->{ 'cursor' }->immortal( 1 );
     $self->{ 'count' } = $self->{ 'cursor' }->count();
     warn "Count is $self->{count}";
