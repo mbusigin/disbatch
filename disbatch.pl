@@ -507,7 +507,7 @@ sub status
         my $obj = $json->decode( $jsobj );
         my $count = 0;
 
-		my $sep = \'|';
+		my $sep = \' | ';
 		my $tl = Text::Table->new(
             { title => 'ID', align => 'right' }, $sep,
             { title => 'Type', align => 'right' }, $sep,
