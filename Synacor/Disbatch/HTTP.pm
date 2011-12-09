@@ -43,11 +43,6 @@ my %dispatch =
     '/scheduler-json'				=> \&scheduler_json,
     '/reload-queues-json'			=> \&reload_queues_json,
     '/set-queue-attr-json'			=> \&set_queue_attr_json,
-    '/list-user-groups-json'			=> \&list_user_groups_json,
-    '/list-users-json'				=> \&list_users_json,
-    '/get-user-json'				=> \&get_user_json,
-    '/set-user-json'				=> \&set_user_json,
-    '/add-users-json'				=> \&add_users_json,
     '/start-queue-json'				=> \&start_queue_json,
     '/delete-queue-json'			=> \&delete_queue_json,
     '/queue-create-tasks-json'			=> \&queue_create_tasks_json,
@@ -311,18 +306,6 @@ sub set_queue_attr_json
 }
 
 
-=item /list-user-groups-json
-
-Returns an array of user group names.
-
-=cut
-
-sub list_user_groups_json
-{
-    my $cgi = shift;
-    return $Synacor::Disbatch::Engine::EventBus->list_user_groups;
-}
-
 
 =item /list-users-json
 
@@ -346,108 +329,6 @@ sub list_users_json
     my $cgi = shift;
     
     return $Synacor::Disbatch::Engine::EventBus->list_users( $cgi->param('group'), $cgi->param('filter') );
-}
-
-
-=item /get-user-json
-
-Return a user structure by name & group.
-
-Parameters:
-
-    group		Group name
-    id			User ID
-    
-=cut
-
-sub get_user_json
-{
-    my $cgi = shift;
-    
-    my $group = $cgi->param( 'group' );
-    my $id = $cgi->param( 'id' );
-    
-    return $Synacor::Disbatch::Engine::EventBus->get_user( $group, $id );
-}
-
-
-=item /set-user-json
-
-Set or overwrite attributes on a user.
-
-Parameters:
-
-    group		Group name
-    id			User ID
-    object		JSON object with associative array containing updates
-
-=cut
-
-sub set_user_json
-{
-    my $cgi = shift;
-    
-    my $group = $cgi->param( 'group' );
-    my $id = $cgi->param( 'id' );
-    my $jsobj = $cgi->param( 'object' );
-    my $obj = $json->decode( $jsobj );
-    
-    warn "Group:  $group; id: $id:  obj: $obj\n";
-    
-    return $Synacor::Disbatch::Engine::EventBus->set_user( $group, $id, $obj );
-}
-
-
-=item /add-users-json
-
-Add users to a group by either JSON object or CSV file.
-
-Parameters:
-
-    group		Group name
-    
-    users		JSON object with array of user objects
-        OR
-    users_csv		File upload with users in a CSV
-
-=cut
-
-sub add_users_json
-{
-    my $cgi = shift;
-    
-    my $group = $cgi->param( 'group' );
-    my $usersjs = $cgi->param( 'users' );
-    my $users;
-
-    if ( $cgi->param('users_csv') )
-    {
-        warn "OK, users from CSV\n";
-        my $csvtext = $cgi->param( 'users_csv' );
-        my $fn = POSIX::tmpnam;
-        open( F, ">$fn" ) or die "Couldn't open $fn\n";
-        print F $csvtext;
-        close( F );
-        open( F, "<$fn" ) or die "Couldn't open $fn\n";
-        my $csv = Text::CSV_XS->new({ sep_char => ",", eol => $/, binary => 1 }); 
-        $csv->column_names( $csv->getline(*F) );
-        my @users;
-        while( my $row = $csv->getline_hr(*F) )
-        {
-            push @users, $row;   
-            warn "Pushing $row->{username}\n";
-#            warn Dumper( $row );
-        }
-        $users = \@users;
-        warn "Users: " . scalar(@users) . "\n";
-    }
-    else
-    {
-        $users = $json->decode( $usersjs );
-    }  
-      
-    warn "Users: " . scalar( @{$users} ) . "\n";
-    return $Synacor::Disbatch::Engine::EventBus->add_users( $group, $users );
 }
 
 

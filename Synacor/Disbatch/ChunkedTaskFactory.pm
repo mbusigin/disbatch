@@ -32,8 +32,6 @@ sub init
     my $self = shift;
     $self->{ 'queue' } = $self->{'engine'}->get_queue_by_id( $self->{'queueid'} );
     return 0 if !$self->{ 'queue' };
-#    $self->{ 'users' } = $self->{ 'engine' }->{ 'groups' }->{ $self->{'group'} };
-#    return 0 if !$self->{ 'users' };
     print "init $self->{filter}\n";
     $self->{ 'cursor' } = Synacor::Disbatch::Engine::filter_users( $self->{'users'}, $self->{'filter'}, 'query' );
     warn Dumper(ref($self->{'cursor'}));

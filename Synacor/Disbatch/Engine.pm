@@ -83,11 +83,6 @@ sub new
     $self->{ 'eb' }->{ 'methods' }{ 'generate_id' } = \&generate_id;
     $self->{ 'eb' }->{ 'methods' }{ 'scheduler_report' } = \&scheduler_report;
     $self->{ 'eb' }->{ 'methods' }{ 'set_queue_attr' } = \&set_queue_attr;
-    $self->{ 'eb' }->{ 'methods' }{ 'list_user_groups' } = \&list_user_groups;
-    $self->{ 'eb' }->{ 'methods' }{ 'list_users' } = \&list_users;
-    $self->{ 'eb' }->{ 'methods' }{ 'get_user' } = \&get_user;
-    $self->{ 'eb' }->{ 'methods' }{ 'set_user' } = \&set_user;
-    $self->{ 'eb' }->{ 'methods' }{ 'add_users' } = \&add_users;
     $self->{ 'eb' }->{ 'methods' }{ 'construct_queue' } = \&construct_queue;
     $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks'} = \&queue_create_tasks;
     $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks_from_users' } = \&queue_create_tasks_from_users;
@@ -301,20 +296,6 @@ sub set_queue_attr
 }
 
 
-=item list_user_groups
-
-Returns a list of user groups.  Callable via eventbus.
-
-=cut
-
-sub list_user_groups
-{
-    my $self = shift;
-    
-    my @keys = keys %{ $self->{'groups'} };
-    return \@keys;
-}
-
 =item filter_users()
 
 Parameters:
@@ -392,150 +373,6 @@ sub filter_users
     }
     
     return \%results;
-}
-
-
-=item list_users()
-
-Parameters:
-
-    $group		User group
-    $filter		(optional) Perl expression filter
-
-Returns a list of users.  Callable via eventbus.
-
-=cut
-
-sub list_users
-{
-    my $self = shift;
-    my $group = shift;
-    my $filter = shift;
-    
-    print "Group: $group\n";
-    print "Filter: $filter\n";
-    
-    my $users = $self->{ 'groups' }->{ $group };
-    return( (0, 'No such group') ) if ( !$users );
-    
-    return( (1, filter_users($users, {})) ) if !$filter;
-    return( (1, filter_users($users, $filter)) );
-}
-
-
-=item load_users()
-
-Loads all users & groups from database.  
-
-=cut
-
-sub load_users
-{
-    my $self = shift;
-
-    print "Loading users...\n";
-    
-    my @groups = Synacor::Disbatch::Backend::query_collection( 'groups', {}, {retry => 'synchronous'} )->all;
-    
-    foreach my $group ( @groups )
-    {
-        my $users = Synacor::Disbatch::Input::Users->new( $group->{'id'}, {} );
-        $self->{ 'groups' }->{ $group->{'id'} } = $users;
-    }
-}
-
-
-=item get_user()
-
-Returns the requested user structure.
-
-Parameters:
-
-    $group		User group
-    $id			User ID
-
-Callable via eventbus.
-
-=cut
-
-sub get_user
-{
-    my ( $self, $group, $id ) = @_;
-    
-    my $user;
-    return [0, 'No such group'] if !exists( $self->{'groups'}->{$group} );
-    return [0, 'No such user'] if !($user = $self->{'groups'}->{$group}->find_one({'username' => $id}) );
-    return [1, $user ];
-}
-
-
-=item set_user()
-
-Appends or overwrites attributes on a user.
-
-Parameters:
-
-    $group		User group
-    $id			User ID
-    $obj		User hashref
-
-This method will iterate through each key-value pair in the $obj hashref,
-and set it in the database. Callable via eventbus.
-
-=cut
-
-sub set_user
-{
-    my ( $self, $group, $id, $obj ) = @_;
-    
-    return [0, 'No such group'] if !exists( $self->{'groups'}->{$group} );
-    my $user;
-    return [0, 'No such user'] if !($user = $self->{'groups'}->{$group}->find_one({'username' => $id}) );
-    
-#    foreach my $key ( keys %{$obj} )
-#    {
-#            $user->{ $key } = $obj->{ $key };
-#    }
-    
-    warn "Setting object $obj\n";
-    $self->{ 'groups' }->{ $group }->update( {'_id' => $user->{'_id'}}, { '$set' => $obj } );
-    return [1, $user->{'username'}];
-}
-
-
-=item add_users()
-
-Add a list of users to a group.
-
-Parameters:
-
-    $group		User group
-    $users_aref		Array-ref to new users
-
-Callable via eventbus.
-
-=cut
-
-sub add_users
-{
-    my ( $self, $group, $users_aref ) = @_;
-
-    if ( !exists($self->{'groups'}->{$group}) )
-    {
-        $self->{ 'groups' }->{ $group } = Synacor::Disbatch::Input::Users->new( $group, {} );
-        $self->{ 'groups' }->{ $group }->add_group();    
-    }
-
-    my $count = 0;
-
-    foreach my $user (@{$users_aref})
-    {
-        $self->{ 'groups' }->{ $group }->insert( $user );
-        $count ++;
-#         warn $count if $count % 10 == 0;
-    }
-
-    return [1, 'OK'];
 }
 
 
