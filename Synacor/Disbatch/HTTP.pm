@@ -408,7 +408,7 @@ sub queue_create_tasks_from_query_json
         $filter = $f;
     }
     
-    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $group, $filter, $columns );
+    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $columns );
 }
 
 
