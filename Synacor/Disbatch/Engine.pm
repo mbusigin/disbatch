@@ -332,7 +332,7 @@ sub filter_users
     my ( $users, $filter, $type ) = @_;
     $type ||= "hash";
     warn "filter_users(): $type";
-            
+
 #     return $users if !$filter or $filter eq '';
     my $hr = {};
     if ( ref($filter) eq 'HASH' )
@@ -720,7 +720,7 @@ sub queue_create_tasks_from_users
     my $users = $self->{ 'groups' }->{ $group };
     return [ 0, 'No such group' ] if ( !$users );
     
-    warn "Filtering users...";
+    warn "Filtering users '$filter'...";
     $users = filter_users( $users, $filter, 'array' );
     warn "running through each user...";
     my $count = 0;
@@ -794,25 +794,15 @@ sub is_active_queue
     my $self = shift;
     my $q = shift;
 
-    return 1 if !$self->{'activequeues'} and !$self->{'ignorequeues'};
+    return 1 if !$self->{'activequeues'};
     
-    if ( $self->{'activequeues'} )
+    
+    foreach my $f (@{$self->{'activequeues'}})
     {
-        foreach my $f (@{$self->{'activequeues'}})
-        {
-            return 1 if $f eq $q;
-        }
-        return 0;
+        return 1 if $f eq $q;
     }
     
-    if ( $self->{'ignorequeues'} )
-    {
-        foreach my $f (@{$self->{'ignorequeues'}})
-        {
-            return 0 if $f eq $q;
-        }
-        return 1;
-    }
+    return 0;
 }
 
 
@@ -843,19 +833,7 @@ sub load_queues
             warn "Couldn't load constructor for $constructor !!!";
             next;
         }
-
-        my $queue;
-        
-        eval        
-        {
-            $queue = &$constructor( $row->{'constructor'}, $self );
-        };
-        if ( $@ )
-        {
-            warn "Unable to construct queue $row->{name}: $@";
-            next;
-        }
-        
+        my $queue = &$constructor( $row->{'constructor'}, $self );
         $queue->{ 'id' } = $row->{ 'tid' };
 #        $queue->{ 'name' } = $row->{ 'name' };
 #        $queue->{ 'constructor' } = $row->{ 'constructor' };

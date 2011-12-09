@@ -30,6 +30,7 @@ sub connect_mongo
                                             query_timeout => 30000,
                                             find_master => 1,
                                         );
+        
     }
     else
     {   

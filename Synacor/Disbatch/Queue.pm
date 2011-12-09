@@ -227,7 +227,7 @@ sub report_task_done
             delete $self->{ 'threads_inuse' }{ $taskid };
             
 #    $collection->update({'x' => 3}, {'$inc' => {'count' => -1} }, {"upsert" => 1, "multiple" => 1});
-#            warn "taskid: $taskid;  stdout: $stdout;  status: $status\n";
+            warn "taskid: $taskid;  stderr: $stderr;  status: $status\n";
 #            warn $Synacor::Disbatch::Engine::mongo->get_collection( 'tasks' )->update( {'iid' => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }} );
             Synacor::Disbatch::Backend::update_collection( 'tasks', {'iid' => "$taskid"}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
             
@@ -235,7 +235,7 @@ sub report_task_done
 #            $update_tasks_sth->execute( ($status, $stdout, $stderr, $taskid) );
 #            $Synacor::Disbatch::Engine::dbh->commit;
             $self->schedule if $self->{ 'preemptive' };
-#            print "Finished $taskid.\n";
+            print "Finished $taskid.\n";
             return;
         }
     }
