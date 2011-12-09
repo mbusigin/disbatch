@@ -7,30 +7,6 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		9375E11E149284940091013A /* convert-insight.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "convert-insight.pl"; sourceTree = "<group>"; };
-		9375E11F149284940091013A /* createContactFolders.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = createContactFolders.pl; sourceTree = "<group>"; };
-		9375E120149284940091013A /* disbatch.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = disbatch.pl; sourceTree = "<group>"; };
-		9375E121149284940091013A /* disbatchd.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = disbatchd.pl; sourceTree = "<group>"; };
-		9375E122149284940091013A /* insAttrs.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insAttrs.pl; sourceTree = "<group>"; };
-		9375E123149284940091013A /* insContacts.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insContacts.pl; sourceTree = "<group>"; };
-		9375E124149284940091013A /* insight-report.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "insight-report.pl"; sourceTree = "<group>"; };
-		9375E125149284940091013A /* insReactivate.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insReactivate.pl; sourceTree = "<group>"; };
-		9375E126149284940091013A /* test.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = test.pl; sourceTree = "<group>"; };
-		9375E128149284940091013A /* convert-insight.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "convert-insight.pl"; sourceTree = "<group>"; };
-		9375E129149284940091013A /* createContactFolders.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = createContactFolders.pl; sourceTree = "<group>"; };
-		9375E12A149284940091013A /* createContactFolders.pm */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = createContactFolders.pm; sourceTree = "<group>"; };
-		9375E12B149284940091013A /* disbatch.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = disbatch.pl; sourceTree = "<group>"; };
-		9375E12C149284940091013A /* disbatchd.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = disbatchd.pl; sourceTree = "<group>"; };
-		9375E12D149284940091013A /* insAttrs.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insAttrs.pl; sourceTree = "<group>"; };
-		9375E12E149284940091013A /* insContacts.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insContacts.pl; sourceTree = "<group>"; };
-		9375E12F149284940091013A /* insFilters.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insFilters.pl; sourceTree = "<group>"; };
-		9375E130149284940091013A /* insFilters_soap.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insFilters_soap.pl; sourceTree = "<group>"; };
-		9375E131149284940091013A /* insight-dump.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "insight-dump.pl"; sourceTree = "<group>"; };
-		9375E132149284940091013A /* insight-redo-ldap.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "insight-redo-ldap.pl"; sourceTree = "<group>"; };
-		9375E133149284940091013A /* insight-report.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "insight-report.pl"; sourceTree = "<group>"; };
-		9375E134149284940091013A /* insReactivate.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = insReactivate.pl; sourceTree = "<group>"; };
-		9375E135149284940091013A /* test.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = test.pl; sourceTree = "<group>"; };
-		9375E136149284940091013A /* update-users.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = "update-users.pl"; sourceTree = "<group>"; };
 		9375E139149284940091013A /* DESIGN.pod */ = {isa = PBXFileReference; lastKnownFileType = text; path = DESIGN.pod; sourceTree = "<group>"; };
 		9375E13B149284940091013A /* disbatch-perl.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "disbatch-perl.xcodeproj"; sourceTree = "<group>"; };
 		9375E13F149284940091013A /* enclosure.ini */ = {isa = PBXFileReference; lastKnownFileType = text; path = enclosure.ini; sourceTree = "<group>"; };
@@ -71,8 +47,6 @@
 		9375E11C149284940091013A /* disbatch-perl */ = {
 			isa = PBXGroup;
 			children = (
-				9375E11D149284940091013A /* bak */,
-				9375E127149284940091013A /* bak-apr8 */,
 				9375E139149284940091013A /* DESIGN.pod */,
 				9375E13A149284940091013A /* disbatch-perl */,
 				9375E13E149284940091013A /* disbatch.d */,
@@ -85,44 +59,6 @@
 			);
 			name = "disbatch-perl";
 			path = ..;
-			sourceTree = "<group>";
-		};
-		9375E11D149284940091013A /* bak */ = {
-			isa = PBXGroup;
-			children = (
-				9375E11E149284940091013A /* convert-insight.pl */,
-				9375E11F149284940091013A /* createContactFolders.pl */,
-				9375E120149284940091013A /* disbatch.pl */,
-				9375E121149284940091013A /* disbatchd.pl */,
-				9375E122149284940091013A /* insAttrs.pl */,
-				9375E123149284940091013A /* insContacts.pl */,
-				9375E124149284940091013A /* insight-report.pl */,
-				9375E125149284940091013A /* insReactivate.pl */,
-				9375E126149284940091013A /* test.pl */,
-			);
-			path = bak;
-			sourceTree = "<group>";
-		};
-		9375E127149284940091013A /* bak-apr8 */ = {
-			isa = PBXGroup;
-			children = (
-				9375E128149284940091013A /* convert-insight.pl */,
-				9375E129149284940091013A /* createContactFolders.pl */,
-				9375E12A149284940091013A /* createContactFolders.pm */,
-				9375E12B149284940091013A /* disbatch.pl */,
-				9375E12C149284940091013A /* disbatchd.pl */,
-				9375E12D149284940091013A /* insAttrs.pl */,
-				9375E12E149284940091013A /* insContacts.pl */,
-				9375E12F149284940091013A /* insFilters.pl */,
-				9375E130149284940091013A /* insFilters_soap.pl */,
-				9375E131149284940091013A /* insight-dump.pl */,
-				9375E132149284940091013A /* insight-redo-ldap.pl */,
-				9375E133149284940091013A /* insight-report.pl */,
-				9375E134149284940091013A /* insReactivate.pl */,
-				9375E135149284940091013A /* test.pl */,
-				9375E136149284940091013A /* update-users.pl */,
-			);
-			path = "bak-apr8";
 			sourceTree = "<group>";
 		};
 		9375E13A149284940091013A /* disbatch-perl */ = {
