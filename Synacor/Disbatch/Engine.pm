@@ -332,7 +332,7 @@ sub filter_users
     my ( $users, $filter, $type ) = @_;
     $type ||= "hash";
     warn "filter_users(): $type";
-
+            
 #     return $users if !$filter or $filter eq '';
     my $hr = {};
     if ( ref($filter) eq 'HASH' )
@@ -794,15 +794,25 @@ sub is_active_queue
     my $self = shift;
     my $q = shift;
 
-    return 1 if !$self->{'activequeues'};
+    return 1 if !$self->{'activequeues'} and !$self->{'ignorequeues'};
     
-    
-    foreach my $f (@{$self->{'activequeues'}})
+    if ( $self->{'activequeues'} )
     {
-        return 1 if $f eq $q;
+        foreach my $f (@{$self->{'activequeues'}})
+        {
+            return 1 if $f eq $q;
+        }
+        return 0;
     }
     
-    return 0;
+    if ( $self->{'ignorequeues'} )
+    {
+        foreach my $f (@{$self->{'ignorequeues'}})
+        {
+            return 0 if $f eq $q;
+        }
+        return 1;
+    }
 }
 
 
@@ -833,7 +843,19 @@ sub load_queues
             warn "Couldn't load constructor for $constructor !!!";
             next;
         }
-        my $queue = &$constructor( $row->{'constructor'}, $self );
+
+        my $queue;
+        
+        eval        
+        {
+            $queue = &$constructor( $row->{'constructor'}, $self );
+        };
+        if ( $@ )
+        {
+            warn "Unable to construct queue $row->{name}: $@";
+            next;
+        }
+        
         $queue->{ 'id' } = $row->{ 'tid' };
 #        $queue->{ 'name' } = $row->{ 'name' };
 #        $queue->{ 'constructor' } = $row->{ 'constructor' };

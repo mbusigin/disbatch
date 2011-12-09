@@ -31,7 +31,6 @@ use Text::CSV_XS;
 use POSIX;
 use Authen::Simple::LDAP;
 use Authen::Simple::Passwd;
-use Synacor::Migration::Plugins::Zimbra::Utils;
 
 use base qw(HTTP::Server::Simple::CGI HTTP::Server::Simple::Authen);
 
@@ -55,7 +54,6 @@ my %dispatch =
     '/queue-create-tasks-from-users-json'	=> \&queue_create_tasks_from_users_json,
     '/queue-prototypes-json'			=> \&queue_prototypes_json,
     '/search-tasks-json'			=> \&search_tasks_json,
-    '/get-insight-password-json'		=> \&get_insight_password_json,
 );
 
 
@@ -291,7 +289,7 @@ sub set_queue_attr_json
     }
     
     my $value = $cgi->param( 'value' );
-    if ( !$value )
+    if ( !defined($value) )
     {
         $ret{ 'success' } = 0;
         $ret{ 'error' } = 'You must supply a value';
@@ -591,24 +589,6 @@ sub delete_queue_json
     return { 'success' => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id')) };
 }
 
-
-=item /get-insight-password-json
-
-Get an Insight password.
-
-=cut
-
-sub get_insight_password_json
-{
-    my $cgi = shift;
-    
-    my $username = $cgi->param( 'username' );
-    my $password = get_password( $username );
-    
-    my %ret;
-    $ret{ 'password' } = $password;
-    return \%ret;
-}
 
 
 1;
