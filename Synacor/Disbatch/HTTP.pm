@@ -46,7 +46,7 @@ my %dispatch =
     '/start-queue-json'				=> \&start_queue_json,
     '/delete-queue-json'			=> \&delete_queue_json,
     '/queue-create-tasks-json'			=> \&queue_create_tasks_json,
-    '/queue-create-tasks-from-users-json'	=> \&queue_create_tasks_from_users_json,
+    '/queue-create-tasks-from-query-json'	=> \&queue_create_tasks_from_query_json,
     '/queue-prototypes-json'			=> \&queue_prototypes_json,
     '/search-tasks-json'			=> \&search_tasks_json,
 );
@@ -392,12 +392,12 @@ Parameters:
 
 =cut
 
-sub queue_create_tasks_from_users_json
+sub queue_create_tasks_from_query_json
 {
     my $cgi = shift;
     
     my $queueid = $cgi->param( 'queueid' );
-    my $group = $cgi->param( 'group' );
+    my $collection = $cgi->param( 'collection' );
     my $filter = $cgi->param( 'filter' );
     my $columns = $json->decode( $cgi->param('columns') );
 
@@ -408,7 +408,7 @@ sub queue_create_tasks_from_users_json
         $filter = $f;
     }
     
-    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_users( $queueid, $group, $filter, $columns );
+    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $group, $filter, $columns );
 }
 
 

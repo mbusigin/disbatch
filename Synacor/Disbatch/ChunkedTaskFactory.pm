@@ -8,13 +8,13 @@ use Data::Dumper;
 sub new
 {
     my $class = shift;
-    my ( $engine, $queueid, $group, $filter, $columns_arrayref ) = @_;
+    my ( $engine, $queueid, $collection, $filter, $columns_arrayref ) = @_;
 
     my $self =
     {
         'engine'	=> $engine,
         'queueid'	=> $queueid,
-        'group'		=> $group,
+        'collection'=> $collection,
         'filter'	=> $filter,
         'columns'	=> $columns_arrayref,
     };
@@ -33,7 +33,7 @@ sub init
     $self->{ 'queue' } = $self->{'engine'}->get_queue_by_id( $self->{'queueid'} );
     return 0 if !$self->{ 'queue' };
     print "init $self->{filter}\n";
-    $self->{ 'cursor' } = Synacor::Disbatch::Engine::filter_users( $self->{'users'}, $self->{'filter'}, 'query' );
+    $self->{ 'cursor' } = Synacor::Disbatch::Engine::filter_collection( $self->{'collection'}, $self->{'filter'}, 'query' );
     warn Dumper(ref($self->{'cursor'}));
     return 0 if !$self->{ 'cursor' } or (ref($self->{cursor}) eq 'HASH' and !%{$self->{cursor}});
     $self->{ 'cursor' }->immortal( 1 );
@@ -55,28 +55,27 @@ sub slice
     my $start = [ Time::HiRes::gettimeofday( ) ];
 
     my $x = 0;    
-    while( Time::HiRes::tv_interval($start) <= $maxs and (my $user = $self->{'cursor'}->next) )
+    while( Time::HiRes::tv_interval($start) <= $maxs and (my $document = $self->{'cursor'}->next) )
     {
         $x ++;
-        my $username = $user->{ 'username' };
         my @params;
 
         foreach my $col (@{ $columns_arrayref })
         {
-            if ( $col =~ /^(user\.[a-zA-Z][a-zA-Z0-9_]*)$/ )
+            if ( $col =~ /^(document\.[a-zA-Z][a-zA-Z0-9_]*)$/ )
             {
                 my $var = $1;
                 my $key = $var;
-                $key =~ s/user\.//;
-                my $val = $user->{$key};
+                $key =~ s/document\.//;
+                my $val = $document->{$key};
                 push @params, $val;
             }
-            elsif ( $col =~ /(user\.[a-zA-Z][a-zA-Z0-9_]*)/ )
+            elsif ( $col =~ /(document\.[a-zA-Z][a-zA-Z0-9_]*)/ )
             {
                 my $var = $1;
                 my $key = $var;
-                $key =~ s/user\.//;
-                my $val = $user->{$key};
+                $key =~ s/document\.//;
+                my $val = $document->{$key};
                 my $subs = $col;
                 $subs =~ s/$var/$val/;
                 push @params, $subs;  

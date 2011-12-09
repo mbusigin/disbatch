@@ -296,25 +296,25 @@ sub set_queue_attr
 }
 
 
-=item filter_users()
+=item filter_collection()
 
 Parameters:
 
-  $users		User group
+  $collection	Collection
   $filter		Perl expression filter
   $type			Hash or array (default: hash)
+  $key          Key attribute (Optional, requires $type to eq 'hash')
 
 NOT an object-oriented method for Engine.
 
 =cut
 
-sub filter_users
+sub filter_collection
 {
-    my ( $users, $filter, $type ) = @_;
+    my ( $collection, $filter, $type, $key ) = @_;
     $type ||= "hash";
-    warn "filter_users(): $type";
+    warn "filter_collection(): $type";
             
-#     return $users if !$filter or $filter eq '';
     my $hr = {};
     if ( ref($filter) eq 'HASH' )
     {
@@ -331,13 +331,13 @@ sub filter_users
             $hr = eval $filter;
             if ( $@ )
             {
-                warn 'filter_users($users, $filter) = ' . $@;
+                warn 'filter_collection($collection, $filter) = ' . $@;
                 return {};
             }
         };
         if ( $@ )
         {
-            warn 'filter_users($users, $filter) = ' . $@;
+            warn 'filter_collections($collection, $filter) = ' . $@;
             return {};
         }
     }
@@ -358,7 +358,7 @@ sub filter_users
         }
     }
 
-    my $query = Synacor::Disbatch::Backend::query_collection( 'users', $hr, {retry => 'synchronous'} );
+    my $query = Synacor::Disbatch::Backend::query_collection( $collection, $hr, {retry => 'synchronous'} );
     return $query
             if $type eq 'query';
     my @all = $query->all;
@@ -367,9 +367,9 @@ sub filter_users
     
     my %results;
     
-    foreach my $user ( @all )
+    foreach my $document ( @all )
     {
-        $results{ $user->{username} } = $user;
+        $results{ $document->{$key} } = $document;
     }
     
     return \%results;
@@ -527,38 +527,35 @@ sub queue_create_tasks
 }
 
 
-=item queue_create_tasks_from_users()
+=item queue_create_tasks_from_query()
 
 Create new tasks and add them to a queue queue using the result of a user
 filter to populate & substitute parameter data.
 
 Parameters:
 
-    $queueid		Task ID
-    $group		User group
-    $filter		Perl expression filter
+    $queueid            Task ID
+    collection          Collection
+    $filter             Perl expression filter
     $columns_arrayref	Array-ref of parameters
 
 Callable via eventbus.
 
 =cut
 
-sub queue_create_tasks_from_users
+sub queue_create_tasks_from_query
 {
-    my ( $self, $queueid, $group, $filter, $columns_arrayref ) = @_;
+    my ( $self, $queueid, $collection, $filter, $columns_arrayref ) = @_;
 
-    my $ctf = Synacor::Disbatch::ChunkedTaskFactory->new( $self, $queueid, $group, $filter, $columns_arrayref );
+    my $ctf = Synacor::Disbatch::ChunkedTaskFactory->new( $self, $queueid, $collection, $filter, $columns_arrayref );
     push @{$self->{'chunkedtaskfactories'}}, $ctf;
     return [1, $ctf->{'count'}];
 
     my $queue = $self->get_queue_by_id( $queueid );
     return [ 0, 'Task not found' ] if !$queue;
-    
-    my $users = $self->{ 'groups' }->{ $group };
-    return [ 0, 'No such group' ] if ( !$users );
-    
-    warn "Filtering users '$filter'...";
-    $users = filter_users( $users, $filter, 'array' );
+        
+    warn "Filtering $collection '$filter'...";
+    my $docs = filter_collection( $collection, $filter, 'array' );
     warn "running through each user...";
     my $count = 0;
     foreach my $user ( @{$users} )
