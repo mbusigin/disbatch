@@ -80,7 +80,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       var tableModel = new disbatch_frontend.TaskBrowserModel(); //qx.ui.table.model.Simple();
       tableModel.setQueueID( this._queueid );
       tableModel.setColumns([ "Node", "ID", "Status", "Parameters", "CTime", "MTime" ],
-                            [ "node", "iid", "status", "parameters", "ctime_str", "mtime_str" ] );
+                            [ "node", "_id", "status", "parameters", "ctime_str", "mtime_str" ] );
 
       // table
       var table = new qx.ui.table.Table(tableModel);

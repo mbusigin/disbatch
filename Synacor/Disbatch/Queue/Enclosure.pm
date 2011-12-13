@@ -98,8 +98,7 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
                 $stdout .= "Error evaluating Perl expression: $@";
             }
             
-
-            $Synacor::Disbatch::Engine::EventBus->report_task_done( $self->{'queue_id'}, $self->{'id'}, $status, $stdout, $stderr );
+            $Synacor::Disbatch::Engine::EventBus->report_task_done( $self->{'queue_id'}, $self->{'_id'}, $status, $stdout, $stderr );
             return;
         }
         __PACKAGE__;

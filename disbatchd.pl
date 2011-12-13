@@ -22,7 +22,6 @@ use Proc::Daemon;
 use Module::Reload::Selective; 
 use Synacor::Disbatch::Engine;
 use Synacor::Disbatch::Timer;
-use Synacor::Disbatch::Input::Users;
 use Synacor::Disbatch::Queue;
 $Module::Reload::Selective::Options->{'ReloadOnlyIfEnvVarsSet'}  = 0;
 

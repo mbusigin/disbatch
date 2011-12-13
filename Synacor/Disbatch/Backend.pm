@@ -71,32 +71,6 @@ sub random_pause
 }
 
 
-=item generate_mongo_id()
-
-Return incremented unique node ID
-
-=cut
-
-sub generate_mongo_id
-{
-    my ( $engine ) = @_;
-    
-    my $seq;
-    eval
-    {
-        $mongo->get_collection( 'nodes' )->update( { 'node' => $engine->{'config'}->{'node'} }, {'$inc' => {'uuid' => 1} } );
-        $seq = $mongo->get_collection( 'nodes' )->find_one( { 'node' => $engine->{'config'}->{'node'} } )->{ 'uuid' } . 'N' . $engine->{'config'}->{'node'};
-    };
-    if ( $@ )
-    {
-        warn "generate_mongo_id() raised exception: '$@' - pausing & retrying";
-        random_pause();
-        return generate_mongo_id( $engine );
-    }
-    return $seq;
-}
-
-
 =item update_collection()
 
 Update a collection
@@ -145,8 +119,7 @@ Update a queue attribute
 sub update_queue
 {
     my ( $queueid, $attr, $value ) = @_;
-    update_collection( 'queues', {'tid' => $queueid}, { '$set' => {$attr => $value} }, {}, {retry => 'synchronous'} );
-#    $mongo->get_collection( 'queues' )->update( {'tid' => $queueid}, { '$set' => {$attr => $value} } );
+    update_collection( 'queues', {'_id' => $queueid}, { '$set' => {$attr => $value} }, {}, {retry => 'synchronous'} );
 }
 
 =item query_collection()
@@ -261,10 +234,12 @@ sub insert_collection
 {
     my ( $cid, $hr, $extra ) = @_;
     
+    my $oid;
+    
     eval
     {
         my $collection = $mongo->get_collection( $cid );
-        $collection->insert( $hr );
+        $oid = $collection->insert( $hr );
     };
     if ( $@ )	
     {
@@ -282,7 +257,10 @@ sub insert_collection
         }
         warn "No such retry method in insert_collection on mongo timeout '$extra->{retry}'!!";
     }
-    
+    else
+    {
+        return $oid;
+    }
 }
 
 

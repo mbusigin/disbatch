@@ -78,7 +78,6 @@ sub new
     # Configure event bus
     $EventBus = $self->{ 'eb' } = Pinscher::Core::EventBus->new( $self, 'Synacor::Engine' );
     $self->{ 'eb' }->{ 'methods' }{ 'awaken' } = \&awaken;
-    $self->{ 'eb' }->{ 'methods' }{ 'generate_id' } = \&generate_id;
     $self->{ 'eb' }->{ 'methods' }{ 'scheduler_report' } = \&scheduler_report;
     $self->{ 'eb' }->{ 'methods' }{ 'set_queue_attr' } = \&set_queue_attr;
     $self->{ 'eb' }->{ 'methods' }{ 'construct_queue' } = \&construct_queue;
@@ -109,7 +108,7 @@ sub add_queue
     my $queue = shift;
     
     push @{ $self->{'queues'} }, $queue;
-    $queue->{ 'id' } = $self->generate_id;
+    $queue->{ 'id' } = $self->{_id};
 }
 
 
@@ -215,19 +214,6 @@ sub report_task_done
 }
 
 
-=item generate_id()
-
-Generate & return persistent UUID.  Callable via eventbus.
-
-=cut
-
-sub generate_id
-{
-    my $self = shift;
-
-    my $ret = Synacor::Disbatch::Backend::generate_mongo_id( $self );
-    return $ret;
-}
 
 
 =item scheduler_report()
@@ -247,7 +233,7 @@ sub scheduler_report
     {
         my %t;
         
-        $t{ 'id' } = $queue->{ 'id' };    
+        $t{ 'id' } = $queue->{ 'id' }->to_string;    
         $t{ 'tasks_todo' } = $queue->count_todo;
         $t{ 'tasks_done' } = $queue->count_total - scalar( @{$queue->{'tasks_doing'}} ) - $t{ 'tasks_todo' };
         $t{ 'tasks_doing' } = scalar( @{$queue->{'tasks_doing'}} );
@@ -416,7 +402,6 @@ sub construct_queue
     
     my %obj;
     $obj{ 'constructor' } = $type;
-    $obj{ 'tid' } = $queue->{ 'id' };
     $obj{ 'name' } = $name;
     Synacor::Disbatch::Backend::insert_collection( 'queues', \%obj, {retry => 'synchronous'} );
     return [ 1, $queue->{'id'} ];
@@ -437,7 +422,7 @@ sub delete_queue
 {
     my ( $self, $id ) = @_;
     
-    Synacor::Disbatch::Backend::delete_collection( 'queues',  { 'tid' => $id }, {retry => 'redolog'} );
+    Synacor::Disbatch::Backend::delete_collection( 'queues',  { '_id' => $id }, {retry => 'redolog'} );
     
     my $index = 0;
     foreach my $q ( @{ $self->{'queues'} } )
@@ -516,7 +501,7 @@ sub queue_create_tasks
             push @params, $col;
         }
         my $iobject = $queue->create_task( \@params );
-        push @tids, $iobject->{ 'id' } if defined($returntids);
+        push @tids, $iobject->{ '_id' } if defined($returntids);
 #        push @{$queue->{'tasks_todo'}}, $iobject;
     }
     
@@ -602,8 +587,8 @@ sub load_queues
 
     foreach my $row ( @queues )
     {
-        next if $queues{$row->{'tid'}};
-        next if $self->is_active_queue( $row->{'tid'} ) == 0;
+        next if $queues{$row->{'_id'}};
+        next if $self->is_active_queue( $row->{'_id'} ) == 0;
         
         my $constructor = $self->{ 'queue_constructors' }->{ $row->{'constructor'} };
         if ( !$constructor )
@@ -624,13 +609,13 @@ sub load_queues
             next;
         }
         
-        $queue->{ 'id' } = $row->{ 'tid' };
+        $queue->{ 'id' } = $queue->{_id} = $row->{ '_id' };
 #        $queue->{ 'name' } = $row->{ 'name' };
 #        $queue->{ 'constructor' } = $row->{ 'constructor' };
         
         foreach my $attr (keys %{$row})
         {
-            if ( $attr ne 'tid' )
+            if ( $attr ne '_id' )
             {
                 $queue->{ $attr } = $row->{ $attr };
             }
@@ -675,23 +660,23 @@ sub reflect_queue_changes
     return if !$query;
     
     my @queues = $query->all;
-    my %queues = map { $_->{'id'} => $_ } @{$self->{'queues'}};
+    my %queues = map { $_->{'_id'} => $_ } @{$self->{'queues'}};
     
     foreach my $queue ( @queues )
     {
-        my $queue2 = $queues{ $queue->{'tid'} };
+        my $queue2 = $queues{ $queue->{'_id'} };
         if ( !$queue2 )
         {
-            $self->load_queues if $self->is_active_queue( $queue->{'tid'} ) == 1;
+            $self->load_queues if $self->is_active_queue( $queue->{'_id'} ) == 1;
             next;
         }
 
         foreach my $key ( keys %{$queue} )
         {
-            next if $key eq '_id' or $key eq 'tid';
+            next if $key eq '_id';
             if ( $queue->{$key} ne $queue2->{$key} )
             {
-                warn "Setting $queue->{tid} $key from $queue2->{maxthreads} to $queue->{maxthreads}";
+                warn "Setting $queue->{_id} $key from $queue2->{maxthreads} to $queue->{maxthreads}";
                 $queue2->{$key} = $queue->{$key};
             }
         }
@@ -761,7 +746,7 @@ sub search_tasks
 {
     my $self = shift;
     
-    my $tid = shift;
+    my $queue = shift;
     my $filter = shift;
     my $isjson = shift;
     my $limit = shift;
@@ -807,9 +792,9 @@ sub search_tasks
 #        return [];
     }
     
-    $hr->{ 'tid' } = $tid;
+    $hr->{ 'queue' } = MongoDB::OID->new( value => $queue );
     
-    warn "get_collection()";
+    warn "get_collection(): " . Dumper($hr);
     my $cursor = Synacor::Disbatch::Backend::query_collection( 'tasks', $hr, $attrs, {retry => 'synchronous'} );
     warn "got it";
     return [ 1, $cursor->count() ] if $count;
@@ -850,7 +835,7 @@ sub register_task_status_observer
     my $tid = shift;
     my $queue = shift;
 
-    my $task =  $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->find_one( {'iid' => $tid} );
+    my $task =  $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->find_one( {_id => MongoDB::OID->new(value => $tid)} );
     if ( !$task )
     {
         die "Couldn't find task by $tid\n";
