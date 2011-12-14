@@ -300,6 +300,7 @@ sub filter_collection
     warn "filter_collection(): $type";
             
     my $hr = {};
+    
     if ( ref($filter) eq 'HASH' )
     {
         # de-share it
@@ -315,13 +316,13 @@ sub filter_collection
             $hr = eval $filter;
             if ( $@ )
             {
-                warn 'filter_collection($collection, $filter) = ' . $@;
+#                warn "filter_collection($collection, $filter) = " . $@;
                 return {};
             }
         };
         if ( $@ )
         {
-            warn 'filter_collections($collection, $filter) = ' . $@;
+#            warn "filter_collections($collection, $filter) = " . $@;
             return {};
         }
     }

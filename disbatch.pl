@@ -1,16 +1,8 @@
 #!/usr/bin/perl -W
 
-##
-## synmig - this is a very simple CLI which is a pretty thin wrapper around
-## the JSON interface provided by migrated.
-##
-## Nothing here should require too much explanation, and documentation to
-## use this tool is provided if you perldoc this file.
-##
-
 =head1 NAME
 
-synmig - Synacor Migration Framework - Client CLI Tool
+disbatch - Distributed Elastic Batch Processing Framework - Client CLI Tool
 
 =head1 DESCRIPTION
 
@@ -38,8 +30,8 @@ alter the parameters of the migration engine while in operation.
     queue types
     queue set <queue> <key> <value>
     queue start <type> <name>
-    queue task <queue> {[value], ...}
-    queue tasks <queue> <collection> <filter> [<col1>, ...]
+    queue task <queue> [<key> <value>, ...]
+    queue tasks <queue> <collection> [<filter key> <value>, ...] -- [<parameter key> <value>, ...]
 
     enclosure <queue> <collection> <filter> [<col1>, ...]
 
@@ -115,7 +107,7 @@ USAGE
                queue set <queue> <key> <value>
                queue start <type> <name>
                queue task <queue> {[value], ...}
-               queue tasks <queue> <collection> <filter> [<col1>, ...]
+               queue tasks <queue> <collection> [<filter key> <value>, ...] -- [<parameter key> <value>, ...]
                queue search <queue> <filter>
 
                enclosure <queue> <collection> <filter> [<col1>, ...]
@@ -274,7 +266,29 @@ sub parse_queue_tasks
     $params->{ 'execute' } = \&queue_tasks;
     $params->{ 'queueid' } = shift @ARGS;
     $params->{ 'collection' } = shift @ARGS;
-    $params->{ 'filter' } = shift @ARGS;
+
+    my %filter;
+    my $key;
+    my $state = 0;
+    while( (my $filter_term = shift @ARGS) ne '--' )
+    {
+        return( (0, "Filter clause terminator '--' is required") ) if ( !$filter_term );
+        if ( $state == 0 )
+        {
+            $key = $filter_term;
+            $state = 1;
+        }
+        elsif ( $state == 1 )
+        {
+            $filter{ $key } = $filter_term;
+            $state = 0;
+        }
+    }
+    
+    return( (0, 'The filter must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );
+    $params->{ 'filter' } = \%filter;
+        
+    
     $params->{ 'columns' } = $json->encode( \@ARGS );
     return( (1, undef) );
 }
@@ -521,11 +535,12 @@ sub queue_tasks
     my $params = shift;
     my $url = api_url . '/queue-create-tasks-from-query-json';
     my $lwp = LWP::UserAgent->new;
+    
     my $r = $lwp->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
                             'collection'	=> $params->{ 'collection' },
-                            'filter'		=> $params->{ 'filter' },
+                            'jsonfilter'	=> $json->encode($params->{ 'filter' }),
                             'columns'		=> $params->{ 'columns' },
                         ]
                       );

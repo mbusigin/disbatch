@@ -404,10 +404,10 @@ sub queue_create_tasks_from_query_json
     if ( $cgi->param('jsonfilter') )
     {
         my $f;
-        $f = shared_clone( $json->decode($filter) );
+        $f = $json->decode($cgi->param('jsonfilter') );
         $filter = $f;
     }
-
+    
     return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $columns );
 }
 
