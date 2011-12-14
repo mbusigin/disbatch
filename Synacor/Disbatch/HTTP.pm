@@ -399,7 +399,7 @@ sub queue_create_tasks_from_query_json
     my $queueid = $cgi->param( 'queueid' );
     my $collection = $cgi->param( 'collection' );
     my $filter = $cgi->param( 'filter' );
-    my $columns = $json->decode( $cgi->param('columns') );
+    my $parameters = $json->decode( $cgi->param('parameters') );
 
     if ( $cgi->param('jsonfilter') )
     {
@@ -408,7 +408,7 @@ sub queue_create_tasks_from_query_json
         $filter = $f;
     }
     
-    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $columns );
+    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $parameters );
 }
 
 

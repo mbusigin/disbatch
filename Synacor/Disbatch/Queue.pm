@@ -132,12 +132,12 @@ it to the database.
 sub create_task
 {
     my $self = shift;
-    untie @_;
-#    print "!! Synacor::Disbatch::Queue->create_task() stub.\n";
-    my $task = $self->create_task_actual( @_ );
-  
+    my $parameters = shift;
     
-    my $frozen_params = $self->{ 'engine' }->{'parameterformat_write'}( \@_ );
+    print "!! Synacor::Disbatch::Queue->create_task() stub.\n" . Dumper($parameters) . "\n";
+    my $task = $self->create_task_actual( $parameters );
+      
+    my $frozen_params = $self->{ 'engine' }->{'parameterformat_write'}( $parameters );
     my %obj;
     $obj{ 'queue' } = $self->{ 'id' };
     $obj{ 'status' } = -2;
@@ -276,8 +276,6 @@ sub get_free_thread
 }
 
 
-my $select_tasks_sth = undef;
-my $select_parameters_sth = undef;
 sub load_tasks
 {
     my $self = shift;
@@ -287,10 +285,10 @@ sub load_tasks
     
     foreach my $row ( @tasks )
     {
-        my @parameters;
-        @parameters = $self->{'engine'}->{'parameterformat_read'}($row->{'parameters'})->[ 0 ] if $row->{'parameters'}; # @{ $Synacor::Disbatch::Engine::dbh->selectcol_arrayref('select parameter from task_parameters where task_id = ? order by id asc', undef, ($iid) ) };
+        my $parameters;
+        $parameters = $self->{'engine'}->{'parameterformat_read'}($row->{'parameters'}) if $row->{'parameters'}; # @{ $Synacor::Disbatch::Engine::dbh->selectcol_arrayref('select parameter from task_parameters where task_id = ? order by id asc', undef, ($iid) ) };
 #        warn Dumper( \@parameters );
-        my $task = $self->create_task_actual( @parameters );
+        my $task = $self->create_task_actual( $parameters );
     }
 }
 
@@ -300,12 +298,11 @@ sub load_task
     my $self = shift;
     my $row = shift;
         
-    my @parameters;
-    @parameters = $self->{'engine'}->{'parameterformat_read'}($row->{'parameters'})->[ 0 ] if $row->{'parameters'}; 
-    my $task = $self->create_task_actual( @parameters );
+    my $parameters = $self->{'engine'}->{'parameterformat_read'}($row->{'parameters'}) if $row->{'parameters'}; 
+    my $task = $self->create_task_actual( $parameters );
     if ( !$task )
     {
-        warn "Couldn't create task!  Parameters: " . Dumper(\@parameters) . "\n" . "row: " . Dumper($row) . "\n";
+        warn "Couldn't create task!  Parameters: " . Dumper($parameters) . "\n" . "row: " . Dumper($row) . "\n";
     }
 
     $task->{ 'id' } = $task->{ '_id' } = $row ->{'_id'};

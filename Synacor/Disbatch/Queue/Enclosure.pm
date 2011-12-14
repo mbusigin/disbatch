@@ -68,14 +68,13 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
             our @ISA=qw(Synacor::Disbatch::Task);
             my $class = shift;
             my $queue = shift;
-            my @parameters = @{ $_[0] };
-            my $perl = shift @parameters;
+            my $parameters = shift;
+            my $perl = $parameters->{'perl'};
             
             my $self = Synacor::Disbatch::Task->new;
             
             $self->{ 'queue_id' } = $queue->{ 'id' };
             $self->{ 'perl' } = $perl;
-            $self->{ 'parameters' } = \@parameters;
 
             bless $self, $class;
 
@@ -90,7 +89,6 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
             my $self = shift;
             my ( $stdout, $stderr, $status ) = ( '<stdout>', '<stderr>', 1 );
             my $perl = $self->{ 'perl' };
-            my @parameters = @{ $self->{'parameters'} };
             
             eval( $perl );
             if ( $@ )
@@ -111,14 +109,15 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
 sub parameters_definitions
 {
     return
-    [
+    {
+        name =>
         {
             'name'		=> 'perl',
             'type'		=> 'string',
             'default'		=> 'warn "Hello, world!"',
             'description'	=> 'a Perl expression to evaluate',
         },
-    ];
+    };
 }
 
 

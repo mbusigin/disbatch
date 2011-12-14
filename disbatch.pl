@@ -287,9 +287,26 @@ sub parse_queue_tasks
     
     return( (0, 'The filter must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );
     $params->{ 'filter' } = \%filter;
-        
     
-    $params->{ 'columns' } = $json->encode( \@ARGS );
+    $state = 0;
+    my %parameters;
+    while( (my $parameter_term = shift @ARGS) )
+    {
+        if ( $state == 0 )
+        {
+            $key = $parameter_term;
+            $state = 1;
+        }
+        elsif ( $state == 1 )
+        {
+            $parameters{ $key } = $parameter_term;
+            $state = 0;
+        }
+    }
+    
+    return( (0, 'Parameters must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );    
+    $params->{ 'parameters' } = $json->encode( \%parameters );
+    
     return( (1, undef) );
 }
 
@@ -541,7 +558,7 @@ sub queue_tasks
                             'queueid'		=> $params->{ 'queueid' },
                             'collection'	=> $params->{ 'collection' },
                             'jsonfilter'	=> $json->encode($params->{ 'filter' }),
-                            'columns'		=> $params->{ 'columns' },
+                            'parameters'	=> $params->{ 'parameters' },
                         ]
                       );
     if ( $r->is_success )
