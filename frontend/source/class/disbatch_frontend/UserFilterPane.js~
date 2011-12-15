@@ -44,10 +44,10 @@ qx.Class.define( "disbatch_frontend.UserFilterPane",
           
           
           var operators = new qx.ui.container.Composite( new qx.ui.layout.VBox() );
-          var opeq = this.opeq = new qx.ui.form.RadioButton( "=" );
-          var opgt = this.opgt = new qx.ui.form.RadioButton( ">" );
-          var oplt = this.oplt = new qx.ui.form.RadioButton( "<" );
-          var opre = this.opre = new qx.ui.form.RadioButton( "~" );
+          opeq = this.opeq = new qx.ui.form.RadioButton( "=" );
+          opgt = this.opgt = new qx.ui.form.RadioButton( ">" );
+          oplt = this.oplt = new qx.ui.form.RadioButton( "<" );
+          opre = this.opre = new qx.ui.form.RadioButton( "~" );
           operators.add( opeq );
           operators.add( opgt );
           operators.add( oplt );

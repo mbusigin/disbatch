@@ -74,12 +74,10 @@ qx.Class.define("disbatch_frontend.TaskBrowserModel",
               }
               r["parameters"] = parameters;
               
-//              alert( r["_id"]["$oid"] );
-              var realId = r["_id"]["$oid"];
+              var realId = r["_id"].oid;
               r["_id"] = realId;
             }
           }
-
           this._onRowDataLoaded(result);   
        }        
        else

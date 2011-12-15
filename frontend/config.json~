@@ -37,7 +37,7 @@
   "let" :
   {
     "APPLICATION"  : "disbatch_frontend",
-    "QOOXDOO_PATH" : "/tmp/qooxdoo-1.6-sdk",
+    "QOOXDOO_PATH" : "../../../tmp/qooxdoo-1.6-sdk",
     "QXTHEME"      : "disbatch_frontend.theme.Theme",
     "API_EXCLUDE"  : ["qx.test.*", "${APPLICATION}.theme.*", "${APPLICATION}.test.*", "${APPLICATION}.simulation.*"],
     "LOCALES"      : [ "en" ],

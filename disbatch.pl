@@ -254,7 +254,28 @@ sub parse_queue_task
     return( (0, "Item takes at least one argument:  queueid.\n") ) if scalar(@ARGS) < 1;
     $params->{ 'execute' } = \&queue_task;
     $params->{ 'queueid' } = shift @ARGS;
-    $params->{ 'object' } = $json->encode( [\@ARGS] );
+
+    my $state = 0;
+    my %parameters;
+    my $key;
+    while( (my $parameter_term = shift @ARGS) )
+    {
+        if ( $state == 0 )
+        {
+            $key = $parameter_term;
+            $state = 1;
+        }
+        elsif ( $state == 1 )
+        {
+            $parameters{ $key } = $parameter_term;
+            $state = 0;
+        }
+    }
+    
+    return( (0, 'Parameters must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );    
+
+    
+    $params->{ 'object' } = [\%parameters];
     return( (1, undef) );
 }
 
@@ -531,7 +552,7 @@ sub queue_task
     my $r = $lwp->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
-                            'object'		=> $params->{ 'object' },
+                            'object'		=> $json->encode( $params->{'object'} ),
                         ]
                       );
     if ( $r->is_success )

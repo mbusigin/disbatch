@@ -496,12 +496,7 @@ sub queue_create_tasks
     foreach my $task ( @{$tasks_arrayref} )
     {
         $count ++;
-        my @params;
-        foreach my $col ( @{$task} )
-        {
-            push @params, $col;
-        }
-        my $iobject = $queue->create_task( \@params );
+        my $iobject = $queue->create_task( $task );
         push @tids, $iobject->{ '_id' } if defined($returntids);
 #        push @{$queue->{'tasks_todo'}}, $iobject;
     }
@@ -794,7 +789,8 @@ sub search_tasks
     }
     
     $hr->{ 'queue' } = MongoDB::OID->new( value => $queue );
-    
+    $hr->{'_id'} = MongoDB::OID->new( value => $hr->{'id'} ) if ( $hr->{'id'} );
+    delete $hr->{id};
     warn "get_collection(): " . Dumper($hr);
     my $cursor = Synacor::Disbatch::Backend::query_collection( 'tasks', $hr, $attrs, {retry => 'synchronous'} );
     warn "got it";
@@ -807,7 +803,7 @@ sub search_tasks
     foreach my $task (@tasks)
     {
         my $parameters = $task->{ 'parameters' };
-        $task->{ 'parameters' } = $self->{'parameterformat_read'}( $parameters )->[0] if $parameters;
+        $task->{ 'parameters' } = $self->{'parameterformat_read'}( $parameters ) if $parameters;
         if ( $terse )
         {
             $task->{ 'stdout' } = '';

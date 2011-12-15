@@ -171,7 +171,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       var req = new qx.io.remote.Request( "/search-tasks-json", "POST", "application/json" );
       
       var filter = new Object();
-      filter[ "id" ] = id;
+      filter[ "_id" ] = id;
       req.setParameter( "queue", this._queueid );
       req.setParameter( "json", 1 );
       req.setParameter( "filter", qx.lang.Json.stringify(filter) );
