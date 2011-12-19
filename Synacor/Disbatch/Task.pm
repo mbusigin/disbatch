@@ -1,6 +1,8 @@
 package Synacor::Disbatch::Task;
 
 use strict;
+use Carp;
+use Try::Tiny;
 use threads;
 use threads::shared;
 use Clone qw(clone);
@@ -77,5 +79,12 @@ sub wait_task_status_change
     return threads::shared::shared_clone( $ret );
 }
 
+
+sub workerthread
+{
+    my $self = shift or confess "no self";
+    my $workerthread = $self->{workerthread} or confess "No workerthread defined";
+    return $workerthread;
+}
 
 1;

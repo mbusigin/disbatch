@@ -22,6 +22,8 @@ hash, and your new API call is ready.
 =cut
 
 use strict;
+use Carp;
+use Try::Tiny;
 use HTTP::Server::Simple::CGI;
 use threads;
 use threads::shared;
@@ -62,6 +64,7 @@ sub new
 {
     my $class = shift;
     my $self = HTTP::Server::Simple->new( @_ );
+    $self->{ 'config' } = $Synacor::Disbatch::Engine::Engine->{config};
     return bless $self, $class;
 }
 
@@ -98,9 +101,8 @@ sub authen_handler
             return 1;
             return 0 if ( !$user or !$pass );
 
-            warn $user;
-            warn $pass;
             
+            $self->logger->warn( "Authentication request: $user / $pass" );
             return 1;
         }
         
@@ -155,7 +157,7 @@ sub handle_request
             if ( $@ ne '' )
             {
                 print "HTTP/1.0 500 Perl Module Failure\r\n";
-                warn "Error!  $@";
+                $self->logger->error( "Error processing '$path': $@" );
                 print   $cgi->header(
                                  -type => 'application/json',
 #                                 -cookie => $cookie,
@@ -165,18 +167,16 @@ sub handle_request
             else
             {
                 print "HTTP/1.0 200 OK\r\n";
-                warn "converting to json";
                 $result = {} if ( !defined($result) );
                 my $converted = $json->allow_blessed->convert_blessed->encode( $result );
-                warn "converted (" . length($converted) . " bytes)\n";
                 print   $cgi->header(
                                  -type => 'application/json',
 #                                 -cookie => $cookie,
                                  );
-                warn "printed header\n";
                 print
                                  $converted;
-                warn "printed json\n";
+                $self->logger->trace( 
+                    "Served '$path'" );
             }                                 
         }
     }
@@ -301,8 +301,8 @@ sub set_queue_attr_json
     
     my ($r, $e) = @{ $Synacor::Disbatch::Engine::EventBus->set_queue_attr($queueid, $attr, $value) };
     $ret{ 'success' } = $r;
-    $ret{ 'error' } = $e
-    if defined($e); warn Dumper( \%ret ); return \%ret;
+    $ret{ 'error' } = $e if defined($e); 
+    return \%ret;
 }
 
 
@@ -347,8 +347,6 @@ sub start_queue_json
 {
     my $cgi = shift;
     
-    warn Dumper( $cgi );
-    
     my $type = $cgi->param( 'type' );
     my $name = $cgi->param( 'name' );
     
@@ -373,7 +371,6 @@ sub queue_create_tasks_json
     
     my $queueid = $cgi->param( 'queueid' );
     my $jsobj = $cgi->param( 'object' );
-    warn "jsobj: $jsobj\n";
     my $obj = $json->decode( $jsobj );
     return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks( $queueid, $obj );
 }
@@ -449,9 +446,7 @@ sub search_tasks_json
 {
     my $cgi = shift;
     
-    warn "Calling\n";
     my $tasks = $Synacor::Disbatch::Engine::EventBus->search_tasks( $cgi->param('queue'), $cgi->param('filter'), $cgi->param('json') || 0, $cgi->param('limit') || 0, $cgi->param('skip') || 0, $cgi->param('count') || 0, $cgi->param('terse') || 0 );
-    warn "Called\n";
 
     return $tasks;
 }
@@ -470,6 +465,36 @@ sub delete_queue_json
     return { 'success' => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id')) };
 }
 
+
+
+sub logger
+{
+    my $self = shift or confess "No self!";
+    my $classname = ref($self);
+    $classname =~ s/^.*:://;
+    
+    my $logger = shift;
+    if ( $logger )
+    {
+        my $l = "disbatch.httpd.$logger";
+        $logger = $l;
+    }
+    else
+    {
+        $logger = "disbatch.httpd";
+    }
+    
+    if ( !$self->{log4perl_initialised} )
+    {    
+        Log::Log4perl::init($self->{config}->{log4perl_conf});
+        $self->{log4perl_initialised} = 1;
+        $self->{loggers} = {};
+    }
+    
+    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
+    $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
+    return $self->{loggers}->{$logger};
+}
 
 
 1;

@@ -10,6 +10,10 @@ use MongoDB;
 use DateTime;
 use Storable qw(thaw nfreeze);
 use Data::Dumper;
+use Try::Tiny;
+use Carp;
+use Log::Log4perl;
+
 $Storable::interwork_56_64bit = 1;
 
 
@@ -92,8 +96,41 @@ sub new
     $self->{ 'eb' }->{ 'procedures' }{ 'register_task_status_observer' } = \&register_task_status_observer;
 
     Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'} );
+    $Engine = $self;
     return $self;
 }
+
+=item logger()
+ 
+ Returns a log4perl instance 
+=cut
+
+sub logger
+{
+    my $self = shift or confess "No self!";
+    my $logger = shift;
+    if ( $logger )
+    {
+        my $l = "disbatch.engine.$logger";
+        $logger = $l;
+    }
+    else
+    {
+        $logger = "disbatch.engine";
+    }
+    
+    if ( !$self->{log4perl_initialised} )
+    {    
+        Log::Log4perl::init($self->{config}->{log4perl_conf});
+        $self->{log4perl_initialised} = 1;
+        $self->{loggers} = {};
+    }
+    
+    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
+    $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
+    return $self->{loggers}->{$logger};
+}
+
 
 =item add_queue()
 
@@ -160,7 +197,7 @@ sub awaken
             if ( $ctf->{'done'} == $ctf->{'count'} )
             {
                 splice @{ $self->{'chunkedtaskfactories'} }, $index, 1;
-#                warn "Deleted a CTF";
+                $self->logger->info( 'Completed a CTF' );
                 goto done;
             }
             
@@ -189,11 +226,11 @@ sub report_task_done
     my $self = shift;
     my ( $queueid, $task, $status, $stdout, $stderr ) = @_;
 
-    warn "Reporting done:  queue #$queueid/$task\n";
+    $self->logger->trace( "Reporting done: queue #$queueid/$task" );
 
     if ( $self->{'task_observers'}->{$task} )
     {
-        warn "There IS an observer.  Enqueuing status.";
+        $self->logger->warn( "Found registered observer.  Enqueuing status." );
         $self->{'task_observers'}->{$task}->enqueue( $status );
         delete $self->{ 'task_observers' }->{ $task };
     }
@@ -208,7 +245,7 @@ sub report_task_done
     }
     
     
-    print "!! Task #$queueid doesn't exist!\n";
+    $self->logger->warn( "Task #$queueid doesn't exist!" );
     
     return;
 }
@@ -297,7 +334,6 @@ sub filter_collection
 {
     my ( $collection, $filter, $type, $key ) = @_;
     $type ||= "hash";
-    warn "filter_collection(): $type";
             
     my $hr = {};
     
@@ -316,20 +352,20 @@ sub filter_collection
             $hr = eval $filter;
             if ( $@ )
             {
-#                warn "filter_collection($collection, $filter) = " . $@;
+                $Engine->logger->warn( "Filter eval failure: $@" );
                 return {};
             }
         };
         if ( $@ )
         {
-#            warn "filter_collections($collection, $filter) = " . $@;
+            $Engine->logger->warn( "Error processing filter: $@" );
             return {};
         }
     }
     
     if ( ref($hr) ne 'HASH' )
     {
-        warn "Not a hashref!: '$filter'\n" . ref($hr) . "\n" ;
+        $Engine->logger->error( "Couldn't process filter hash because it's not a hashref" );
         return {};
     }
 
@@ -576,7 +612,6 @@ sub load_queues
 {
     my $self = shift;
 
-    warn "Loading queues...\n";
     my @queues = Synacor::Disbatch::Backend::query_collection( 'queues', {}, {retry => 'synchronous'} )->all;
     my %queues = map { $_->{'id'} => $_ } @{$self->{'queues'}};
 
@@ -589,7 +624,7 @@ sub load_queues
         my $constructor = $self->{ 'queue_constructors' }->{ $row->{'constructor'} };
         if ( !$constructor )
         {
-            warn "Couldn't load constructor for $constructor !!!";
+            $self->error->warn( "Couldn't load constructor for $constructor" );
             next;
         }
 
@@ -601,7 +636,7 @@ sub load_queues
         };
         if ( $@ )
         {
-            warn "Unable to construct queue $row->{name}: $@";
+            $self->logger->error( "Unable to construct queue $row->{name}: $@" );
             next;
         }
         
@@ -672,7 +707,7 @@ sub reflect_queue_changes
             next if $key eq '_id';
             if ( $queue->{$key} ne $queue2->{$key} )
             {
-                warn "Setting $queue->{_id} $key from $queue2->{maxthreads} to $queue->{maxthreads}";
+                $self->logger->info( "Setting $queue->{_id} $key from $queue2->{maxthreads} to $queue->{maxthreads}" );
                 $queue2->{$key} = $queue->{$key};
             }
         }
@@ -696,7 +731,7 @@ sub queue_prototypes
         my $constructor = $self->{ 'queue_constructors' }->{ $type };
         if ( !$constructor )
         {
-            warn "No such constructor '$type'!";
+            $self->logger->error( "No such constructor '$type'!" );
             next;
         }
         
@@ -704,11 +739,10 @@ sub queue_prototypes
         
         if ( !$queue )
         {
-            warn "Couldn't create queue '$type' from constructor!";
+            $self->logger->error( "Couldn't create queue '$type' from constructor!" );
             next;
         }
         
-        warn $type;
         $r{ $type } = $queue->parameters_definitions;
         $r{ 'settings' } = $queue->queue_definitions;
     }
@@ -762,7 +796,7 @@ sub search_tasks
         $hr = eval $filter;
         if ( $@ )
         {
-            warn 'search_tasks($users, $filter) = ' . $@;
+            $self->logger->error( "Error evaluating filter: $@" );
             return [];
         }  
     }
@@ -783,7 +817,7 @@ sub search_tasks
     
     if ( ref($hr) ne 'HASH' )
     {
-        warn "Not a hashref!: '$filter'\n";
+        $self->logger->error( "Filter not a hashref" );
             $hr = {};
 #        return [];
     }
@@ -791,14 +825,9 @@ sub search_tasks
     $hr->{ 'queue' } = MongoDB::OID->new( value => $queue );
     $hr->{'_id'} = MongoDB::OID->new( value => $hr->{'id'} ) if ( $hr->{'id'} );
     delete $hr->{id};
-    warn "get_collection(): " . Dumper($hr);
     my $cursor = Synacor::Disbatch::Backend::query_collection( 'tasks', $hr, $attrs, {retry => 'synchronous'} );
-    warn "got it";
     return [ 1, $cursor->count() ] if $count;
-
-    warn "cursor->all";
     my @tasks = $cursor->all;
-    warn "foreach";
     
     foreach my $task (@tasks)
     {
@@ -821,7 +850,6 @@ sub search_tasks
             $task->{ctime_str} = $dt->ymd . ' ' . $dt->hms;
         }
     }
-    warn "returning";
     return \@tasks;
 }
 
@@ -839,12 +867,10 @@ sub register_task_status_observer
     }
     if ( $task->{'status'} == 1 )
     {
-        warn "Setting task status to 1 right away";
         $queue->enqueue( 1 );
     }
     else
     {
-        warn "Setting tid $tid observer";
         $self->{ 'task_observers' }->{ $tid } = $queue;
     }
 }

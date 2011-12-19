@@ -5,6 +5,10 @@ use threads;
 use threads::shared;
 use Data::Dumper;
 use Pinscher::Core::EventBus;
+use Synacor::Disbatch::Engine;
+use Try::Tiny;
+use Carp;
+use Synacor::Disbatch::Engine;
 
 =head1 NAME
 
@@ -40,6 +44,7 @@ sub new
 {
     my $class = shift;
     my $id = shift;
+    my $queue = shift;
 
     my $self = 
     {
@@ -48,7 +53,10 @@ sub new
     
     $self->{ 'eb' } = Pinscher::Core::EventBus->new( $self, 'worker#' . $id );
     $self->{ 'id' } = $id;
+    $self->{ 'queue' } = $queue;
     $self->{ 'eb' }{ 'procedures' }{ 'start_task' } = \&start_task;
+    $self->{ 'config' } = $Synacor::Disbatch::Engine::Engine->{config};
+
 
     $self->thread_start;
 
@@ -77,7 +85,8 @@ sub start_task
         return 1;
     }
 #     print $self->{ 'id' } . ': ' . ref($task) . "\n";
-    $task->run();
+    $task->{ 'workerthread' } = $self;
+    $task->run( $self );
     
     
     return 1;
@@ -109,6 +118,36 @@ sub thread_start
     
 #    my $ret = threads->create( \&startstuff, $self );
     return;
+}
+
+
+sub logger
+{
+    my $self = shift or confess "No self!";
+    my $classname = ref($self->{queue});
+    $classname =~ s/^.*:://;
+        
+    my $logger = shift;
+    if ( $logger )
+    {
+        my $l = "disbatch.plugins.$classname.$logger";
+        $logger = $l;
+    }
+    else
+    {
+        $logger = "disbatch.engine.$classname";
+    }
+    
+    if ( !$self->{log4perl_initialised} )
+    {    
+        Log::Log4perl::init($self->{config}->{log4perl_conf});
+        $self->{log4perl_initialised} = 1;
+        $self->{loggers} = {};
+    }
+    
+    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
+    $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
+    return $self->{loggers}->{$logger};
 }
 
 

@@ -4,6 +4,10 @@ use strict;
 use threads;
 use Data::Dumper;
 use JSON -convert_blessed_universally;
+use Carp;
+use Try::Tiny;
+use Synacor::Disbatch::Engine;
+
 
 =head1 NAME
 
@@ -40,6 +44,7 @@ sub new
     my @threads;
     my %threads_inuse;
 
+
     my $self = 
     {
         'tasks_doing'		=> \@tasks_doing,
@@ -51,6 +56,7 @@ sub new
 #        'tasks'			=> $Synacor::Disbatch::Backend::mongo->get_collection( 'tasks' ),
         'name'			=> '',
         'constructor'		=> '',
+        'config'            => $Synacor::Disbatch::Engine::Engine->{config},
     };
     
     bless $self, $class;
@@ -134,7 +140,7 @@ sub create_task
     my $self = shift;
     my $parameters = shift;
     
-    print "!! Synacor::Disbatch::Queue->create_task() stub.\n" . Dumper($parameters) . "\n";
+    $self->logger->trace( "Synacor::Disbatch::Queue->create_task()" );
     my $task = $self->create_task_actual( $parameters );
       
     my $frozen_params = $self->{ 'engine' }->{'parameterformat_write'}( $parameters );
@@ -220,21 +226,20 @@ sub report_task_done
             my $thr = $self->{threads_inuse}{$taskid};
             if ( !$thr )
             {
-                warn "wtf - no thread for $self $taskid $status $stdout $stderr";
+                $self->logger->error( "wtf - no thread for $self $taskid $status $stdout $stderr" );
             }
             push @{ $self->{'threads'} }, $self->{ 'threads_inuse' }{ $taskid };
             delete $self->{ 'threads_inuse' }{ $taskid };
             
-            warn "taskid: $taskid;  stderr: $stderr;  status: $status\n";
+            $self->logger->info( "taskid: $taskid;  stderr: $stderr;  status: $status" );
             Synacor::Disbatch::Backend::update_collection( 'tasks', {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
             
             $self->schedule if $self->{ 'preemptive' };
-            print "Finished $taskid.\n";
             return;
         }
     }
     
-    print "!! Synacor::Disbatch::Queue->report_task_done() called on invalid taskid #$taskid\n";
+    $self->logger->error( "!! Synacor::Disbatch::Queue->report_task_done() called on invalid taskid #$taskid" );
 }
 
 
@@ -244,7 +249,7 @@ sub start_thread_pool
 
     if ( $self->{'engine'}->is_active_queue($self->{'id'}) == 0 )
     {
-        warn "No threads for $self->{id}";
+        $self->logger->error( "No threads for $self->{id}" );
         return 0;
     }
       
@@ -255,12 +260,12 @@ sub start_thread_pool
     for ( my $x = 0; $x < $nt; $x ++ )
     {
         $self->{ 'lastthreadid' } ++;
-        my $worker = Synacor::Disbatch::WorkerThread->new( $self->{'lastthreadid'} );
+        my $worker = Synacor::Disbatch::WorkerThread->new( $self->{'lastthreadid'}, $self );
 #        print "Starting worker #$self->{lastthreadid}\n";
 #        $worker->thread_start;
         threads->yield();
         push @{$self->{'threads'}}, $worker;
-        warn "pushed $worker";
+        $self->logger->trace( "pushed $worker" );
     }
     
     return $nt;
@@ -302,7 +307,7 @@ sub load_task
     my $task = $self->create_task_actual( $parameters );
     if ( !$task )
     {
-        warn "Couldn't create task!  Parameters: " . Dumper($parameters) . "\n" . "row: " . Dumper($row) . "\n";
+        $self->logger->error( "Couldn't create task!  Parameters: " . Dumper($parameters) . "\n" . "row: " . Dumper($row) );
     }
 
     $task->{ 'id' } = $task->{ '_id' } = $row ->{'_id'};
@@ -322,5 +327,36 @@ sub count_total
     my $self = shift;
     return Synacor::Disbatch::Backend::count( 'tasks', {'queue' => $self->{'id'}} );
 }
+
+
+sub logger
+{
+    my $self = shift or confess "No self!";
+    my $classname = ref($self);
+    $classname =~ s/^.*:://;
+
+    my $logger = shift;
+    if ( $logger )
+    {
+        my $l = "disbatch.plugins.$classname.$logger";
+        $logger = $l;
+    }
+    else
+    {
+        $logger = "disbatch.plugins.$classname";
+    }
+    
+    if ( !$self->{log4perl_initialised} )
+    {    
+        Log::Log4perl::init($self->{config}->{log4perl_conf});
+        $self->{log4perl_initialised} = 1;
+        $self->{loggers} = {};
+    }
+    
+    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
+    $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
+    return $self->{loggers}->{$logger};
+}
+
 
 1;

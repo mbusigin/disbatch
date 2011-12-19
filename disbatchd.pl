@@ -30,15 +30,12 @@ use Config::Any;
 use Data::Dumper;
 
 
-print "\n\n\n";
-
 opendir( my $dh, 'disbatch.d' ) or goto no_disbatch_d;
 my @dfiles = grep { /\.ini$/ && -f "disbatch.d/$_" } readdir($dh);
 closedir $dh;
 map { $_ =~ s/^/disbatch.d\//; } @dfiles;
 
 unshift @dfiles, 'disbatch.ini';
-warn Dumper( \@dfiles );
 
 no_disbatch_d:
 my $all_configs = Config::Any->load_files( { files => \@dfiles, flatten_to_hash => 1 } );
@@ -55,13 +52,12 @@ Module::Reload::Selective->reload(@{$config->{'pluginclasses'}});
 
 my $engine = Synacor::Disbatch::Engine->new( $config );
 
-print Dumper( \@pluginclasses );
 foreach my $pluginclass (@pluginclasses)
 {
+    $engine->logger->info( 'Loading plugin class: ' . $pluginclass );
     my $load_plugin = 
       "use $pluginclass;\n" .
       "\$engine->register_queue_constructor( '$pluginclass', \\&" . $pluginclass . "::new );\n";
-    print $load_plugin . "\n";
     eval $load_plugin;
 }
 
@@ -106,8 +102,9 @@ else
     $engine->{'ctfquantum'} = 0.3;
 }
 
+$engine->logger->trace( 'Loading queues' );
 $engine->load_queues;
-warn "loaded queues";
+$engine->logger->trace( 'Loaded queues, starting schedulers' );
 
 my $timer = Synacor::Disbatch::Timer->new( $config->{'schedulertimerinterval'},
                                  sub
@@ -123,6 +120,7 @@ my $timer2 = Synacor::Disbatch::Timer->new( $config->{'updatetimerinterval'},
                                  }
                                );
 
+$engine->logger->trace( 'Spinning up HTTP service' );
 my $http = Synacor::Disbatch::HTTP->new( $config->{'httpport'} );
 
 $http->start;
@@ -130,15 +128,16 @@ $timer->start;
 $timer2->start;
 
 
-
+$engine->logger->trace( 'Starting queue thread pools' );
 foreach my $queue ( @{$engine->{'queues'}} )
 {
     $queue->start_thread_pool;
 }
+$engine->logger->trace( 'Updating node status for the first time' );
 $engine->update_node_status;
 $SIG{__DIE__} = \&afterlife;
 
-warn "OK, here we go...\n";
+$engine->logger->info( 'Initialisation complete' );
 while( 1 )
 {
     foreach my $queue ( @{$engine->{'queues'}} )
@@ -150,7 +149,7 @@ while( 1 )
     {
       eval
       {
-          warn "Reloading queues!\n";
+          $engine->logger->info( 'Reloading queues' );
           $engine->{ 'reloadqueues' } = 0;
           $engine->{ 'queues' } = [];
           Module::Reload::Selective->reload(@{$config->{'pluginclasses'}});
@@ -164,5 +163,5 @@ while( 1 )
 
 sub afterlife
 {
-    warn Dumper( @_ );
+    $engine->logger->warn( Dumper(@_) );
 }
