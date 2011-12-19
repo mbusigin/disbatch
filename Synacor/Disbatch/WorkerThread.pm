@@ -76,12 +76,12 @@ Arguments:
 
 sub start_task
 {
-    my $self = shift;
-    my $task = shift;
+    my $self = shift or confess "No self!";
+    my $task = shift or confess "No task!";
 
     if ( !$self->{id} )
     {
-        print "What the hell!  start_task() called without self.\n";
+        confess "No 'id'!";
         return 1;
     }
 #     print $self->{ 'id' } . ': ' . ref($task) . "\n";
