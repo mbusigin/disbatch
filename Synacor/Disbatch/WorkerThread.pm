@@ -9,6 +9,10 @@ use Synacor::Disbatch::Engine;
 use Try::Tiny;
 use Carp;
 use Synacor::Disbatch::Engine;
+use MJMS::Connection;
+use MJMS::Queue;
+use MJMS::Message;
+
 
 =head1 NAME
 
@@ -150,6 +154,15 @@ sub logger
     return $self->{loggers}->{$logger};
 }
 
+
+sub mjms
+{
+    my $self = shift or confess "No self!";
+    
+    return $self->{mjms} if defined($self->{mjms});
+    $self->{mjms} = MJMS::Connection->new( $self->{config}->{MJMS}->{mongohost}, $self->{config}->{MJMS}->{mongodb} );
+    return $self->{mjms};
+}
 
 
 1;

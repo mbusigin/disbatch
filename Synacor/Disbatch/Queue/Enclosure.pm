@@ -59,10 +59,8 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
         use IO::Socket;
         use IO::Handle;
         use Data::Dumper;
-        
-        
-        our @ISA=qw(Synacor::Disbatch::Task);
-        
+        use base qw/Synacor::Disbatch::Task/;
+                
         sub new
         {
             our @ISA=qw(Synacor::Disbatch::Task);
@@ -76,11 +74,7 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
             $self->{ 'queue_id' } = $queue->{ 'id' };
             $self->{ 'perl' } = $perl;
 
-            bless $self, $class;
-
-#            warn "User1: " . $self{'user1'} . "\n";
-            
-            
+            bless $self, $class;            
             return $self;
         }
     
@@ -95,7 +89,7 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
             {
                 $stdout .= "Error evaluating Perl expression: $@";
             }
-                
+            
             $Synacor::Disbatch::Engine::EventBus->report_task_done( $self->{'queue_id'}, $self->{'_id'}, $status, $stdout, $stderr );
             return;
         }
