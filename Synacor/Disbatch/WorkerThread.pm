@@ -60,7 +60,7 @@ sub new
     $self->{ 'queue' } = $queue;
     $self->{ 'eb' }{ 'procedures' }{ 'start_task' } = \&start_task;
     $self->{ 'config' } = $Synacor::Disbatch::Engine::Engine->{config};
-
+    $self->{ 'data' } = {};
 
     $self->thread_start;
 
@@ -164,5 +164,29 @@ sub mjms
     return $self->{mjms};
 }
 
+
+sub set
+{
+    my $self = shift or confess "No self!";
+    my $key = shift or confess "No key!";
+    my $value = shift;
+    $self->{ 'data' }->{ $key } = $value;
+}
+
+
+sub get
+{
+    my $self = shift or confess "No self!";
+    my $key = shift or confess "No key!";
+    return $self->{ 'data' }->{ $key };
+}
+
+
+sub unset
+{
+    my $self = shift or confess "No self!";
+    my $key = shift or confess "No key!";
+    delete $self->{ 'data' }->{ $key };
+}
 
 1;
