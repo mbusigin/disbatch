@@ -165,6 +165,16 @@ sub mjms
 }
 
 
+sub mongo
+{
+    my $self = shift or confess "No self!";
+    
+    return $self->{mongo} if defined($self->{mongo});
+    $self->{mongo} = Synacor::Disbatch::Backend::connect_mongo( $self->{ 'config' }->{'mongohost'}, $self->{ 'config' }->{'mongodb'} );
+    return $self->{mongo};
+}
+
+
 sub set
 {
     my $self = shift or confess "No self!";
