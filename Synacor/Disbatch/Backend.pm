@@ -5,7 +5,6 @@ use warnings;
 use Data::Dumper;
 use MongoDB;
 
-
 our $mongo;
 my @redolog;
 
@@ -17,7 +16,6 @@ Establish a new connection to a MongoDB.
 
 sub connect_mongo
 {
-    warn "connect_mongo";
     my $host = shift;
     my $dbname = shift;
     my $conn;
@@ -49,11 +47,8 @@ Initialise Backend module
 
 sub initialise
 {
-    warn "initialise mongo";
     my ( $host, $db ) = @_;
     $mongo = connect_mongo( $host, $db );
-
-    warn "initialised mongo";
 }
 
 
@@ -87,7 +82,8 @@ sub update_collection
         my $ret = $collection->update( $where, $update, $options );
         if ( !$ret )
         {
-            die "Couldn't write!!!!";
+            $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "Couldn't update collection '$cid'!" );
+            die "Couldn't update collection '$cid'!";
         }
     };
     
@@ -105,7 +101,7 @@ sub update_collection
             push @redolog, \@_;
             return;
         }
-        warn "No such retry method in update_collection on mongo timeout '$extra->{retry}'!!";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in update_collection on mongo timeout '$extra->{retry}'!!" );
     }
 }
 
@@ -143,14 +139,14 @@ sub query_collection
     };
     if ( $@ )
     {
-        warn "Error: $@";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->warn( "Error: $@" );
         return undef if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )
         {
             random_pause();
             return query_collection( @_ );
         }
-        warn "No such retry method in query_collection on mongo timeout '$extra->{retry}'!!";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in query_collection on mongo timeout '$extra->{retry}'!!" );
         return undef;
     }
     
@@ -176,14 +172,14 @@ sub query_one
     };
     if ( $@ )
     {
-        warn "Error: $@";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->warn( "Error: $@" );
         return undef if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )
         {
             random_pause();
             return query_one( @_ );
         }
-        warn "No such retry method in query_one on mongo timeout '$extra->{retry}'!!";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in query_one on mongo timeout '$extra->{retry}'!!" );
         return undef;
     }
     return $result;
@@ -208,14 +204,14 @@ sub count
     };
     if ( $@ )
     {
-        warn "Error: $@";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->warn( "Error: $@" );
         return undef if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )
         {
             random_pause();
             return count( @_ );
         }
-        warn "No such retry method in count on mongo timeout '$extra->{retry}'!!";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in count on mongo timeout '$extra->{retry}'!!" );
         return undef;
     }
     
@@ -255,7 +251,7 @@ sub insert_collection
             push @redolog, \@_;
             return;
         }
-        warn "No such retry method in insert_collection on mongo timeout '$extra->{retry}'!!";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in insert_collection on mongo timeout '$extra->{retry}'!!" );
     }
     else
     {
@@ -293,7 +289,7 @@ sub delete_collection
             push @redolog, \@_;
             return;
         }
-        warn "No such retry method in delete_collection on mongo timeout '$extra->{retry}'!!";
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in delete_collection on mongo timeout '$extra->{retry}'!!" );
     }
 }
 
@@ -308,7 +304,7 @@ sub process_redolog
 {
     while ( (my $tx = pop @redolog) )
     {
-        warn Dumper( $tx );
+        $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "Re-do log entry is being ignored" );
     }
 }
 
