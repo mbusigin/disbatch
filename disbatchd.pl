@@ -145,6 +145,7 @@ while( 1 )
         $queue->start_thread_pool;
     }
 
+    ## TODO: Remove this functionality
     if ( $engine->{'reloadqueues'} == 1 )
     {
       eval
