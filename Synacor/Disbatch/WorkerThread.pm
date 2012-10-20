@@ -1,8 +1,6 @@
 package Synacor::Disbatch::WorkerThread;
 
 use strict;
-use threads;
-use threads::shared;
 use Data::Dumper;
 use Pinscher::Core::EventBus;
 use Synacor::Disbatch::Engine;
@@ -90,7 +88,16 @@ sub start_task
     }
 #     print $self->{ 'id' } . ': ' . ref($task) . "\n";
     $task->{ 'workerthread' } = $self;
-    $task->run( $self );
+    
+    try
+    {
+        $task->run( $self );
+    }
+    catch
+    {
+        $self->logger( "Thread has uncaught exception: $_" );
+        $Synacor::Disbatch::Engine::EventBus->report_task_done( $task->{'queue_id'}, $task->{'_id'}, 2, 'Unable to complete', "Thread has uncaught exception: $_" );        
+    };
     
     
     return 1;

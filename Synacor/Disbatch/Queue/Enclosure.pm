@@ -12,8 +12,6 @@ Synacor::Disbatch::Queue::Enclosure - queue which allows you to run arbitrary Pe
 
 
 use strict;
-use threads;
-use threads::shared;
 use Synacor::Disbatch::Task;
 use Data::Dumper;
 use IPC::Open3;
@@ -50,8 +48,6 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
 
         package Synacor::Disbatch::Queue::Enclosure::Task;
         use strict;
-        use threads;
-        use threads::shared;
         use Synacor::Disbatch::Task;
         use Synacor::Disbatch::Engine;
         use IPC::Open3;
@@ -89,6 +85,8 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
             {
                 $stdout .= "Error evaluating Perl expression: $@";
             }
+            
+            die "Let's see what this does\n";
             
             $Synacor::Disbatch::Engine::EventBus->report_task_done( $self->{'queue_id'}, $self->{'_id'}, $status, $stdout, $stderr );
             return;

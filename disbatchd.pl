@@ -18,16 +18,15 @@ hundreds of thousands), pausing, and re-starting from a stopped state.
 
 
 use strict;
-use Proc::Daemon;
-use Module::Reload::Selective; 
+
+use Module::Load;
+use Data::Dumper;
+use Config::Any;
+
 use Synacor::Disbatch::Engine;
 use Synacor::Disbatch::Timer;
 use Synacor::Disbatch::Queue;
-$Module::Reload::Selective::Options->{'ReloadOnlyIfEnvVarsSet'}  = 0;
-
 use Synacor::Disbatch::HTTP;
-use Config::Any;
-use Data::Dumper;
 
 
 opendir( my $dh, 'disbatch.d' ) or goto no_disbatch_d;
@@ -48,12 +47,13 @@ foreach my $dfile ( grep {/^disbatch.d\//} keys %{$all_configs} )
 }
 $config->{'pluginclasses'} = \@pluginclasses;
 
-Module::Reload::Selective->reload(@{$config->{'pluginclasses'}});
+# Module::Reload::Selective->reload(@{$config->{'pluginclasses'}});
 
 my $engine = Synacor::Disbatch::Engine->new( $config );
 
 foreach my $pluginclass (@pluginclasses)
 {
+    load $pluginclass;
     $engine->logger->info( 'Loading plugin class: ' . $pluginclass );
     my $load_plugin = 
       "use $pluginclass;\n" .

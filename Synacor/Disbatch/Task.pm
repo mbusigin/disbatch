@@ -3,10 +3,6 @@ package Synacor::Disbatch::Task;
 use strict;
 use Carp;
 use Try::Tiny;
-use threads;
-use threads::shared;
-use Clone qw(clone);
-use Thread::Queue;
 
 
 =head1 NAME

@@ -1,9 +1,6 @@
 package Synacor::Disbatch::Timer;
 
 use strict;
-use threads;
-use Thread::Queue;
-
 
 =head1 NAME 
 
@@ -57,7 +54,12 @@ Spin up a new thread, and begin the timer process.
 sub start
 {
     my $self = shift;
-    $self->{ 'thread_handle' } = threads->create( \&thread_run, $self );
+
+    my $pid = fork();
+    if ( $pid == 0 )
+    {
+        $self->thread_run;
+    }    
 }
 
 

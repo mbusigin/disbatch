@@ -25,16 +25,12 @@ use strict;
 use Carp;
 use Try::Tiny;
 use HTTP::Server::Simple::CGI;
-use threads;
-use threads::shared;
 use Data::Dumper;
 use JSON::XS; # -convert_blessed_universally;
 use Text::CSV_XS;
 use POSIX;
-use Authen::Simple::LDAP;
-use Authen::Simple::Passwd;
 
-use base qw(HTTP::Server::Simple::CGI HTTP::Server::Simple::Authen);
+use base qw(HTTP::Server::Simple::CGI);
 
 
 my $json = undef;
@@ -229,8 +225,12 @@ Starts a new thread for the web-server, initialises itself, and returns.
 sub start
 {
     my $self = shift;
-    
-    threads->new( \&worker_thread, $self );
+
+    my $pid = fork();
+    if ( $pid == 0 )
+    {
+        $self->worker_thread;
+    }
 }
 
 =head1 JSON API Calls

@@ -1,16 +1,11 @@
 package Pinscher::Core::EventBus;
 
 use strict;
+use IPC::Shareable (':lock');
 use AutoLoader;
 use Data::Dumper;
-use threads;
-use threads::shared;
-use Thread::Queue;
-use Clone qw(clone);
-use Thread::Semaphore;
 use Storable qw(nfreeze thaw);
 use IPC::SysV qw(IPC_PRIVATE IPC_RMID IPC_CREAT S_IRWXU);
-use IPC::Shareable (':lock');
 use POSIX qw(ceil);
 use IO::Socket qw(SOCK_STREAM);
 use IO::Socket::UNIX;
