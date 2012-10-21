@@ -269,8 +269,9 @@ sub scheduler_report
     foreach my $queue ( @{$self->{'queues'}} )
     {
         my %t;
-        
-        $t{ 'id' } = $queue->{ 'id' }->to_string;    
+
+#        warn Dumper( $queue );
+        $t{ 'id' } = $queue->{ 'id' }->to_string;
         $t{ 'tasks_todo' } = $queue->count_todo;
         $t{ 'tasks_done' } = $queue->count_total - scalar( @{$queue->{'tasks_doing'}} ) - $t{ 'tasks_todo' };
         $t{ 'tasks_doing' } = scalar( @{$queue->{'tasks_doing'}} );
@@ -440,7 +441,8 @@ sub construct_queue
     my %obj;
     $obj{ 'constructor' } = $type;
     $obj{ 'name' } = $name;
-    Synacor::Disbatch::Backend::insert_collection( 'queues', \%obj, {retry => 'synchronous'} );
+    my $oid = Synacor::Disbatch::Backend::insert_collection( 'queues', \%obj, {retry => 'synchronous'} );    
+    $queue->{ 'id' } = $queue->{ '_id' } = $oid;
     return [ 1, $queue->{'id'} ];
 }
 
@@ -561,10 +563,17 @@ Callable via eventbus.
 sub queue_create_tasks_from_query
 {
     my ( $self, $queueid, $collection, $filter, $columns_arrayref ) = @_;
-
-    my $ctf = Synacor::Disbatch::ChunkedTaskFactory->new( $self, $queueid, $collection, $filter, $columns_arrayref );
-    push @{$self->{'chunkedtaskfactories'}}, $ctf;
-    return [1, $ctf->{'count'}];
+    
+    try
+    {
+        my $ctf = Synacor::Disbatch::ChunkedTaskFactory->new( $self, $queueid, $collection, $filter, $columns_arrayref );
+        push @{$self->{'chunkedtaskfactories'}}, $ctf;
+        return [1, $ctf->{'count'}];
+    }
+    catch
+    {
+        return [-1, 0, 'Error creating chunked task factory from query: ' . $_ ];
+    };
 }
 
 
@@ -707,7 +716,7 @@ sub reflect_queue_changes
             next if $key eq '_id';
             if ( $queue->{$key} ne $queue2->{$key} )
             {
-                $self->logger->info( "Setting $queue->{_id} $key from $queue2->{maxthreads} to $queue->{maxthreads}" );
+                $self->logger->info( "Setting $queue->{_id} $key from " . $queue2->{$key} . ' to ' . $queue->{$key} );
                 $queue2->{$key} = $queue->{$key};
             }
         }
@@ -825,6 +834,10 @@ sub search_tasks
     $hr->{ 'queue' } = MongoDB::OID->new( value => $queue );
     $hr->{'_id'} = MongoDB::OID->new( value => $hr->{'id'} ) if ( $hr->{'id'} );
     delete $hr->{id};
+
+    $hr->{status} = int($hr->{status}) if defined($hr->{status});
+    warn Dumper( $hr );
+    
     my $cursor = Synacor::Disbatch::Backend::query_collection( 'tasks', $hr, $attrs, {retry => 'synchronous'} );
     return [ 1, $cursor->count() ] if $count;
     my @tasks = $cursor->all;

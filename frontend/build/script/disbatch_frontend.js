@@ -19746,7 +19746,7 @@ this._statusslc=new qx.ui.form.SelectBox();
 this._statusslc.add(new qx.ui.form.ListItem(A,null,-5));
 this._statusslc.add(new qx.ui.form.ListItem(bg,null,1));
 this._statusslc.add(new qx.ui.form.ListItem(H,null,0));
-this._statusslc.add(new qx.ui.form.ListItem(bj,null,-1));
+this._statusslc.add(new qx.ui.form.ListItem(bj,null,-2));
 toolbar.add(this._statusslc);
 toolbar.add(new qx.ui.core.Spacer(20));
 this._stdouttxt=new qx.ui.form.TextField;

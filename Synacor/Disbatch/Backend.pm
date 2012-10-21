@@ -49,6 +49,34 @@ sub initialise
 {
     my ( $host, $db ) = @_;
     $mongo = connect_mongo( $host, $db );
+    ensureIndices( $mongo );
+}
+
+
+=item ensureIndices()
+
+Ensure that the appropriate Disbatch indices exist.
+
+=cut
+
+sub ensureIndices
+{
+    my $mongo = shift;
+    
+    $mongo->get_collection( 'tasks' )->ensure_index(
+            {
+                node        =>  1,
+                status      =>  1,
+                queue       =>  1,
+            }
+        );
+    $mongo->get_collection( 'tasks' )->ensure_index(
+            {
+                queue       =>  1,
+                status      =>  1,
+            }
+        );
+        
 }
 
 
@@ -115,7 +143,8 @@ Update a queue attribute
 sub update_queue
 {
     my ( $queueid, $attr, $value ) = @_;
-    update_collection( 'queues', {'_id' => $queueid}, { '$set' => {$attr => $value} }, {}, {retry => 'synchronous'} );
+    print Dumper( \@_ );
+    update_collection( 'queues', {'_id' => MongoDB::OID->new(value => $queueid)}, { '$set' => {$attr => $value} }, {}, {retry => 'synchronous'} );
 }
 
 =item query_collection()
