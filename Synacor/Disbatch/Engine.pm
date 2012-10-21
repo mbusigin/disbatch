@@ -836,7 +836,6 @@ sub search_tasks
     delete $hr->{id};
 
     $hr->{status} = int($hr->{status}) if defined($hr->{status});
-    warn Dumper( $hr );
     
     my $cursor = Synacor::Disbatch::Backend::query_collection( 'tasks', $hr, $attrs, {retry => 'synchronous'} );
     return [ 1, $cursor->count() ] if $count;
