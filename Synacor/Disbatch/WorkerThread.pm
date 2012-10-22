@@ -162,16 +162,6 @@ sub logger
 }
 
 
-sub mjms
-{
-    my $self = shift or confess "No self!";
-    
-    return $self->{mjms} if defined($self->{mjms});
-    $self->{mjms} = MJMS::Connection->new( $self->{config}->{MJMS}->{mongohost}, $self->{config}->{MJMS}->{mongodb} );
-    return $self->{mjms};
-}
-
-
 sub mongo
 {
     my $self = shift or confess "No self!";
