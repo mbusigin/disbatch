@@ -95,7 +95,7 @@ sub new
     $self->{ 'eb' }->{ 'procedures' }{ 'reload_queues' } = \&reload_queues;
     $self->{ 'eb' }->{ 'procedures' }{ 'register_task_status_observer' } = \&register_task_status_observer;
 
-    Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'} );
+    Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'}, $config->{'mongouser'}, $config->{'mongopassword'} );
     $Engine = $self;
     return $self;
 }

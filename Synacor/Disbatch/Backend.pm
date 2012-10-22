@@ -18,7 +18,16 @@ sub connect_mongo
 {
     my $host = shift;
     my $dbname = shift;
+    my $username = shift;
+    my $password = shift;
     my $conn;
+
+    my %extras;
+    $extras{ 'username' } = $username if defined($username);
+    $extras{ 'password' } = $password if defined($password);
+
+    print Dumper( \%extras ) . "\n";
+
     if ( $host )
     {
         $conn = MongoDB::Connection->new( 
@@ -27,14 +36,16 @@ sub connect_mongo
                                             auto_connect => 1,
                                             query_timeout => 30000,
                                             find_master => 1,
+                                            %extras,
                                         );
         
     }
     else
     {   
-        $conn = MongoDB::Connection->new;
+        $conn = MongoDB::Connection->new( %extras );
     }
     my $db = $conn->get_database( $dbname );
+    $db->authenticate( $dbname, $username, $password ) if defined($username);
     return $db;
 }
 
@@ -47,8 +58,8 @@ Initialise Backend module
 
 sub initialise
 {
-    my ( $host, $db ) = @_;
-    $mongo = connect_mongo( $host, $db );
+    my ( $host, $db, $username, $password ) = @_;
+    $mongo = connect_mongo( $host, $db, $username, $password );
     ensureIndices( $mongo );
 }
 
