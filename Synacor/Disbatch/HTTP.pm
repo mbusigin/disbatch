@@ -129,6 +129,7 @@ sub handle_request
     
     $json = new JSON::XS if ( !$json );
     my $path = $cgi->path_info();
+    $path = '/index.html' if $path eq '/';
     my $handler = $dispatch{$path};
     if (ref($handler) eq "CODE")
     {
