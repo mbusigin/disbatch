@@ -533,8 +533,9 @@ sub queue_create_tasks
     my $count = 0;
     foreach my $task ( @{$tasks_arrayref} )
     {
-        $count ++;
         my $iobject = $queue->create_task( $task );
+        next if !defined($iobject);
+        $count ++;
         push @tids, $iobject->{ '_id' } if defined($returntids);
 #        push @{$queue->{'tasks_todo'}}, $iobject;
     }

@@ -141,7 +141,17 @@ sub create_task
     my $parameters = shift;
     
     $self->logger->trace( "Synacor::Disbatch::Queue->create_task()" );
-    my $task = $self->create_task_actual( $parameters );
+    my $task;
+    
+    try
+    {
+        $task = $self->create_task_actual( $parameters );
+    }
+    catch
+    {
+        $self->logger->error( "Error creating task: $_" );
+        return undef;
+    };
       
     my $frozen_params = $self->{ 'engine' }->{'parameterformat_write'}( $parameters );
     my %obj;
