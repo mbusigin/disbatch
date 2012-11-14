@@ -12,7 +12,7 @@ alter the parameters of the migration engine while in operation.
 
 =head1 USAGE
 
-    migrate.pl [<options>] [<command>...]
+    disbatch.pl [<options>] [<command>...]
 
 =head2 OPTIONS
 

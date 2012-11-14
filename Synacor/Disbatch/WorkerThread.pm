@@ -7,9 +7,6 @@ use Synacor::Disbatch::Engine;
 use Try::Tiny;
 use Carp;
 use Synacor::Disbatch::Engine;
-use MJMS::Connection;
-use MJMS::Queue;
-use MJMS::Message;
 
 
 =head1 NAME
