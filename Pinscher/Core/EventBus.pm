@@ -12,13 +12,12 @@ use IO::Socket::UNIX;
 use File::Temp qw/ tempfile tempdir /;
 
 
-# $client = IO::Socket::UNIX->new(PeerAddr  => "/tmp/mysock",
-#                                 Type      => SOCK_STREAM,
-#                                Timeout   => 10 )     or die $@;
-
-
 our $AUTOLOAD;
 our $ebid = 1234;
+our $ipckey1 = 'svmq';
+our $ipckey2 = 'idtq';
+our $threadprefix = "/tmp/thread_";
+
 our %sockets;
 
 
@@ -32,7 +31,7 @@ sub new
     my $name = shift;
     
 
-    tie %sockets, 'IPC::Shareable', 'svmq', 
+    tie %sockets, 'IPC::Shareable', $ipckey1, 
         {
             create    => 1,
             exclusive => 0,
@@ -40,7 +39,7 @@ sub new
             destroy   => 0,
         };
     
-    tie $ebid, 'IPC::Shareable', 'idtq',
+    tie $ebid, 'IPC::Shareable', $ipckey2,
         {
             create    => 1,
             exclusive => 0,
@@ -52,7 +51,7 @@ sub new
     my $id = ++ $ebid;
     (tied $ebid)->shunlock();
 
-    my $fn = "/tmp/thread_" . $id;
+    my $fn = $threadprefix . $id;
     unlink $fn;
     my $server = IO::Socket::UNIX->new(Local => $fn,
                                 Type      => SOCK_STREAM,

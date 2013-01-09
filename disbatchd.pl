@@ -49,6 +49,14 @@ $config->{'pluginclasses'} = \@pluginclasses;
 
 # Module::Reload::Selective->reload(@{$config->{'pluginclasses'}});
 
+if ( exists($config->{EventBus}) )
+{
+    $Pinscher::Core::EventBus::ebid = $config->{EventBus}->{ebid} if exists($config->{EventBus}->{ebid}); 
+    $Pinscher::Core::EventBus::ipckey1 = $config->{EventBus}->{ipckey1} if exists($config->{EventBus}->{ipckey1}); 
+    $Pinscher::Core::EventBus::ipckey2 = $config->{EventBus}->{ipckey2} if exists($config->{EventBus}->{ipckey2}); 
+    $Pinscher::Core::EventBus::threadprefix = $config->{EventBus}->{threadprefix} if exists($config->{EventBus}->{threadprefix}); 
+}
+
 my $engine = Synacor::Disbatch::Engine->new( $config );
 
 foreach my $pluginclass (@pluginclasses)
