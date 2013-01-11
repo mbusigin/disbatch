@@ -634,7 +634,7 @@ sub load_queues
         my $constructor = $self->{ 'queue_constructors' }->{ $row->{'constructor'} };
         if ( !$constructor )
         {
-            $self->error->warn( "Couldn't load constructor for $constructor" );
+            $self->logger->warn( "Couldn't load constructor for $constructor" );
             next;
         }
 
