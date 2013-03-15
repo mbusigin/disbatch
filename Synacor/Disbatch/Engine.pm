@@ -100,8 +100,26 @@ sub new
 
     Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'}, $config->{'mongouser'}, $config->{'mongopassword'}, $config->{'tasks_collection'}, $config->{'queues_collection'} );
     $Engine = $self;
+
+    $self->orphan_tasks;
+    
     return $self;
 }
+
+
+=item orphan_tasks()
+
+Find any tasks that were not completed in the past iteration, and set their status to orphaned
+
+=cut
+
+sub orphan_tasks
+{
+    my $self = shift or die "No self";
+    Synacor::Disbatch::Backend::update_collection( $self->{'config'}->{'tasks_collection'}, {'node' => $self->{config}->{node}, 'status' => 0}, 
+                                                            { '$set' => {'status' => -6} }, {multiple => 1} );
+}
+
 
 =item logger()
  
