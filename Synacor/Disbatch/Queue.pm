@@ -63,6 +63,24 @@ sub new
     return $self;
 }
 
+=item find_next_task($node)
+
+   This method finds the next task to schedule.  It is overridable by plugin classes
+   for custom scheduler algorithms.
+
+=cut
+
+sub find_next_task
+{
+    my $self = shift or die "No self";
+    my $node = shift or die "No node";
+    Synacor::Disbatch::Backend::update_collection( 'tasks', {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}}, 
+                                                            { '$set' => {'node' => $node, 'status' => -1} } );
+    my $row = Synacor::Disbatch::Backend::query_one( 'tasks', {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
+    return( $row );
+}
+
+
 
 =item schedule()
 
@@ -94,9 +112,7 @@ sub schedule
     
     for ( my $x = 0; $x < $free_threads; $x ++ )
     {
-        Synacor::Disbatch::Backend::update_collection( 'tasks', {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}}, 
-                                                                { '$set' => {'node' => $node, 'status' => -1} } );
-        my $row = Synacor::Disbatch::Backend::query_one( 'tasks', {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
+        my $row = $self->find_next_task( $node );
         return if !$row;
         Synacor::Disbatch::Backend::update_collection( 'tasks', {'_id' => $row->{'_id'}}, 
                                                                 { '$set' => {'status' => 0, 'mtime' => time() } }, 
