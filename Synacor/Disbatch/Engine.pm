@@ -500,7 +500,7 @@ sub get_queue_by_id
     
     foreach my $queue ( @{$self->{'queues'}} )
     {
-        if ( $queue->{ 'id' } eq $queueid )
+        if ( $queue->{ 'id' } eq $queueid or $queue->{ 'name' } eq $queueid )
         {
             return( $queue );
         }
