@@ -95,7 +95,10 @@ sub new
     $self->{ 'eb' }->{ 'procedures' }{ 'reload_queues' } = \&reload_queues;
     $self->{ 'eb' }->{ 'procedures' }{ 'register_task_status_observer' } = \&register_task_status_observer;
 
-    Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'}, $config->{'mongouser'}, $config->{'mongopassword'} );
+    $config->{'tasks_collection'} = 'tasks' if !defined($config->{'tasks_collection'});
+    $config->{'queues_collection'} = 'queues' if !defined($config->{'queues_collection'});
+
+    Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'}, $config->{'mongouser'}, $config->{'mongopassword'}, $config->{'tasks_collection'}, $config->{'queues_collection'} );
     $Engine = $self;
     return $self;
 }
@@ -441,7 +444,7 @@ sub construct_queue
     my %obj;
     $obj{ 'constructor' } = $type;
     $obj{ 'name' } = $name;
-    my $oid = Synacor::Disbatch::Backend::insert_collection( 'queues', \%obj, {retry => 'synchronous'} );    
+    my $oid = Synacor::Disbatch::Backend::insert_collection( $self->{'config'}->{'queues_collection'}, \%obj, {retry => 'synchronous'} );    
     $queue->{ 'id' } = $queue->{ '_id' } = $oid;
     return [ 1, $queue->{'id'} ];
 }
@@ -461,7 +464,7 @@ sub delete_queue
 {
     my ( $self, $id ) = @_;
     
-    Synacor::Disbatch::Backend::delete_collection( 'queues',  { '_id' => $id }, {retry => 'redolog'} );
+    Synacor::Disbatch::Backend::delete_collection( $self->{'config'}->{'queues_collection'},  { '_id' => $id }, {retry => 'redolog'} );
     
     my $index = 0;
     foreach my $q ( @{ $self->{'queues'} } )
@@ -537,7 +540,6 @@ sub queue_create_tasks
         next if !defined($iobject);
         $count ++;
         push @tids, $iobject->{ '_id' } if defined($returntids);
-#        push @{$queue->{'tasks_todo'}}, $iobject;
     }
     
     return [ 1, $count, @tids ] if defined($returntids);
@@ -622,7 +624,7 @@ sub load_queues
 {
     my $self = shift;
 
-    my @queues = Synacor::Disbatch::Backend::query_collection( 'queues', {}, {retry => 'synchronous'} )->all;
+    my @queues = Synacor::Disbatch::Backend::query_collection( $self->{'config'}->{'queues_collection'}, {}, {retry => 'synchronous'} )->all;
     my %queues = map { $_->{'id'} => $_ } @{$self->{'queues'}};
 
 
@@ -697,7 +699,7 @@ sub reflect_queue_changes
 {
     my $self = shift;
     
-    my $query = Synacor::Disbatch::Backend::query_collection( 'queues', {}, {}, {retry => 'no'} );
+    my $query = Synacor::Disbatch::Backend::query_collection( $self->{'config'}->{'queues_collection'}, {}, {}, {retry => 'no'} );
     return if !$query;
     
     my @queues = $query->all;
@@ -838,7 +840,7 @@ sub search_tasks
 
     $hr->{status} = int($hr->{status}) if defined($hr->{status});
     
-    my $cursor = Synacor::Disbatch::Backend::query_collection( 'tasks', $hr, $attrs, {retry => 'synchronous'} );
+    my $cursor = Synacor::Disbatch::Backend::query_collection( $self->{config}->{'tasks_collection'}, $hr, $attrs, {retry => 'synchronous'} );
     return [ 1, $cursor->count() ] if $count;
     my @tasks = $cursor->all;
     
@@ -873,7 +875,7 @@ sub register_task_status_observer
     my $tid = shift;
     my $queue = shift;
 
-    my $task =  $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->find_one( {_id => MongoDB::OID->new(value => $tid)} );
+    my $task =  $Synacor::Disbatch::Engine::mongo->get_collection($self->{'config'}->{'tasks_collection'})->find_one( {_id => MongoDB::OID->new(value => $tid)} );
     if ( !$task )
     {
         die "Couldn't find task by $tid\n";

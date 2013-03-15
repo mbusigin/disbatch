@@ -74,9 +74,10 @@ sub find_next_task
 {
     my $self = shift or die "No self";
     my $node = shift or die "No node";
-    Synacor::Disbatch::Backend::update_collection( 'tasks', {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}}, 
+    
+    Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}}, 
                                                             { '$set' => {'node' => $node, 'status' => -1} } );
-    my $row = Synacor::Disbatch::Backend::query_one( 'tasks', {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
+    my $row = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
     return( $row );
 }
 
@@ -114,7 +115,7 @@ sub schedule
     {
         my $row = $self->find_next_task( $node );
         return if !$row;
-        Synacor::Disbatch::Backend::update_collection( 'tasks', {'_id' => $row->{'_id'}}, 
+        Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'_id' => $row->{'_id'}}, 
                                                                 { '$set' => {'status' => 0, 'mtime' => time() } }, 
                                                                 {retry => 'redolog'} );
         my $task = $self->load_task( $row );
@@ -180,8 +181,8 @@ sub create_task
     $obj{ 'ctime' } = time();
     $obj{ 'mtime' } = time();
 
-    Synacor::Disbatch::Backend::update_collection( 'queues', {_id => $self->{id}}, {'$inc' => { 'count_total' => 1, 'count_todo' => 1 }}, {retry => 'redolog'} );
-    my $id = Synacor::Disbatch::Backend::insert_collection( 'tasks', \%obj, {retry => 'synchronous'} );
+    Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$inc' => { 'count_total' => 1, 'count_todo' => 1 }}, {retry => 'redolog'} );
+    my $id = Synacor::Disbatch::Backend::insert_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, \%obj, {retry => 'synchronous'} );
     $obj{ '_id' } = $obj{'id'} = $id;
 
     
@@ -259,8 +260,8 @@ sub report_task_done
             delete $self->{ 'threads_inuse' }{ $taskid };
             
             $self->logger->info( "taskid: $taskid;  stderr: $stderr;  status: $status" );
-            Synacor::Disbatch::Backend::update_collection( 'tasks', {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
-            Synacor::Disbatch::Backend::update_collection( 'queues', {_id => $self->{id}}, {'$inc' => { 'count_todo' => -1 }}, {retry => 'redolog'} );
+            Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
+            Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$inc' => { 'count_todo' => -1 }}, {retry => 'redolog'} );
             
             $self->schedule if $self->{ 'preemptive' };
             return;
@@ -347,7 +348,7 @@ sub count_todo
 {
     my $self = shift;
     
-    my $r = Synacor::Disbatch::Backend::query_one( 'queues', {_id => $self->{'id'}} );
+    my $r = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{'id'}} );
     my $v = 0;
     if ( defined($r) and defined($r->{count_todo}) )
     {
@@ -355,8 +356,8 @@ sub count_todo
     }
     else
     {
-        $v = Synacor::Disbatch::Backend::count( 'tasks', {'status' => -2, 'queue' => $self->{'id'}} );
-        Synacor::Disbatch::Backend::update_collection( 'queues', {_id => $self->{id}}, {'$set' => { 'count_todo' => $v }}, {retry => 'redolog'} );
+        $v = Synacor::Disbatch::Backend::count( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'status' => -2, 'queue' => $self->{'id'}} );
+        Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$set' => { 'count_todo' => $v }}, {retry => 'redolog'} );
     }
     
     return $v;
@@ -367,7 +368,7 @@ sub count_total
 {
     my $self = shift;
     
-    my $r = Synacor::Disbatch::Backend::query_one( 'queues', {_id => $self->{'id'}} );
+    my $r = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{'id'}} );
     my $v = 0;
     if ( defined($r) and defined($r->{count_total}) ) 
     {
@@ -375,8 +376,8 @@ sub count_total
     }
     else
     {
-        $v = Synacor::Disbatch::Backend::count( 'tasks', {'queue' => $self->{'id'}} );
-        Synacor::Disbatch::Backend::update_collection( 'queues', {_id => $self->{id}}, {'$set' => { 'count_total' => $v }}, {retry => 'redolog'} );
+        $v = Synacor::Disbatch::Backend::count( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'queue' => $self->{'id'}} );
+        Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$set' => { 'count_total' => $v }}, {retry => 'redolog'} );
     }
     return $v;
 }

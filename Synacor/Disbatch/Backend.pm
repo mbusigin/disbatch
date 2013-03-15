@@ -8,6 +8,9 @@ use MongoDB;
 our $mongo;
 my @redolog;
 
+my $tasks_collection = 'tasks';
+my $queues_collection = 'queues';
+
 =item connect_mongo()
 
 Establish a new connection to a MongoDB.
@@ -58,9 +61,11 @@ Initialise Backend module
 
 sub initialise
 {
-    my ( $host, $db, $username, $password ) = @_;
+    my ( $host, $db, $username, $password, $xtasks_collection, $xqueues_collection ) = @_;
+    $tasks_collection = $xtasks_collection;
+    $queues_collection = $xqueues_collection;
     $mongo = connect_mongo( $host, $db, $username, $password );
-    ensureIndices( $mongo );
+    ensureIndices( $mongo, $tasks_collection, $queues_collection );
 }
 
 
@@ -73,15 +78,17 @@ Ensure that the appropriate Disbatch indices exist.
 sub ensureIndices
 {
     my $mongo = shift;
+    my $tasks_collection = shift;
+    my $queues_collection = shift;
     
-    $mongo->get_collection( 'tasks' )->ensure_index(
+    $mongo->get_collection( $tasks_collection )->ensure_index(
             {
                 node        =>  1,
                 status      =>  1,
                 queue       =>  1,
             }
         );
-    $mongo->get_collection( 'tasks' )->ensure_index(
+    $mongo->get_collection( $tasks_collection )->ensure_index(
             {
                 queue       =>  1,
                 status      =>  1,
@@ -155,7 +162,7 @@ sub update_queue
 {
     my ( $queueid, $attr, $value ) = @_;
     print Dumper( \@_ );
-    update_collection( 'queues', {'_id' => MongoDB::OID->new(value => $queueid)}, { '$set' => {$attr => $value} }, {}, {retry => 'synchronous'} );
+    update_collection( $queues_collection, {'_id' => MongoDB::OID->new(value => $queueid)}, { '$set' => {$attr => $value} }, {}, {retry => 'synchronous'} );
 }
 
 =item query_collection()
