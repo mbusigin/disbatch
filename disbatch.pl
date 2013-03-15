@@ -490,7 +490,7 @@ sub reloadqueues
 sub queue_set
 {
     my $params = shift;
-    my $url = api_url . '/set-queue-attr-json';
+    my $url = api_url( $params ) . '/set-queue-attr-json';
     my $lwp = LWP::UserAgent->new;
     my $r = $lwp->post( $url,
                         [
@@ -516,7 +516,7 @@ sub queue_set
 sub queue_start
 {
     my $params = shift;
-    my $url = api_url . '/start-queue-json';
+    my $url = api_url( $params ) . '/start-queue-json';
     my $lwp = LWP::UserAgent->new;
     my $r = $lwp->post( $url,
                         [
@@ -547,7 +547,7 @@ sub queue_start
 sub queue_task
 {
     my $params = shift;
-    my $url = api_url . '/queue-create-tasks-json';
+    my $url = api_url( $params ) . '/queue-create-tasks-json';
     my $lwp = LWP::UserAgent->new;
     my $r = $lwp->post( $url,
                         [
@@ -571,7 +571,7 @@ sub queue_task
 sub queue_tasks
 {
     my $params = shift;
-    my $url = api_url . '/queue-create-tasks-from-query-json';
+    my $url = api_url( $params ) . '/queue-create-tasks-from-query-json';
     my $lwp = LWP::UserAgent->new;
     
     my $r = $lwp->post( $url,
@@ -598,7 +598,7 @@ sub queue_tasks
 sub queue_types
 {
     my $params = shift;
-    my $url = api_url . '/queue-prototypes-json';
+    my $url = api_url( $params ) . '/queue-prototypes-json';
     my $lwp = LWP::UserAgent->new;
     my $r = $lwp->post( $url );
     if ( $r->is_success )
@@ -618,7 +618,7 @@ sub queue_types
 sub queue_search
 {
     my $params = shift;
-    my $url = api_url . '/search-tasks-json';
+    my $url = api_url( $params ) . '/search-tasks-json';
     my $lwp = LWP::UserAgent->new;
     my $r = $lwp->post( $url,
                         [
