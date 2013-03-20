@@ -341,6 +341,27 @@ sub parse_queue_tasks
 sub parse_arguments
 {
     my @ARGS = @ARGV;
+
+    my $disbatchrc = $ENV{HOME} . '/.disbatchrc';
+    if ( -e $disbatchrc )
+    {
+        open( F, "<$disbatchrc" ) or die "~/.disbatchrc exists, but I cannot open it";
+        while( <F> )
+        {
+            chop;
+            if ( /^(-[a-zA-Z]) (.+)$/ )
+            {
+                my $key = $1;
+                my $value = $2;
+                unshift @ARGS, ($key, $value);
+            }
+            else
+            {
+                warn "Unknown line in .disbatchrc: $_";
+            }
+        }
+    }
+
     my %parameters;
     my $argsleft = scalar( @ARGS );
 
