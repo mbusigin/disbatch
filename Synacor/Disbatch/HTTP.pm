@@ -29,6 +29,8 @@ use Data::Dumper;
 use JSON::XS; # -convert_blessed_universally;
 use Text::CSV_XS;
 use POSIX;
+use MIME::Base64;
+use Apache::Htpasswd;
 
 use base qw(HTTP::Server::Simple::CGI);
 
@@ -66,45 +68,48 @@ sub new
 
 sub do_authenticate {
     my $self = shift;
-    if (($ENV{HTTP_AUTHORIZATION} || '') =~ /^Basic (.*?)$/) {
-        my($user, $pass) = split /:/, (MIME::Base64::decode($1) || ':');
-        if ($self->authen_handler->authenticate($user, $pass)) {
-            return $user;
-        }
+    my $cgi = shift;
+
+    if ( !defined($self->{config}->{HTTPAuth}) )
+    {
+        $self->logger->error( "No HTTPAuth config section.  Rejecting connection attempts." );
+        return 0;
+    }
+    
+    return 1 if $self->{config}->{HTTPAuth}->{method} eq 'none';
+
+    if ( $self->{config}->{HTTPAuth}->{method} ne 'basic' )
+    {
+        $self->logger->error( "Rejecting connection attempts.  Unknown HTTPAuth method: " . $self->{config}->{HTTPAuth}->{method} );
+        return 0;
     }
 
-    return;
-}
-
-sub authen_handler
-{
-    my $task = eval
+    if ( !defined($self->{config}->{HTTPAuth}->{passwd}) )
     {
-        package asksfak;
-        use Data::Dumper;
-        sub new
-        {
-            my $class = shift;
-            my %h;
-            bless \%h, $class;
-            return \%h;
-        }
+        $self->logger->error( "No passwd file specified in HTTPAuth.  Rejecting connection attempts." );
+        return 0;
+    }
+    
+    my $passwd = new Apache::Htpasswd( {passwdFile => $self->{config}->{HTTPAuth}->{passwd},
+                                 ReadOnly   => 1}
+                                );
+    if ( !$passwd )
+    {
+        $self->logger->error( "Couldn't create Apache::Htpaswd from " . $self->{config}->{HTTPAuth}->{passwd} );
+        return 0;
+    }
+    
+    
+    if (($ENV{HTTP_AUTHORIZATION} || '') =~ /^Basic (.*?)$/) {
+        my($user, $pass) = split /:/, (MIME::Base64::decode($1) || ':');
         
-        sub authenticate
-        {
-            my ( $self, $user, $pass ) = @_;
-            
-            return 1;
-            return 0 if ( !$user or !$pass );
+        return 1 if $passwd->htCheckPassword( $user, $pass );
+        $self->logger->error( "Authentication error on $user" );
+        return 0;
+    }
 
-            
-            $self->logger->warn( "Authentication request: $user / $pass" );
-            return 1;
-        }
-        
-        __PACKAGE__;
-    }->new;
-    return $task;
+    $self->logger->error( "Authentication error" );
+    return 0;
 }
 
 
@@ -125,7 +130,16 @@ sub handle_request
     my $self = shift;
     my $cgi  = shift;
 
-#    my $user = $self->authenticate or return;
+    if ( !$self->do_authenticate($cgi) )
+    {
+        print "HTTP/1.0 401 Not authorized\r\n";
+        print $cgi->header(
+                         -type => 'text/html',
+                         '-WWW-Authenticate' => 'Basic realm="disbatch"',
+                    ), "<h1>Please login</h1>";
+        return;
+    }
+
     
     $json = new JSON::XS if ( !$json );
     my $path = $cgi->path_info();
@@ -158,7 +172,7 @@ sub handle_request
                 print   $cgi->header(
                                  -type => 'application/json',
 #                                 -cookie => $cookie,
-                                 ),
+                            ),
                                  $json->encode( [ 0, 'Error executing JSON handler: ' . $@ ] );
             }
             else

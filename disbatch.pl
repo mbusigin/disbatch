@@ -74,9 +74,9 @@ use Text::Table;
 use Text::CSV_XS;
 use IO::Wrap;
 
-
 my $json = JSON->new;
 
+my $ua = LWP::UserAgent->new;
 
 my $USAGE =
 qq/
@@ -137,6 +137,12 @@ sub api_url
 {
     my $params = shift;
     my $url = $params->{ 'url' } ||= 'http://localhost:8080';
+        
+    my $service = $url;
+    $service =~ s/http:\/\///;
+    $service =~ s/\/.+//g;
+    $ua->credentials( $service, "disbatch", $params->{username}, $params->{password} );
+
     
     return $url;
 }
@@ -421,7 +427,6 @@ sub parse_arguments
 sub status
 {
     my $params = shift;
-    my $ua = LWP::UserAgent->new;
     my $url = api_url( $params ) . '/scheduler-json';
     
     my $r = $ua->get( $url );
@@ -469,7 +474,6 @@ sub status
 sub reloadqueues
 {
     my $params = shift;
-    my $ua = LWP::UserAgent->new;
     my $url = api_url( $params ) . '/reload-queues-json';
     
     my $r = $ua->get( $url );
@@ -491,8 +495,7 @@ sub queue_set
 {
     my $params = shift;
     my $url = api_url( $params ) . '/set-queue-attr-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url,
+    my $r = $ua->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
                             'attr'		=> $params->{ 'key' },
@@ -517,8 +520,7 @@ sub queue_start
 {
     my $params = shift;
     my $url = api_url( $params ) . '/start-queue-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url,
+    my $r = $ua->post( $url,
                         [
                             'type'		=> $params->{ 'type' },
                             'name'		=> $params->{ 'name' },
@@ -548,8 +550,7 @@ sub queue_task
 {
     my $params = shift;
     my $url = api_url( $params ) . '/queue-create-tasks-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url,
+    my $r = $ua->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
                             'object'		=> $json->encode( $params->{'object'} ),
@@ -572,9 +573,8 @@ sub queue_tasks
 {
     my $params = shift;
     my $url = api_url( $params ) . '/queue-create-tasks-from-query-json';
-    my $lwp = LWP::UserAgent->new;
     
-    my $r = $lwp->post( $url,
+    my $r = $ua->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
                             'collection'	=> $params->{ 'collection' },
@@ -599,8 +599,7 @@ sub queue_types
 {
     my $params = shift;
     my $url = api_url( $params ) . '/queue-prototypes-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url );
+    my $r = $ua->post( $url );
     if ( $r->is_success )
     {
 #        print $r->decoded_content;
@@ -619,8 +618,7 @@ sub queue_search
 {
     my $params = shift;
     my $url = api_url( $params ) . '/search-tasks-json';
-    my $lwp = LWP::UserAgent->new;
-    my $r = $lwp->post( $url,
+    my $r = $ua->post( $url,
                         [
                             'queue'		=> $params->{ 'queue' },
                             'filter'		=> $params->{ 'filter' },
