@@ -7,6 +7,7 @@ use Synacor::Disbatch::Engine;
 use Try::Tiny;
 use Carp;
 use Synacor::Disbatch::Engine;
+use POSIX ();
 
 
 =head1 NAME
@@ -54,8 +55,10 @@ sub new
     $self->{ 'id' } = $id;
     $self->{ 'queue' } = $queue;
     $self->{ 'eb' }{ 'procedures' }{ 'start_task' } = \&start_task;
+    $self->{ 'eb' }{ 'methods' }{ 'retire' } = \&retire;    
     $self->{ 'config' } = $Synacor::Disbatch::Engine::Engine->{config};
     $self->{ 'data' } = {};
+    $self->{ 'tasks_run' } = 0;
 
     $self->thread_start;
 
@@ -100,11 +103,20 @@ sub start_task
     return 1;
 }
 
+sub retire
+{
+	my $self = shift or confess "No self!";
+	$self->{eb}->{retire} = 1;
+}
+
+
 sub startstuff
 {
     my $self = shift;
     
     $self->{ 'eb' }->run;
+    $self->logger->info( "This thread $$ has outlived its usefulness" );
+    exit(0);
 }
 
 
@@ -121,6 +133,10 @@ sub thread_start
     my $pid = fork();
     if ( $pid == 0 )
     {
+    	for ( my $fd = 5; $fd < 255; $fd ++ )
+    	{
+    		POSIX::close( $fd ) if $fd != $self->{eb}->{socket}->fileno;
+    	}
         startstuff( $self );
     }
     

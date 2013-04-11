@@ -145,6 +145,18 @@ $engine->logger->trace( 'Updating node status for the first time' );
 $engine->update_node_status;
 $SIG{__DIE__} = \&afterlife;
 
+use POSIX ":sys_wait_h";
+
+sub REAPER {
+    my $stiff;
+    while (($stiff = waitpid(-1, &WNOHANG)) > 0) {
+    }
+    $SIG{CHLD} = \&REAPER;                  # install *after* calling waitpid
+}
+
+$SIG{CHLD} = \&REAPER;
+
+
 $engine->logger->info( 'Initialisation complete' );
 while( 1 )
 {
@@ -172,5 +184,5 @@ while( 1 )
 
 sub afterlife
 {
-    $engine->logger->warn( Dumper(@_) );
+    $engine->logger->error( Dumper(@_) );
 }

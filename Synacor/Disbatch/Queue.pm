@@ -6,6 +6,7 @@ use JSON -convert_blessed_universally;
 use Carp;
 use Try::Tiny;
 use Synacor::Disbatch::Engine;
+use POSIX ();
 
 
 =head1 NAME
@@ -256,8 +257,20 @@ sub report_task_done
             {
                 $self->logger->error( "wtf - no thread for $self $taskid $status $stdout $stderr" );
             }
-            push @{ $self->{'threads'} }, $self->{ 'threads_inuse' }{ $taskid };
-            delete $self->{ 'threads_inuse' }{ $taskid };
+            $thr->{tasks_run} ++;
+            if ( $self->{config}->{tasks_before_workerthread_retirement} != 0 and $thr->{tasks_run} >= $self->{config}->{tasks_before_workerthread_retirement} )
+            {
+            	$self->logger->info( "Worker thread is retiring after $thr->{tasks_run} tasks" );
+				$self->{ threads_inuse }{ $taskid }->{'eb'}->retire;
+				POSIX::close( $self->{ threads_inuse }{ $taskid }->{'eb'}->{socket}->fileno );
+				delete $self->{ 'threads_inuse' }{ $taskid };
+				$self->start_thread_pool;
+            }
+            else
+            {
+            	push @{ $self->{'threads'} }, $self->{ 'threads_inuse' }{ $taskid };
+				delete $self->{ 'threads_inuse' }{ $taskid };
+            }
             
             $self->logger->info( "taskid: $taskid;  stderr: $stderr;  status: $status" );
             Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
@@ -285,7 +298,7 @@ sub start_thread_pool
     my $threads = scalar( @{$self->{'threads'}} )
                 + scalar( keys %{$self->{'threads_inuse'}} );
     my $nt = $self->{'maxthreads'} - $threads;
-#    print "Have to create $nt new threads.\n";
+#    print "Have to create $nt new threads - $threads - $self->{maxthreads}.\n";
     for ( my $x = 0; $x < $nt; $x ++ )
     {
         $self->{ 'lastthreadid' } ++;

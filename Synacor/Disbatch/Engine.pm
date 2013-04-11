@@ -247,7 +247,7 @@ sub report_task_done
     my $self = shift;
     my ( $queueid, $task, $status, $stdout, $stderr ) = @_;
 
-    $self->logger->trace( "Reporting done: queue #$queueid/$task" );
+    $self->logger->trace( "Worker PID $$ reporting done: queue #$queueid/$task" );
 
     if ( $self->{'task_observers'}->{$task} )
     {

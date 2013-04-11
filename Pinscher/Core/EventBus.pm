@@ -10,6 +10,7 @@ use POSIX qw(ceil);
 use IO::Socket qw(SOCK_STREAM);
 use IO::Socket::UNIX;
 use File::Temp qw/ tempfile tempdir /;
+use Try::Tiny;
 
 
 our $AUTOLOAD;
@@ -51,6 +52,7 @@ sub new
     my $id = ++ $ebid;
     (tied $ebid)->shunlock();
 
+	$id = $name;
     my $fn = $threadprefix . $id;
     unlink $fn;
     my $server = IO::Socket::UNIX->new(Local => $fn,
@@ -66,6 +68,7 @@ sub new
         'socketfn'	=> $fn,
         'socket'	=> $server,
         'name'		=> $name,
+        'retire'	=> 0,
         'methods'       => 
                         {
                                 'test'          => \&footest,
@@ -92,6 +95,8 @@ sub AUTOLOAD
 
         my $name = $AUTOLOAD;
         $name =~ s/.*://;   # strip fully-qualified portion
+        
+        return if $name eq 'DESTROY';  # We do not AUTOLOAD destroys
         return $self->call_thread( $name, @_ );
 }
 
@@ -146,6 +151,9 @@ sub call_thread
 #    $self->{'semaphore'}->up(); 
 
 call_thread_done:
+	$client->shutdown(2);
+	$client->close;
+
 #    warn "$self->{name} :: $name Done\n";
     return $ret->[0] if defined($ret);
 }
@@ -163,7 +171,8 @@ sub run
     
     while( 1 )
     {
-        $self->oneiteration;
+        my $r = $self->oneiteration;
+        return if ( defined($r) and $r == 1 );
     }
 }
 
@@ -171,23 +180,38 @@ sub run
 sub oneiteration
 {
         my $self = shift;
+	
+		my $socket;
+		my $rcvd;
+		try
+		{		
+			$socket = $self->{ 'socket' }->accept();
+	#        warn "Accepted $socket";
+			$rcvd;
+			while ( <$socket> )
+			{
+				$rcvd .= $_;
+			}
+		}
+		catch
+		{
+			warn "Error reading from socket: $_";
+			return;
+		};
 
-        my $socket = $self->{ 'socket' }->accept();
-#        warn "Accepted $socket";
-        my $rcvd;
-        while ( <$socket> )
-        {
-            $rcvd .= $_;
-        }
-
-#        warn "received " . length($rcvd) . "b\n";
+		if ( !defined($rcvd) )
+		{
+			warn "Error reading from socket - returning";
+			return;
+		}
         
-        my $message = thaw( $rcvd );
-        
+        my $message = thaw( $rcvd );        
         {
                 if ( scalar(@{$message}) != 2 )
                 {
                     print "\n\nW T F: message is not 3:\n" . Dumper( $message ) . "\n\n";
+					$socket->shutdown( 2 );
+					$socket->close;                    
                     next;
                 }
                 my $command = $message->[0];
@@ -202,6 +226,7 @@ sub oneiteration
                     if ( !$func )
                     {
                         $socket->shutdown( 2 );
+                        $socket->close;
                         die "No such function or procedure '$command'\n" . Dumper( $self->{'methods'} );
                     }
                 }
@@ -209,15 +234,15 @@ sub oneiteration
                 my @arguments;
                 push @arguments, $self->{'self'};
                 if ( ref($args) eq 'ARRAY')
-                    {
-                        foreach my $p ( @{$args} )
-                        {
-                                    push @arguments, $p;
-                        }
+				{
+					foreach my $p ( @{$args} )
+					{
+						push @arguments, $p;
+					}
                 }
                 else
                 {
-                        push @arguments, $args;
+					push @arguments, $args;
                 }
 
 
@@ -233,13 +258,18 @@ sub oneiteration
                     $ret = 0 if !defined($ret);
                     my $frozen_payload = nfreeze( [$ret] );
                     print $socket $frozen_payload;
-                    $socket->shutdown( 2 );
 #                    $txqueue->enqueue( threads::shared::shared_clone($ret) );
-                }
-                else
-                {
-                        $socket->shutdown( 2 );
-                }
+				}
+				
+				$socket->shutdown( 2 );
+				$socket->close;
+                
+			    if ( $self->{retire} == 1 )
+			    {
+			    	$self->{ 'socket' }->shutdown(2);
+			    	$self->{ 'socket' }->close;
+					return 1;
+			    }
         }
 }
 
