@@ -33,6 +33,8 @@ install -d -m0755 %{buildroot}/opt/disbatch
 
 cp -r * %{buildroot}/opt/disbatch
 
+install -D -m0755 disbatch.init %{buildroot}/etc/init.d/disbatchd
+
 %post
 /sbin/chkconfig --add disbatchd
 

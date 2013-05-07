@@ -10,4 +10,9 @@ clean:
 	rm -f disbatchd.log $(PROJECT)-$(VERSION).tar.gz
 
 dist:	clean
-	tar zcvf $(PROJECT)-$(VERSION).tar.gz Synacor/ disbatch.ini docs/ htdocs/ disbatch-log4perl.conf disbatch.pl Pinscher/ disbatch.d/ disbatchd.pl frontend/
+	tar --transform="s%^%$(PROJECT)-$(VERSION)/%" -zcvf $(PROJECT)-$(VERSION).tar.gz Synacor/ disbatch.ini-example disbatch.init \
+		docs/ htdocs/ disbatch-log4perl.conf disbatch.pl Pinscher/ disbatch.d/ disbatchd.pl frontend/
+
+rpm:	dist
+	cp -f $(PROJECT)-$(VERSION).tar.gz disbatch-filter-requires.sh $(HOME)/rpmbuild/SOURCES/
+	rpmbuild -bb $(PROJECT).spec

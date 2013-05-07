@@ -49,6 +49,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       this._statusslc = new qx.ui.form.SelectBox();
       this._statusslc.add( new qx.ui.form.ListItem("Any", null, -5) );
       this._statusslc.add( new qx.ui.form.ListItem("Done", null, 1) );
+      this._statusslc.add( new qx.ui.form.ListItem("Failed", null, 2) );
       this._statusslc.add( new qx.ui.form.ListItem("Doing", null, 0) );
       this._statusslc.add( new qx.ui.form.ListItem("Waiting", null, -2) );
       toolbar.add( this._statusslc );

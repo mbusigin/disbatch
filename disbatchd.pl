@@ -23,24 +23,34 @@ use Module::Load;
 use Data::Dumper;
 use Config::Any;
 
+use Getopt::Long;
+
 use Synacor::Disbatch::Engine;
 use Synacor::Disbatch::Timer;
 use Synacor::Disbatch::Queue;
 use Synacor::Disbatch::HTTP;
 
+my $ini_file = 'disbatch.ini';
+my $ini_dir = 'disbatch.d';
 
-opendir( my $dh, 'disbatch.d' ) or goto no_disbatch_d;
-my @dfiles = grep { /\.ini$/ && -f "disbatch.d/$_" } readdir($dh);
+GetOptions(
+  'inifile=s' => \$ini_file,
+  'inidir=s'  => \$ini_dir,
+);
+
+opendir( my $dh, $ini_dir ) or goto no_disbatch_d;
+my @dfiles = grep { /\.ini$/ && -f "$ini_dir/$_" } readdir($dh);
 closedir $dh;
-map { $_ =~ s/^/disbatch.d\//; } @dfiles;
+map { $_ =~ s/^/$ini_dir\//; } @dfiles;
 
-unshift @dfiles, 'disbatch.ini';
+unshift @dfiles, $ini_file;
 
 no_disbatch_d:
 my $all_configs = Config::Any->load_files( { files => \@dfiles, flatten_to_hash => 1 } );
-my $config = $all_configs->{ 'disbatch.ini' };
+my $config = $all_configs->{ $ini_file };
 my @pluginclasses;
-foreach my $dfile ( grep {/^disbatch.d\//} keys %{$all_configs} )
+my $ini_dir_qm = quotemeta $ini_dir;
+foreach my $dfile ( grep {/^$ini_dir_qm\//} keys %{$all_configs} )
 {
   $config->{ 'plugins' }->{ $dfile } = $all_configs->{ $dfile };
   push @pluginclasses, $config->{ 'plugins' }->{ $dfile }->{'class'} if $config->{ 'plugins' }->{ $dfile }->{'class'} and !$config->{ 'plugins' }->{ $dfile }->{ 'disabled' };
