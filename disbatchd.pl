@@ -32,11 +32,17 @@ use Synacor::Disbatch::HTTP;
 
 my $ini_file = 'disbatch.ini';
 my $ini_dir = 'disbatch.d';
+my $lib = '';
 
 GetOptions(
   'inifile=s' => \$ini_file,
   'inidir=s'  => \$ini_dir,
+  'lib=s'     => \$lib,
 );
+
+if ($lib) {
+  load lib, split(/ +/, $lib);
+}
 
 opendir( my $dh, $ini_dir ) or goto no_disbatch_d;
 my @dfiles = grep { /\.ini$/ && -f "$ini_dir/$_" } readdir($dh);
