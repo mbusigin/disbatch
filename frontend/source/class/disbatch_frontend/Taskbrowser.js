@@ -47,11 +47,16 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       
       toolbar.add( new qx.ui.basic.Label("Status:") );
       this._statusslc = new qx.ui.form.SelectBox();
-      this._statusslc.add( new qx.ui.form.ListItem("Any", null, -5) );
+      this._statusslc.add( new qx.ui.form.ListItem("Any", null, -99) );
       this._statusslc.add( new qx.ui.form.ListItem("Done", null, 1) );
       this._statusslc.add( new qx.ui.form.ListItem("Failed", null, 2) );
       this._statusslc.add( new qx.ui.form.ListItem("Doing", null, 0) );
       this._statusslc.add( new qx.ui.form.ListItem("Waiting", null, -2) );
+//      this._statusslc.add( new qx.ui.form.ListItem("Claimed", null, -1) );	// this is a very brief state
+//      this._statusslc.add( new qx.ui.form.ListItem("Terminated", null, -3) );	// unused
+//      this._statusslc.add( new qx.ui.form.ListItem("Blocked", null, -4) ); 	// unused
+      this._statusslc.add( new qx.ui.form.ListItem("Cancelled", null, -5) );	// done via Synacor::Disbatch::RemoteControl
+      this._statusslc.add( new qx.ui.form.ListItem("Orphaned", null, -6) );
       toolbar.add( this._statusslc );
       toolbar.add( new qx.ui.core.Spacer(20) );
 
@@ -111,7 +116,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
     {
         var filter = new Object;
         var status = this._statusslc.getModelSelection();
-        if ( status != -5 )
+        if ( status != -99 )
         {
             filter[ "status" ] = "" + status;
         }
