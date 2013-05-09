@@ -2,7 +2,7 @@
 #
 # disbatchd init file for starting up the disbatch daemon
 #
-# chkconfig:   2345 20 80
+# chkconfig:   - 20 80
 # description: Starts and stops the MongDB daemon that handles all \
 #              database requests.
 

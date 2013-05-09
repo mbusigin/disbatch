@@ -22,27 +22,88 @@ use strict;
 use Module::Load;
 use Data::Dumper;
 use Config::Any;
-
+use Cwd 'abs_path';
 use Getopt::Long;
+use Pod::Usage;
 
-use Synacor::Disbatch::Engine;
-use Synacor::Disbatch::Timer;
-use Synacor::Disbatch::Queue;
-use Synacor::Disbatch::HTTP;
+=head1 OPTIONS
 
-my $ini_file = 'disbatch.ini';
-my $ini_dir = 'disbatch.d';
+=over 2
+
+=item --inifile
+
+Name of ini file to use instead of C<disbatch.ini>. Include the path if not using C<--base>.
+
+=item --inidir
+
+Name of ini directory to use instead of C<disbatch.d>. Include the path if not using C<--base>.
+
+=item --lib
+
+Additional perl lib directories to load. If more than one, separate with a comma (C<,>).
+
+=item --base
+
+Takes a value that is the base directory for ini file and directory, as well as adds C<$base/lib> to included lib directories.
+Also includes C<$path/lib> where C<$path> is the directory below the directory of this file, if this file is not in C</usr/bin>,
+and passes C<$path> to the HTTP server to prepend the document root. This allows running C<disbatchd.pl> uninstalled.
+
+=item --help
+
+Shows usage and options.
+
+=item --man
+
+Shows all documentation.
+
+=back
+
+=cut
+
+my $ini_file = '';
+my $ini_dir = '';
 my $lib = '';
+my $base = '';
+my $help = 0;
+my $man = 0;
 
 GetOptions(
-  'inifile=s' => \$ini_file,
-  'inidir=s'  => \$ini_dir,
-  'lib=s'     => \$lib,
+    'inifile=s' => \$ini_file,
+    'inidir=s'  => \$ini_dir,
+    'lib=s'     => \$lib,
+    'base=s'    => \$base,
+    'help|?' => \$help,
+    'man' => \$man,
 );
 
-if ($lib) {
-  load lib, split(/ +/, $lib);
+pod2usage(1) if $help;
+pod2usage(-verbose => 2) if $man;
+
+$ini_file ||= '/etc/disbatch/disbatch.ini';
+$ini_dir ||= '/etc/disbatch/disbatch.d';
+
+my @lib = split /,/, $lib;
+
+my $path = '';
+if ($base) {
+    $ini_file = "$base/$ini_file";
+    $ini_dir = "$base/$ini_dir";
+    push @lib, "$base/lib";
+    $path = abs_path __FILE__;
+    if ($path !~ m%^/usr/bin/%) {
+        $path =~ s|/[^/]+/[^/]+$||;
+        push @lib, "$path/lib" if -d "$path/lib";
+    }
 }
+
+if (@lib) {
+    load lib, @lib;
+}
+
+require Synacor::Disbatch::Engine;
+require Synacor::Disbatch::Timer;
+require Synacor::Disbatch::Queue;
+require Synacor::Disbatch::HTTP;
 
 opendir( my $dh, $ini_dir ) or goto no_disbatch_d;
 my @dfiles = grep { /\.ini$/ && -f "$ini_dir/$_" } readdir($dh);
@@ -54,6 +115,9 @@ unshift @dfiles, $ini_file;
 no_disbatch_d:
 my $all_configs = Config::Any->load_files( { files => \@dfiles, flatten_to_hash => 1 } );
 my $config = $all_configs->{ $ini_file };
+$config->{log4perl_conf} = "$base/$config->{log4perl_conf}";
+$config->{htdocs_base} = $path;
+
 my @pluginclasses;
 my $ini_dir_qm = quotemeta $ini_dir;
 foreach my $dfile ( grep {/^$ini_dir_qm\//} keys %{$all_configs} )

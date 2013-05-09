@@ -2,38 +2,61 @@
 %define    __find_requires %{SOURCE99}
 
 Name: disbatch
-Version: 3.0
+Version: 3.0.1
 Summary: Multi-threaded execution harness
 Release: 1
 License: Proprietary
 Group: System/Cluster
-Packager: Matthew Berg <mberg@synacor.com>
-Source: disbatch-%{version}.tar.gz
+Packager: Ashley Willis <awillis@synacor.com>
+Source: %{name}-%{version}.tar.gz
 Source1: disbatch.init
 Source99: disbatch-filter-requires.sh
 BuildRoot:  %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-Requires: perl(Moose) perl(Mouse) perl-threads-shared perl-threads perl(Authen::Simple::Adapter) perl(Class::Data::Inheritable) perl(HTTP::Server::Simple::Authen)
+#Requires: perl(Moose) perl(Mouse) perl-threads-shared perl-threads perl(Authen::Simple::Adapter) perl(Class::Data::Inheritable) perl(HTTP::Server::Simple::Authen)
 Obsoletes: disbatch-frontend
 
 %description
-Disbatch provides a multi-threaded execution harness for doing very large 
-jobs with comprise of many smaller self-similar tasks.
+Disbatch provides a multi-threaded execution harness for doing very large jobs which comprise many smaller self-similar tasks.
 
 %prep
-%setup -n disbatch-3.0
+%setup -n %{name}-%{version}
 
 %build
+CFLAGS="$RPM_OPT_FLAGS" perl Makefile.PL INSTALLDIRS=vendor
+make
+
+%check
+make test
 
 %clean
 rm -rf %{buildroot}
 
 %install
-install -d -m0755 %{buildroot}/opt/disbatch
 
-cp -r * %{buildroot}/opt/disbatch
+rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
 
-install -D -m0755 disbatch.init %{buildroot}/etc/init.d/disbatchd
+[ -x /usr/lib/rpm/brp-compress ] && /usr/lib/rpm/brp-compress
+find %{buildroot} \( -name perllocal.pod -o -name .packlist \) -exec rm -v {} \;
+
+find %{buildroot}/usr -type f -print | \
+        sed "s@^%{buildroot}@@g" | \
+        grep -v perllocal.pod | \
+        grep -v "\.packlist" > %{name}-%{version}-filelist
+if [ "$(cat %{name}-%{version}-filelist)X" = "X" ] ; then
+    echo "ERROR: EMPTY FILE LIST"
+    exit -1
+fi
+
+install -d -m0755 %{buildroot}/usr/share/doc/%{name}-%{version}
+cd docs && perl -mPod::Simple::HTMLBatch -ePod::Simple::HTMLBatch::go ../ . && cd ..
+cp -r docs/* %{buildroot}/usr/share/doc/%{name}-%{version}
+
+install -d -m0755 %{buildroot}/etc/disbatch
+cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
+
+install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
 
 %post
 /sbin/chkconfig --add disbatchd
@@ -45,11 +68,14 @@ if [ $1 -lt 1 ]; then
 	/sbin/chkconfig --del disbatchd
 fi
 
-%files
+%files -f %{name}-%{version}-filelist
 /etc/init.d/disbatchd
-/opt/disbatch
+/etc/disbatch/
+/usr/share/doc/%{name}-%{version}/
 
 %changelog
+* Thu May  9 2013 Ashley Willis <awillis@synacor.com> - 3.0.1
+- restructure for proper install and packageing
 * Mon Mar 18 2013 Matt Busigin <mbusigin@synacor.com> - 3.0
 - New version
 * Tue Jan 25 2011 Matthew Berg <mberg@synacor.com> - 0.9.22-1

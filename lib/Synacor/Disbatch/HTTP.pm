@@ -63,6 +63,7 @@ sub new
     my $class = shift;
     my $self = HTTP::Server::Simple->new( @_ );
     $self->{ 'config' } = $Synacor::Disbatch::Engine::Engine->{config};
+    $self->{base} = $self->{config}{htdocs_base};
     return bless $self, $class;
 }
 
@@ -121,7 +122,7 @@ It maintains a JSON object, and makes JSON API calls (translating the
 responses to JSON for output) if the request path ends in "-json".
 
 If the request path does not end in "-json", it will attempt to grab a file
-out of the htdocs/ directory.
+out of the /etc/disbatch/htdocs/ directory.
 
 =cut
 
@@ -191,7 +192,7 @@ sub handle_request
             }                                 
         }
     }
-    elsif ( -r "htdocs/$path" && !($path =~ /\.\./) )
+    elsif ( -r "$self->{base}/etc/disbatch/htdocs/$path" && !($path =~ /\.\./) )
     {
         print "HTTP/1.0 200 OK\r\n";
         
@@ -202,7 +203,7 @@ sub handle_request
         $type = 'image/gif' if $path =~ /\.gif$/;
         
         print $cgi->header( -type => $type );
-        open F, "<htdocs/$path";
+        open F, "<$self->{base}/etc/disbatch/htdocs/$path";
         
                 while( <F> )
                 {

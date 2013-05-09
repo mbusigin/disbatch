@@ -1,0 +1,15 @@
+Makefile.PL
+MANIFEST
+t/001_base.t
+bin/disbatchd.pl
+bin/disbatch.pl
+lib/Pinscher/Core/EventBus.pm
+lib/Synacor/Disbatch/WorkerThread.pm
+lib/Synacor/Disbatch/Task.pm
+lib/Synacor/Disbatch/Timer.pm
+lib/Synacor/Disbatch/ChunkedTaskFactory.pm
+lib/Synacor/Disbatch/Queue/Enclosure.pm
+lib/Synacor/Disbatch/Engine.pm
+lib/Synacor/Disbatch/Queue.pm
+lib/Synacor/Disbatch/HTTP.pm
+lib/Synacor/Disbatch/Backend.pm
