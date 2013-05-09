@@ -1,4 +1,4 @@
-;; Disbatch-3.0 Configuration
+;; Disbatch-!!VERSION!! Configuration
 
 ; node:  this can be anything, but it's easiest & fastest to index & search for numbers, so you might as well leave it like that.
 node=1

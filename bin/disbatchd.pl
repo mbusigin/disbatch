@@ -93,6 +93,8 @@ if ($base) {
     if ($path !~ m%^/usr/bin/%) {
         $path =~ s|/[^/]+/[^/]+$||;
         push @lib, "$path/lib" if -d "$path/lib";
+    } else {
+        $path = '';
     }
 }
 
