@@ -187,7 +187,6 @@ sub oneiteration
 		{		
 			$socket = $self->{ 'socket' }->accept();
 	#        warn "Accepted $socket";
-			$rcvd;
 			while ( <$socket> )
 			{
 				$rcvd .= $_;

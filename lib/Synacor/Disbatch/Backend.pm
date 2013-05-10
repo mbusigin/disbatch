@@ -29,7 +29,7 @@ sub connect_mongo
     $extras{ 'username' } = $username if defined($username);
     $extras{ 'password' } = $password if defined($password);
 
-    print Dumper( \%extras ) . "\n";
+    print 'Synacor::Disbatch::Backend::connect_mongo extras: ', Dumper( \%extras ) . "\n";
 
     if ( $host )
     {

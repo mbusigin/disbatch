@@ -1,4 +1,4 @@
-#!/usr/bin/perl -W
+#!/usr/bin/perl
 
 =head1 NAME
 
@@ -18,6 +18,7 @@ hundreds of thousands), pausing, and re-starting from a stopped state.
 
 
 use strict;
+use warnings;
 
 use Module::Load;
 use Data::Dumper;
@@ -98,6 +99,8 @@ if ($base) {
     }
 }
 
+die "\nIni file '$ini_file' not found.\n" unless -e $ini_file;
+
 if (@lib) {
     load lib, @lib;
 }
@@ -115,7 +118,7 @@ map { $_ =~ s/^/$ini_dir\//; } @dfiles;
 unshift @dfiles, $ini_file;
 
 no_disbatch_d:
-my $all_configs = Config::Any->load_files( { files => \@dfiles, flatten_to_hash => 1 } );
+my $all_configs = Config::Any->load_files( { files => \@dfiles, flatten_to_hash => 1, use_ext => 1 } );
 my $config = $all_configs->{ $ini_file };
 $config->{log4perl_conf} = "$base/$config->{log4perl_conf}";
 $config->{htdocs_base} = $path;
@@ -133,6 +136,7 @@ $config->{'pluginclasses'} = \@pluginclasses;
 
 if ( exists($config->{EventBus}) )
 {
+    no warnings 'once';
     $Pinscher::Core::EventBus::ebid = $config->{EventBus}->{ebid} if exists($config->{EventBus}->{ebid}); 
     $Pinscher::Core::EventBus::ipckey1 = $config->{EventBus}->{ipckey1} if exists($config->{EventBus}->{ipckey1}); 
     $Pinscher::Core::EventBus::ipckey2 = $config->{EventBus}->{ipckey2} if exists($config->{EventBus}->{ipckey2}); 
