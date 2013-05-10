@@ -1,5 +1,5 @@
 PROJECT=disbatch
-VERSION=3.0.1
+VERSION=3.2.0
 
 all:	
 	@echo "Targets: clean, dist, rpm, bump_rpm, bump, bump_minor"

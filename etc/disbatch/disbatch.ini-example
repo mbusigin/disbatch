@@ -35,7 +35,7 @@ log4perl_conf=/etc/disbatch/disbatch-log4perl.conf
 ;tasks_collection=tasks
 ;queues_collection=queues
 
-tasks_before_workerthread_retirement=0
+tasks_before_workerthread_retirement=1
 
 [HTTPAuth]
 method=none

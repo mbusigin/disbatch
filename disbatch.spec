@@ -73,8 +73,10 @@ fi
 /usr/share/doc/%{name}-%{version}/
 
 %changelog
-* Thu May  9 2013 Ashley Willis <awillis@synacor.com> - 3.0.1
+* Fri May 10 2013 Ashley Willis <awillis@synacor.com> - 3.2.0
 - restructure for proper install and packaging
+* Thu Apr 11 2013 Matt Busigin <mbusigin@synacor.com> - 3.1
+- New version
 * Mon Mar 18 2013 Matt Busigin <mbusigin@synacor.com> - 3.0
 - New version
 * Tue Jan 25 2011 Matthew Berg <mberg@synacor.com> - 0.9.22-1

@@ -7,7 +7,6 @@ use Synacor::Disbatch::Engine;
 use Try::Tiny;
 use Carp;
 use Synacor::Disbatch::Engine;
-use POSIX ();
 
 
 =head1 NAME
@@ -133,10 +132,6 @@ sub thread_start
     my $pid = fork();
     if ( $pid == 0 )
     {
-    	for ( my $fd = 5; $fd < 255; $fd ++ )
-    	{
-    		POSIX::close( $fd ) if $fd != $self->{eb}->{socket}->fileno;
-    	}
         startstuff( $self );
     }
     
