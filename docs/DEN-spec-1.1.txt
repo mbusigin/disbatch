@@ -92,7 +92,7 @@ following elements must be included:
 	spec_version:	"1.0"					// DEN Specification
 	queuetypes	[ { class: "Synacor::Migration::IMAP2IMAP",
 			    version: '1.1a' }, .. ] 		// Array of plugins enabled
-	
+
 
 
 HEARTBEAT OBJECT
@@ -121,7 +121,7 @@ FULL NODE JSON OBJECT EXAMPLE
 	version:	'Disbatch.pl v2.0.2',
 	den_version:	'1.0',
 	queuetypes:	[
-				{ 
+				{
 					class: 'Synacor::Migration::IMAP2IMAP',
 					version: '1.1a'
 				},
@@ -132,7 +132,7 @@ FULL NODE JSON OBJECT EXAMPLE
 			],
 	heartbeat:	{
 				datetime: ISODate("2011-05-12T06:00:07Z"),
-			
+
 				pid:		34182,
 				queues: [
 						{

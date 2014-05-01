@@ -32,9 +32,9 @@ qx.Class.define("disbatch_frontend.Application",
   members :
   {
     /**
-     * This method contains the initial application code and gets called 
+     * This method contains the initial application code and gets called
      * during startup of the application
-     * 
+     *
      * @lint ignoreDeprecated(alert)
      */
     main : function()
@@ -57,7 +57,7 @@ qx.Class.define("disbatch_frontend.Application",
       -------------------------------------------------------------------------
       */
 
-      
+
 
       // Document is the application root
 /*
@@ -79,16 +79,16 @@ qx.Class.define("disbatch_frontend.Application",
             alert("Hello Glob");
           });
       }
-*/      
+*/
       this.queuebrowser = new disbatch_frontend.Queuebrowser;
       this.getRoot().add( this.queuebrowser.createQueueBrowser(this), {left:20, top:20} );
     },
-    
+
     showTaskBrowser : function( id, constructor )
     {
       this.taskbrowser = new disbatch_frontend.Taskbrowser;
       this.getRoot().add( this.taskbrowser.createTaskBrowser(this, id, constructor), {left:30, top: 30} );
     }
-    
+
   }
 });

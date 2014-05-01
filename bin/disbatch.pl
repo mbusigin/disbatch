@@ -6,7 +6,7 @@ disbatch - Distributed Elastic Batch Processing Framework - Client CLI Tool
 
 =head1 DESCRIPTION
 
-This tool interfaces with the migrated process via the JSON API.  It   
+This tool interfaces with the migrated process via the JSON API.  It
 allows you create new queues, spin off new tasks, and
 alter the parameters of the migration engine while in operation.
 
@@ -20,7 +20,7 @@ alter the parameters of the migration engine while in operation.
     -n <username>       API username
     -p <password>       API password
     -h		   Display this message
-    
+
 =head2 COMMANDS
 
     reloadqueues
@@ -64,7 +64,7 @@ Next, let's create a new queue:
   New Queue #2185663
 
 
-=cut            
+=cut
 
 use strict;
 use Data::Dumper;
@@ -97,10 +97,10 @@ USAGE
                -n <username>       API username
                -p <password>       API password
                -h		   Display this message
-    
+
       COMMANDS
                reloadqueues
-               
+
                status
 
                queue types
@@ -114,7 +114,7 @@ USAGE
 /;
 
 
-my %options = 
+my %options =
 (
     '-u'		=> ['url', 1],
     '-n'		=> ['username', 1],
@@ -137,13 +137,13 @@ sub api_url
 {
     my $params = shift;
     my $url = $params->{ 'url' } ||= 'http://localhost:8080';
-        
+
     my $service = $url;
     $service =~ s/http:\/\///;
     $service =~ s/\/.+//g;
     $ua->credentials( $service, "disbatch", $params->{username}, $params->{password} );
 
-    
+
     return $url;
 }
 
@@ -161,7 +161,7 @@ sub parse_status
 {
     my $params = shift;
     my @ARGS = shift;
-    
+
     $params->{ 'execute' } = \&status;
     return( (1, 'Status') );
 }
@@ -178,15 +178,15 @@ sub parse_enclosure
         $perl .= $_;
     }
 
-    
+
     $params->{ 'execute' } = \&queue_tasks;
     $params->{ 'queueid' } = shift @ARGS;
     $params->{ 'collection' } = shift @ARGS;
     $params->{ 'filter' } = shift @ARGS;
     unshift @ARGS, $perl;
-    
+
     $params->{ 'columns' } = $json->encode( \@ARGS );
-    
+
     return( (1, undef) );
 }
 
@@ -277,10 +277,10 @@ sub parse_queue_task
             $state = 0;
         }
     }
-    
-    return( (0, 'Parameters must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );    
 
-    
+    return( (0, 'Parameters must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );
+
+
     $params->{ 'object' } = [\%parameters];
     return( (1, undef) );
 }
@@ -311,10 +311,10 @@ sub parse_queue_tasks
             $state = 0;
         }
     }
-    
+
     return( (0, 'The filter must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );
     $params->{ 'filter' } = \%filter;
-    
+
     $state = 0;
     my %parameters;
     while( (my $parameter_term = shift @ARGS) )
@@ -330,10 +330,10 @@ sub parse_queue_tasks
             $state = 0;
         }
     }
-    
-    return( (0, 'Parameters must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );    
+
+    return( (0, 'Parameters must be an even number of elements to comprise a key/value pair set') ) if ( $state == 1 );
     $params->{ 'parameters' } = $json->encode( \%parameters );
-    
+
     return( (1, undef) );
 }
 
@@ -365,14 +365,14 @@ sub parse_arguments
     my %parameters;
     my $argsleft = scalar( @ARGS );
 
-    ## 
+    ##
     ## No arguments?  Let caller know by returning -1.
     ##
     if ( scalar(@ARGS) == 0 )
     {
         return( (-1, \%parameters) );
     }
-    
+
     ##
     ## First:  parse options
     ##
@@ -384,7 +384,7 @@ sub parse_arguments
             print "No such option '$opt'\n";
             return( (0, \%parameters) );
         }
-        
+
         my $optname = $options{ $opt }->[ 0 ];
         $argsleft = scalar( @ARGS );
         my $argsreq = $options{ $opt }->[ 1 ];
@@ -393,7 +393,7 @@ sub parse_arguments
             print "Option '$opt' ($optname) requires $argsreq argument(s).\n";
             return( (0, \%parameters) );
         }
-        
+
         if ( $argsreq == 1 )
         {
             $parameters{ $optname } = shift @ARGS;
@@ -410,7 +410,7 @@ sub parse_arguments
                 push @p, pop @ARGS;
             }
             $parameters{ $optname } = \@p;
-            
+
         }
     }
 
@@ -440,7 +440,7 @@ sub parse_arguments
             return( (0, \%parameters) );
         }
     }
-    
+
     return( (1, \%parameters) );
 }
 
@@ -449,7 +449,7 @@ sub status
 {
     my $params = shift;
     my $url = api_url( $params ) . '/scheduler-json';
-    
+
     my $r = $ua->get( $url );
     if ( $r->is_success )
     {
@@ -473,7 +473,7 @@ sub status
         foreach my $queue ( @{$obj} )
         {
 			$tl->add(
-                    $queue->{'id'}, 
+                    $queue->{'id'},
                     $queue->{'constructor'},
                     $queue->{'name'},
                     $queue->{'maxthreads'},
@@ -496,7 +496,7 @@ sub reloadqueues
 {
     my $params = shift;
     my $url = api_url( $params ) . '/reload-queues-json';
-    
+
     my $r = $ua->get( $url );
     if ( $r->is_success )
     {
@@ -594,7 +594,7 @@ sub queue_tasks
 {
     my $params = shift;
     my $url = api_url( $params ) . '/queue-create-tasks-from-query-json';
-    
+
     my $r = $ua->post( $url,
                         [
                             'queueid'		=> $params->{ 'queueid' },
@@ -643,7 +643,7 @@ sub queue_search
                         [
                             'queue'		=> $params->{ 'queue' },
                             'filter'		=> $params->{ 'filter' },
-                        ] 
+                        ]
                       );
     if ( $r->is_success )
     {

@@ -38,14 +38,14 @@ sub new
     my $class = shift;
 
     my $maxthreads = shift;
-    
+
     my @tasks_todo;
     my @tasks_doing;
     my @threads;
     my %threads_inuse;
 
 
-    my $self = 
+    my $self =
     {
         'tasks_doing'		=> \@tasks_doing,
         'maxthreads'		=> $maxthreads,
@@ -58,9 +58,9 @@ sub new
         'constructor'		=> '',
         'config'            => $Synacor::Disbatch::Engine::Engine->{config},
     };
-    
+
     bless $self, $class;
-    
+
     return $self;
 }
 
@@ -75,8 +75,8 @@ sub find_next_task
 {
     my $self = shift or die "No self";
     my $node = shift or die "No node";
-    
-    Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}}, 
+
+    Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}},
                                                             { '$set' => {'node' => $node, 'status' => -1} } );
     my $row = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
     return( $row );
@@ -103,21 +103,21 @@ sub schedule
 
 #    my $tasks = $self->{ 'tasks' };
     my $node = $self->{ 'engine' }->{ 'config' }->{ 'node' };
-    
+
 #    print Dumper( $self->{tasks_doing} );
-    
+
 #    printf "%d / %d threads used.\n",
 #            scalar(@{$self->{tasks_doing}}), $self->{maxthreads};
-            
+
     my $free_threads = $self->{maxthreads} - scalar(@{$self->{tasks_doing}});
 #     return 1 if $self->start_thread_pool > 0;
-    
+
     for ( my $x = 0; $x < $free_threads; $x ++ )
     {
         my $row = $self->find_next_task( $node );
         return if !$row;
-        Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'_id' => $row->{'_id'}}, 
-                                                                { '$set' => {'status' => 0, 'mtime' => time() } }, 
+        Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'_id' => $row->{'_id'}},
+                                                                { '$set' => {'status' => 0, 'mtime' => time() } },
                                                                 {retry => 'redolog'} );
         my $task = $self->load_task( $row );
 
@@ -125,12 +125,12 @@ sub schedule
 #        print " ** Firing off $task->{id} to $thr->{id}\n";
         $self->{ 'threads_inuse' }->{ $task->{'id'} } = $thr;
         $thr->{'eb'}->start_task( $task );
-        
+
 #        print " ** Returned from $task\n\n";
         push @{ $self->{'tasks_doing'} }, $task;
-        
+
     }
-    
+
 
 #    print "Scheduler done.\n\n";
     return 1;
@@ -157,10 +157,10 @@ sub create_task
 {
     my $self = shift;
     my $parameters = shift;
-    
+
     $self->logger->trace( "Synacor::Disbatch::Queue->create_task()" );
     my $task;
-    
+
     try
     {
         $task = $self->create_task_actual( $parameters );
@@ -170,7 +170,7 @@ sub create_task
         $self->logger->error( "Error creating task: $_" );
         return undef;
     };
-      
+
     my $frozen_params = $self->{ 'engine' }->{'parameterformat_write'}( $parameters );
     my %obj;
     $obj{ 'queue' } = $self->{ 'id' };
@@ -186,7 +186,7 @@ sub create_task
     my $id = Synacor::Disbatch::Backend::insert_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, \%obj, {retry => 'synchronous'} );
     $obj{ '_id' } = $obj{'id'} = $id;
 
-    
+
     return $task;
 }
 
@@ -233,7 +233,7 @@ for the scheduler.
 
 Parameters:
 
-  $taskid		completed task ID	
+  $taskid		completed task ID
 
 =cut
 
@@ -245,7 +245,7 @@ sub report_task_done
     my $status = shift;
     my $stdout = shift;
     my $stderr = shift;
-    
+
     for ( my $x = 0; $x < scalar(@{$self->{tasks_doing}}); $x ++ )
     {
         if ( $self->{'tasks_doing'}->[$x]->{ '_id' }->to_string eq $taskid )
@@ -271,16 +271,16 @@ sub report_task_done
             	push @{ $self->{'threads'} }, $self->{ 'threads_inuse' }{ $taskid };
 				delete $self->{ 'threads_inuse' }{ $taskid };
             }
-            
+
             $self->logger->info( "taskid: $taskid;  stderr: $stderr;  status: $status" );
             Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
             Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$inc' => { 'count_todo' => -1 }}, {retry => 'redolog'} );
-            
+
             $self->schedule if $self->{ 'preemptive' };
             return;
         }
     }
-    
+
     $self->logger->error( "!! Synacor::Disbatch::Queue->report_task_done() called on invalid taskid #$taskid" );
 }
 
@@ -294,7 +294,7 @@ sub start_thread_pool
         $self->logger->error( "No threads for $self->{id}" );
         return 0;
     }
-      
+
     my $threads = scalar( @{$self->{'threads'}} )
                 + scalar( keys %{$self->{'threads_inuse'}} );
     my $nt = $self->{'maxthreads'} - $threads;
@@ -309,7 +309,7 @@ sub start_thread_pool
         push @{$self->{'threads'}}, $worker;
         $self->logger->trace( "pushed $worker" );
     }
-    
+
     return $nt;
 }
 
@@ -326,10 +326,10 @@ sub get_free_thread
 sub load_tasks
 {
     my $self = shift;
-    
-    
+
+
     my @tasks = $Synacor::Disbatch::Engine::mongo->get_collection( 'tasks' )->query( {'queue' => $self->{'id'}} )->all;
-    
+
     foreach my $row ( @tasks )
     {
         my $parameters;
@@ -344,8 +344,8 @@ sub load_task
 {
     my $self = shift;
     my $row = shift;
-        
-    my $parameters = $self->{'engine'}->{'parameterformat_read'}($row->{'parameters'}) if $row->{'parameters'}; 
+
+    my $parameters = $self->{'engine'}->{'parameterformat_read'}($row->{'parameters'}) if $row->{'parameters'};
     my $task = $self->create_task_actual( $parameters );
     if ( !$task )
     {
@@ -360,7 +360,7 @@ sub load_task
 sub count_todo
 {
     my $self = shift;
-    
+
     my $r = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{'id'}} );
     my $v = 0;
     if ( defined($r) and defined($r->{count_todo}) )
@@ -372,7 +372,7 @@ sub count_todo
         $v = Synacor::Disbatch::Backend::count( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'status' => -2, 'queue' => $self->{'id'}} );
         Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$set' => { 'count_todo' => $v }}, {retry => 'redolog'} );
     }
-    
+
     return $v;
 }
 
@@ -380,10 +380,10 @@ sub count_todo
 sub count_total
 {
     my $self = shift;
-    
+
     my $r = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{'id'}} );
     my $v = 0;
-    if ( defined($r) and defined($r->{count_total}) ) 
+    if ( defined($r) and defined($r->{count_total}) )
     {
         $v = $r->{ count_total };
     }
@@ -412,14 +412,14 @@ sub logger
     {
         $logger = "disbatch.plugins.$classname";
     }
-    
+
     if ( !$self->{log4perl_initialised} )
-    {    
+    {
         Log::Log4perl::init($self->{config}->{log4perl_conf});
         $self->{log4perl_initialised} = 1;
         $self->{loggers} = {};
     }
-    
+
     return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
     $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
     return $self->{loggers}->{$logger};

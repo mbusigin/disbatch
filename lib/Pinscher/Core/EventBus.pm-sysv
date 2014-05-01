@@ -20,23 +20,23 @@ our @retqueues;
 
 
 my $MAXQSEND = 80000;
-                                
+
 
 sub new
 {
     my $class = shift;
     my $self_self = shift;
     my $name = shift;
-    
 
-    tie %sysvqueues, 'IPC::Shareable', 'svmq', 
+
+    tie %sysvqueues, 'IPC::Shareable', 'svmq',
         {
             create    => 1,
             exclusive => 0,
             mode      => 0644,
             destroy   => 0,
         };
-    
+
     tie $ebid, 'IPC::Shareable', 'idtq',
         {
             create    => 1,
@@ -44,7 +44,7 @@ sub new
             mode      => 0644,
             destroy   => 0,
         };
-    
+
     tie @retqueues, 'IPC::Shareable', 'retv',
         {
             create    => 1,
@@ -52,7 +52,7 @@ sub new
             mode      => 0644,
             destroy   => 0,
         };
-    
+
     (tied $ebid)->shlock();
     my $id = ++ $ebid;
     (tied $ebid)->shunlock();
@@ -60,12 +60,12 @@ sub new
     warn "id: $id";
     $sysvqueues{ 'name' } = $id;
 
-    my $self = 
+    my $self =
     {
         'id'		=> $id,
         'queue'		=> $queue,
         'name'		=> $name,
-        'methods'       => 
+        'methods'       =>
                         {
                                 'test'          => \&footest,
                         },
@@ -78,9 +78,9 @@ sub new
                 'post_call_trap' => undef,
     };
     bless $self, $class;
-    
+
     $self->init_retqueues;
-    
+
     return $self;
 }
 
@@ -100,7 +100,7 @@ sub AUTOLOAD
 sub init_retqueues
 {
     return if ( @retqueues > 0 );
-    
+
     (tied @retqueues)->shlock();
     for ( my $x = 0; $x < 50; $x ++ )
     {
@@ -109,7 +109,7 @@ sub init_retqueues
         push @retqueues, $id;
     }
     (tied @retqueues)->shunlock();
-    
+
 }
 
 
@@ -136,14 +136,14 @@ sub call_thread
     my $self = shift;
     my $name = shift;
     my $args = \@_;
- 
+
 #    print "call_thread(): $self->{name} :: $name:\n" . Dumper( $args ) . "\n\n";
 #    warn "$self->{name} :: $name Semaphore down\n";
-#    $self->{'semaphore'}->down(); 
+#    $self->{'semaphore'}->down();
 #    warn "\t$self->{name} :: $name Enqueue & clone\n";
-    
+
     my ( $retid, $id, $retqueue );
-    
+
     if ( !defined $self->{'procedures'}->{$name} )
     {
          ( $id, $retqueue ) = $self->get_retqueue;
@@ -171,7 +171,7 @@ sub call_thread
 
     my $ret;
     goto call_thread_done if ( $self->{'procedures'}->{$name} );
-    
+
 #    warn "\t$self->{name} :: $name Dequeue reply\n";
     my ($type_rcvd, $rcvd);
     warn "Listening on $retqueue / $id";
@@ -181,7 +181,7 @@ sub call_thread
     }
 
     $self->return_retqueue( $retid );
-    
+
     $packets = $rcvd;
     my $reassembled = '';
     for ( my $x = 0; $x < $packets; $x ++ )
@@ -191,17 +191,17 @@ sub call_thread
             warn "Couldn't msgrcv!!!";
         }
         my ($xxx, $yyy) = unpack("l! a*", $rcvd);
-        
+
         $reassembled = pack( "a*a*", $reassembled, $rcvd );
     }
-    
+
     warn length($reassembled);
     ($type_rcvd, $rcvd) = unpack("l! a*", $reassembled);
     $ret = thaw( $rcvd );
 #    warn Dumper( $ret );
 
 #    warn "\t$self->{name} :: $name Semaphore up\n";
-#    $self->{'semaphore'}->up(); 
+#    $self->{'semaphore'}->up();
 
 call_thread_done:
 #    warn "$self->{name} :: $name Done\n";
@@ -218,7 +218,7 @@ sub set_self
 sub run
 {
     my $self = shift;
-    
+
     while( 1 )
     {
         $self->oneiteration;
@@ -229,7 +229,7 @@ sub run
 sub oneiteration
 {
         my $self = shift;
-        
+
         my ( $type_rcvd, $rcvd );
         if ( !msgrcv($self->{'queue'}, $rcvd, 1024*1024, 0, 0) )
         {
@@ -247,10 +247,10 @@ sub oneiteration
             }
             $reassembled = pack( "a*a*", $reassembled, $rcvd );
         }
-    
+
         ($type_rcvd, $rcvd) = unpack("l! a*", $reassembled);
         my $message = thaw( $rcvd );
-        
+
         {
                 if ( scalar(@{$message}) != 3 )
                 {
@@ -260,7 +260,7 @@ sub oneiteration
                 my $command = $message->[0];
                 my $args = $message->[1];
                 my $txqueue = $message->[2];
-                
+
                 my $procedure = 0;
                 my $func = $self->{methods}->{$command};
                 if ( !$func )
@@ -302,12 +302,12 @@ sub oneiteration
                     my $sysvtxqueue = msgget( $txqueue, S_IRWXU );
                     my $payload = pack("l! a*", 1234, $frozen_payload);
                     my $paylength = length($payload);
-                    
+
                     my $packets = $paylength / $MAXQSEND;
                     msgsnd( $sysvtxqueue, $packets, 0 ) or warn "Couldn't send number of packets ($packets) to txqueue: $!";
-                    
+
                     warn "Sending to $sysvtxqueue";
-                    
+
                     for ( my $x = 0; $x < $packets; $x ++ )
                     {
                         my $packet = substr($payload, $x * $MAXQSEND, $MAXQSEND);
@@ -315,8 +315,8 @@ sub oneiteration
                         warn Dumper( [$sysvtxqueue, length($packet), 0] );
                         if( !msgsnd( $sysvtxqueue, $packet, 0 ) ) { die "Couldn't send packet ($x of $packets) to txqueue ($sysvtxqueue): $!"; }
                     }
-                    
-                    
+
+
 #                    $txqueue->enqueue( threads::shared::shared_clone($ret) );
                 }
         }

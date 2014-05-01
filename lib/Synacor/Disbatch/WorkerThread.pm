@@ -36,7 +36,7 @@ Creates a new Synacor::Disbatch::WorkerThread.
 Arguments:
 
   $id		The ID for the new worker thread
-  
+
 =cut
 
 sub new
@@ -45,16 +45,16 @@ sub new
     my $id = shift;
     my $queue = shift;
 
-    my $self = 
+    my $self =
     {
     };
     bless $self, $class;
-    
+
     $self->{ 'eb' } = Pinscher::Core::EventBus->new( $self, 'worker#' . $id );
     $self->{ 'id' } = $id;
     $self->{ 'queue' } = $queue;
     $self->{ 'eb' }{ 'procedures' }{ 'start_task' } = \&start_task;
-    $self->{ 'eb' }{ 'methods' }{ 'retire' } = \&retire;    
+    $self->{ 'eb' }{ 'methods' }{ 'retire' } = \&retire;
     $self->{ 'config' } = $Synacor::Disbatch::Engine::Engine->{config};
     $self->{ 'data' } = {};
     $self->{ 'tasks_run' } = 0;
@@ -87,7 +87,7 @@ sub start_task
     }
 #     print $self->{ 'id' } . ': ' . ref($task) . "\n";
     $task->{ 'workerthread' } = $self;
-    
+
     try
     {
         $task->run( $self );
@@ -95,10 +95,10 @@ sub start_task
     catch
     {
         $self->logger( "Thread has uncaught exception: $_" );
-        $Synacor::Disbatch::Engine::EventBus->report_task_done( $task->{'queue_id'}, $task->{'_id'}, 2, 'Unable to complete', "Thread has uncaught exception: $_" );        
+        $Synacor::Disbatch::Engine::EventBus->report_task_done( $task->{'queue_id'}, $task->{'_id'}, 2, 'Unable to complete', "Thread has uncaught exception: $_" );
     };
-    
-    
+
+
     return 1;
 }
 
@@ -112,7 +112,7 @@ sub retire
 sub startstuff
 {
     my $self = shift;
-    
+
     $self->{ 'eb' }->run;
     $self->logger->info( "This thread $$ has outlived its usefulness" );
     exit(0);
@@ -128,13 +128,13 @@ Start thread, return PID.  This happens automatically with the default construct
 sub thread_start
 {
     my $self = shift;
-    
+
     my $pid = fork();
     if ( $pid == 0 )
     {
         startstuff( $self );
     }
-    
+
 #    my $ret = threads->create( \&startstuff, $self );
     $self->{pid} = $pid;
     return $pid;
@@ -163,7 +163,7 @@ sub logger
     my $self = shift or confess "No self!";
     my $classname = ref($self->{queue});
     $classname =~ s/^.*:://;
-        
+
     my $logger = shift;
     if ( $logger )
     {
@@ -174,14 +174,14 @@ sub logger
     {
         $logger = "disbatch.engine.$classname";
     }
-    
+
     if ( !$self->{log4perl_initialised} )
-    {    
+    {
         Log::Log4perl::init($self->{config}->{log4perl_conf});
         $self->{log4perl_initialised} = 1;
         $self->{loggers} = {};
     }
-    
+
     return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
     $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
     return $self->{loggers}->{$logger};
@@ -191,7 +191,7 @@ sub logger
 sub mongo
 {
     my $self = shift or confess "No self!";
-    
+
     return $self->{mongo} if defined($self->{mongo});
     $self->{mongo} = Synacor::Disbatch::Backend::connect_mongo( $self->{ 'config' }->{'mongohost'}, $self->{ 'config' }->{'mongodb'} );
     return $self->{mongo};

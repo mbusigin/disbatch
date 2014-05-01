@@ -21,9 +21,9 @@ imapsync.
 sub new
 {
     my $class = shift;
-    
+
     my %self;
-  
+
     bless \%self, $class;
     return \%self;
 }
@@ -31,7 +31,7 @@ sub new
 sub start
 {
     my $self = shift;
-    
+
 #    $self->{ 'thread_handle' } = threads->create( \&run, $self );
     return;
 }
@@ -46,7 +46,7 @@ Override this to implement the most atomic individual operation your task can pe
 sub run
 {
     my $self = shift;
-    
+
     print "*** STUB run\n";
     $self->run;
     return;
@@ -65,11 +65,11 @@ sub wait_task_status_change
     my $class = shift;
     my $self = shift;
     my $tid = shift;
-    
+
     warn "tid: $tid\n";
-    
+
     my $queue: shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
-    
+
     $Synacor::Disbatch::Engine::EventBus->register_task_status_observer( $tid, $queue );
     my $ret = $queue->dequeue;
     return threads::shared::shared_clone( $ret );

@@ -1,32 +1,32 @@
 qx.Class.define("disbatch_frontend.TaskBrowserModel",
 {
   extend : qx.ui.table.model.Remote,
- 
+
   members :
   {
     setQueueID : function( qid )
     {
       this.queue = qid;
     },
-    
+
      // overloaded - called whenever the table requests the row count
     _loadRowCount : function()
     {
-      // Call the backend service (example) - using XmlHttp 
+      // Call the backend service (example) - using XmlHttp
       var url  = "/search-tasks-json";
       var req = new qx.io.remote.Request(url, "GET", "application/json");
       req.setParameter( "queue", this.queue );
       req.setParameter( "json", 1 );
       req.setParameter( "filter", this.constructFilter() );
       req.setParameter( "count", 1 );
- 
+
       // Add listener
       req.addListener("completed", this._onRowCountCompleted, this);
- 
+
       // send request
       req.send();
     },
- 
+
     // Listener for request of "_loadRowCount" method
     _onRowCountCompleted : function(response)
     {
@@ -37,8 +37,8 @@ qx.Class.define("disbatch_frontend.TaskBrowserModel",
           this._onRowCountLoaded(result[1]);
        }
     },
- 
-   
+
+
     // overloaded - called whenever the table requests new data
     _loadRowData : function(firstRow, lastRow)
     {
@@ -46,14 +46,14 @@ qx.Class.define("disbatch_frontend.TaskBrowserModel",
       var req = new qx.io.remote.Request(url, "GET", "application/json");
       req.setParameter( "queue", this.queue );
       req.setParameter( "json", 1 );
-      req.setParameter( "filter", this.constructFilter() );      
+      req.setParameter( "filter", this.constructFilter() );
       req.setParameter( "skip", firstRow );
       req.setParameter( "limit", lastRow - firstRow + 1 );
       req.setParameter( "terse", 1 );
       req.addListener( "completed", this._onLoadRowDataCompleted, this );
       req.send();
     },
- 
+
      // Listener for request of "_loadRowData" method
     _onLoadRowDataCompleted : function(response)
     {
@@ -73,21 +73,21 @@ qx.Class.define("disbatch_frontend.TaskBrowserModel",
                   parameters += r["parameters"][y] + " ";
               }
               r["parameters"] = parameters;
-              
+
 //              alert( r["_id"]["$oid"] );
               var realId = r["_id"]["$oid"];
               r["_id"] = realId;
             }
           }
 
-          this._onRowDataLoaded(result);   
-       }        
+          this._onRowDataLoaded(result);
+       }
        else
        {
         alert ("w t f" );
        }
     },
-    
+
     constructFilter : function()
     {
       if ( !this.filter )
@@ -96,6 +96,6 @@ qx.Class.define("disbatch_frontend.TaskBrowserModel",
       }
       return qx.lang.Json.stringify( this.filter );
     }
-    
+
   }
 });

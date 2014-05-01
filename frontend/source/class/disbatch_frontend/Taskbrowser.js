@@ -44,7 +44,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       this._nodetxt = new qx.ui.form.TextField;
       toolbar.add( this._nodetxt );
       toolbar.add( new qx.ui.core.Spacer(20) );
-      
+
       toolbar.add( new qx.ui.basic.Label("Status:") );
       this._statusslc = new qx.ui.form.SelectBox();
       this._statusslc.add( new qx.ui.form.ListItem("Any", null, -99) );
@@ -68,9 +68,9 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       this._stderrtxt.setPlaceholder( "<stderr filter>" );
       toolbar.add( this._stderrtxt );
       toolbar.add( new qx.ui.core.Spacer(20) );
-      
+
       var filterButton = new qx.ui.form.Button( "Filter" );
-      filterButton.addListener( "execute", function() {   
+      filterButton.addListener( "execute", function() {
         this.filter();
       }, this );
       toolbar.add( filterButton );
@@ -80,7 +80,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
         this.task_editor();
       }, this );
       toolbar.add( addButton );
-      
+
       win.add( toolbar );
 
       var tableModel = new disbatch_frontend.TaskBrowserModel(); //qx.ui.table.model.Simple();
@@ -110,8 +110,8 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       win.open();
       return win;
     },
-    
-    
+
+
     filter : function()
     {
         var filter = new Object;
@@ -120,7 +120,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
         {
             filter[ "status" ] = "" + status;
         }
-        
+
         if ( this._stdouttxt.getValue() && this._stdouttxt.getValue().length > 0 )
         {
             filter[ "stdout" ] = "qr/" + this._stdouttxt.getValue() + "/";
@@ -135,7 +135,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
         {
             filter[ "node" ] = this._nodetxt.getValue();
         }
-        
+
         this._tableModel.filter = filter;
         this._tableModel.reloadData();
 
@@ -144,7 +144,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
         var filter = new Object;
         // _stdouttxt _stderrtxt this._statusslc this._nodetxt
 
-                
+
         req.setParameter( "queue", this._queueid );
 	req.setParameter( "json", 1 );
         req.setParameter( "filter", qx.util.Json.stringify(filter) );
@@ -166,26 +166,26 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
 //              model.addRows( [[ r["node"], r["iid"], r["status"], parameters ]] );
             }
           }
-          
+
         }, this );
         req.send();
         */
     },
-    
+
     showSingleTask: function( id )
     {
       var req = new qx.io.remote.Request( "/search-tasks-json", "POST", "application/json" );
-      
+
       var filter = new Object();
       filter[ "id" ] = id;
       req.setParameter( "queue", this._queueid );
       req.setParameter( "json", 1 );
       req.setParameter( "filter", qx.lang.Json.stringify(filter) );
-      
+
       req.addListener( "completed", function(e) {
         var r = e.getContent();
         var task = r[0];
-      
+
         var win = new qx.ui.window.Window( "Task: " + id );
         win.setLayout( new qx.ui.layout.VBox() );
         win.getLayout().setSpacing( 5 )
@@ -193,20 +193,20 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
         row1.getLayout().setSpacing( 5 );
         var row2 = new qx.ui.container.Composite( new qx.ui.layout.HBox() );
         row2.getLayout().setSpacing( 5 );
-      
+
         var stdouttxt = new qx.ui.form.TextArea( "" );
         stdouttxt.setHeight( 200 );
         stdouttxt.setWidth( 700 );
         stdouttxt.setValue( task.stdout );
         stdouttxt.setAllowGrowY( true );
         row1.add( stdouttxt );
-      
+
         var stderrtxt = new qx.ui.form.TextArea( "" );
         stderrtxt.setHeight( 200 );
         stderrtxt.setWidth( 700 );
         stderrtxt.setValue( task.stderr );
         row2.add( stderrtxt );
-      
+
         var metadata = new qx.ui.container.Composite( new qx.ui.layout.Grid() );
         metadata.add( new qx.ui.basic.Label("Node:"), {row:0, column:0} );
         metadata.add( new qx.ui.basic.Label("" + task.node), {row:0, column:1} );
@@ -215,7 +215,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
         metadata.add( new qx.ui.basic.Label("ID:"), {row:2, column:0} );
         metadata.add( new qx.ui.basic.Label("" + task._id), {row:2, column:1} );
         row1.add( metadata );
-      
+
         var parameters = new qx.ui.form.List();
         for ( var a in task.parameters )
         {
@@ -225,17 +225,17 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
             parameters.add( item );
           }
         }
-        
+
         row2.add( parameters );
-      
+
         win.add( row1 );
         win.add( row2 );
-      
+
         win.open();
       }, this );
       req.send();
     },
-    
+
     task_editor : function()
     {
       var win = new qx.ui.window.Window( "New Task" );
@@ -260,10 +260,10 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
           }
       }
 
-            
+
       // send button with validation
-      var sendButton = new qx.ui.form.Button("Send");  
-      sendButton.addListener("execute", function() { 
+      var sendButton = new qx.ui.form.Button("Send");
+      sendButton.addListener("execute", function() {
         if (form.validate()) {
           var o = qx.util.Serializer.toNativeObject( this.e_controller.createModel() );
           var task = new Array();
@@ -309,7 +309,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
       this.userFilterContainer = new qx.ui.groupbox.GroupBox( "User Filter" );
       this.userFilterContainer.setLayout( new qx.ui.layout.Basic() );
       this.userFilterContainer.hide();
-                    
+
       var toggleFilterPane = this.toggleFilterPane = new qx.ui.form.ToggleButton( "Create tasks from query" );
 
       toggleFilterPane.addListener( "changeValue", function(e)

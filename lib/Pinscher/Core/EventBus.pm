@@ -23,23 +23,23 @@ our %sockets;
 
 
 my $MAXQSEND = 80000;
-                                
+
 
 sub new
 {
     my $class = shift;
     my $self_self = shift;
     my $name = shift;
-    
 
-    tie %sockets, 'IPC::Shareable', $ipckey1, 
+
+    tie %sockets, 'IPC::Shareable', $ipckey1,
         {
             create    => 1,
             exclusive => 0,
             mode      => 0644,
             destroy   => 0,
         };
-    
+
     tie $ebid, 'IPC::Shareable', $ipckey2,
         {
             create    => 1,
@@ -47,7 +47,7 @@ sub new
             mode      => 0644,
             destroy   => 0,
         };
-    
+
     (tied $ebid)->shlock();
     my $id = ++ $ebid;
     (tied $ebid)->shunlock();
@@ -59,17 +59,17 @@ sub new
                                 Type      => SOCK_STREAM,
                                 Listen    => 2000 )     or die "Couldn't create $fn: $!";
 
-    
+
     $sockets{ 'name' } = $fn;
 
-    my $self = 
+    my $self =
     {
         'id'		=> $id,
         'socketfn'	=> $fn,
         'socket'	=> $server,
         'name'		=> $name,
         'retire'	=> 0,
-        'methods'       => 
+        'methods'       =>
                         {
                                 'test'          => \&footest,
                         },
@@ -82,7 +82,7 @@ sub new
                 'post_call_trap' => undef,
     };
     bless $self, $class;
-    
+
     return $self;
 }
 
@@ -95,7 +95,7 @@ sub AUTOLOAD
 
         my $name = $AUTOLOAD;
         $name =~ s/.*://;   # strip fully-qualified portion
-        
+
         return if $name eq 'DESTROY';  # We do not AUTOLOAD destroys
         return $self->call_thread( $name, @_ );
 }
@@ -106,12 +106,12 @@ sub call_thread
     my $self = shift;
     my $name = shift;
     my $args = \@_;
- 
+
 #    print "call_thread(): $self->{name} :: $name:\n" . Dumper( $args ) . "\n\n";
 #    warn "$self->{name} :: $name Semaphore down\n";
-#    $self->{'semaphore'}->down(); 
+#    $self->{'semaphore'}->down();
 #    warn "\t$self->{name} :: $name Enqueue & clone\n";
-    
+
     if ( !defined $self->{'procedures'}->{$name} )
     {
 #        (tied $ebid)->shlock();
@@ -135,7 +135,7 @@ sub call_thread
 
     my $ret;
     goto call_thread_done if ( $self->{'procedures'}->{$name} );
-    
+
 #    warn "\t$self->{name} :: $name Dequeue reply\n";
     my $rcvd;
     while ( <$client> )
@@ -144,11 +144,11 @@ sub call_thread
     }
     $client->shutdown( 2 );
     $ret = thaw( $rcvd );
-    
+
 #    warn Dumper( $ret );
 
 #    warn "\t$self->{name} :: $name Semaphore up\n";
-#    $self->{'semaphore'}->up(); 
+#    $self->{'semaphore'}->up();
 
 call_thread_done:
 	$client->shutdown(2);
@@ -168,7 +168,7 @@ sub set_self
 sub run
 {
     my $self = shift;
-    
+
     while( 1 )
     {
         my $r = $self->oneiteration;
@@ -180,11 +180,11 @@ sub run
 sub oneiteration
 {
         my $self = shift;
-	
+
 		my $socket;
 		my $rcvd;
 		try
-		{		
+		{
 			$socket = $self->{ 'socket' }->accept();
 	#        warn "Accepted $socket";
 			while ( <$socket> )
@@ -203,19 +203,19 @@ sub oneiteration
 			warn "Error reading from socket - returning";
 			return;
 		}
-        
-        my $message = thaw( $rcvd );        
+
+        my $message = thaw( $rcvd );
         {
                 if ( scalar(@{$message}) != 2 )
                 {
                     print "\n\nW T F: message is not 3:\n" . Dumper( $message ) . "\n\n";
 					$socket->shutdown( 2 );
-					$socket->close;                    
+					$socket->close;
                     next;
                 }
                 my $command = $message->[0];
                 my $args = $message->[1];
-                
+
                 my $procedure = 0;
                 my $func = $self->{methods}->{$command};
                 if ( !$func )
@@ -259,10 +259,10 @@ sub oneiteration
                     print $socket $frozen_payload;
 #                    $txqueue->enqueue( threads::shared::shared_clone($ret) );
 				}
-				
+
 				$socket->shutdown( 2 );
 				$socket->close;
-                
+
 			    if ( $self->{retire} == 1 )
 			    {
 			    	$self->{ 'socket' }->shutdown(2);
@@ -283,7 +283,7 @@ sub footest
 sub connect_udx
 {
     my $socketfn = shift;
-    
+
     my $client;
     while( !($client = IO::Socket::UNIX->new(Peer  => $socketfn,
                                 Type      => SOCK_STREAM,

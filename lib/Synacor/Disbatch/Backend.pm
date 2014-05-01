@@ -33,7 +33,7 @@ sub connect_mongo
 
     if ( $host )
     {
-        $conn = MongoDB::MongoClient->new( 
+        $conn = MongoDB::MongoClient->new(
                                             host => $host,
                                             auto_reconnect => 1,
                                             auto_connect => 1,
@@ -41,10 +41,10 @@ sub connect_mongo
                                             find_master => 1,
                                             %extras,
                                         );
-        
+
     }
     else
-    {   
+    {
         $conn = MongoDB::MongoClient->new( %extras );
     }
     my $db = $conn->get_database( $dbname );
@@ -80,7 +80,7 @@ sub ensureIndices
     my $mongo = shift;
     my $tasks_collection = shift;
     my $queues_collection = shift;
-    
+
     $mongo->get_collection( $tasks_collection )->ensure_index(
             {
                 node        =>  1,
@@ -94,7 +94,7 @@ sub ensureIndices
                 status      =>  1,
             }
         );
-        
+
 }
 
 
@@ -132,8 +132,8 @@ sub update_collection
             die "Couldn't update collection '$cid'!";
         }
     };
-    
-    if ( $@ )	
+
+    if ( $@ )
     {
         return if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )
@@ -174,10 +174,10 @@ Query a Mongo collection
 sub query_collection
 {
     my ( $cid, $hr, $attrs, $extra ) = @_;
-    
-    
+
+
     my $query;
-    
+
     eval
     {
         my $collection = $mongo->get_collection( $cid );
@@ -196,7 +196,7 @@ sub query_collection
         $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in query_collection on mongo timeout '$extra->{retry}'!!" );
         return undef;
     }
-    
+
     return $query;
 }
 
@@ -209,7 +209,7 @@ Query a Mongo collection for the single top result
 sub query_one
 {
     my ( $cid, $hr, $extra ) = @_;
-    
+
     my $result;
 
     eval
@@ -242,7 +242,7 @@ Count the result of a query
 sub count
 {
     my ( $cid, $hr, $extra ) = @_;
-    
+
     my $count;
     eval
     {
@@ -261,8 +261,8 @@ sub count
         $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in count on mongo timeout '$extra->{retry}'!!" );
         return undef;
     }
-    
-    
+
+
     return $count;
 }
 
@@ -276,15 +276,15 @@ Insert into a Mongo collection
 sub insert_collection
 {
     my ( $cid, $hr, $extra ) = @_;
-    
+
     my $oid;
-    
+
     eval
     {
         my $collection = $mongo->get_collection( $cid );
         $oid = $collection->insert( $hr );
     };
-    if ( $@ )	
+    if ( $@ )
     {
         return if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )
@@ -316,13 +316,13 @@ Delete from a Mongo collection
 sub delete_collection
 {
     my ( $cid, $hr, $extra ) = @_;
-    
+
     eval
     {
         my $collection = $mongo->get_collection( $cid );
         $collection->remove( $hr );
     };
-    if ( $@ )	
+    if ( $@ )
     {
         return if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )

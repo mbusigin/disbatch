@@ -3,7 +3,7 @@
 if (!window.qx) window.qx = {};
 
 qx.$$start = new Date();
-  
+
 if (!qx.$$environment) qx.$$environment = {};
 var envinfo = {"qx.application":"disbatch_frontend.Application","qx.debug":false,"qx.debug.databinding":false,"qx.debug.dispose":false,"qx.optimization.basecalls":true,"qx.optimization.comments":true,"qx.optimization.privates":true,"qx.optimization.strings":true,"qx.optimization.variables":true,"qx.optimization.variants":true,"qx.revision":"","qx.theme":"disbatch_frontend.theme.Theme","qx.version":"1.6"};
 for (var k in envinfo) qx.$$environment[k] = envinfo[k];
@@ -26,7 +26,7 @@ qx.$$loader = {
   closureParts : {},
   bootIsInline : true,
   addNoCacheParam : false,
-  
+
   decodeUris : function(compressedUris)
   {
     var libs = qx.$$libraries;
@@ -44,12 +44,12 @@ qx.$$loader = {
       if (qx.$$loader.addNoCacheParam) {
         euri += "?nocache=" + Math.random();
       }
-      
+
       uris.push(euri);
     }
-    return uris;      
+    return uris;
   }
-};  
+};
 
 function loadScript(uri, callback) {
   var elem = document.createElement("script");
@@ -112,7 +112,7 @@ qx.$$loader.importPackageData = function (dataMap, callback) {
     var qxlocs = qx.$$locales;
     for (var lang in locMap){
       if (!qxlocs[lang]) qxlocs[lang] = locMap[lang];
-      else 
+      else
         for (var k in locMap[lang]) qxlocs[lang][k] = locMap[lang][k];
     }
   }
@@ -121,7 +121,7 @@ qx.$$loader.importPackageData = function (dataMap, callback) {
     var qxtrans = qx.$$translations;
     for (var lang in trMap){
       if (!qxtrans[lang]) qxtrans[lang] = trMap[lang];
-      else 
+      else
         for (var k in trMap[lang]) qxtrans[lang][k] = trMap[lang][k];
     }
   }
@@ -130,12 +130,12 @@ qx.$$loader.importPackageData = function (dataMap, callback) {
   }
 }
 
-qx.$$loader.signalStartup = function () 
+qx.$$loader.signalStartup = function ()
 {
   qx.$$loader.scriptLoaded = true;
   if (window.qx && qx.event && qx.event.handler && qx.event.handler.Application) {
     qx.event.handler.Application.onScriptLoaded();
-    qx.$$loader.applicationHandlerReady = true; 
+    qx.$$loader.applicationHandlerReady = true;
   } else {
     qx.$$loader.applicationHandlerReady = false;
   }

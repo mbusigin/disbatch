@@ -137,10 +137,10 @@ $config->{'pluginclasses'} = \@pluginclasses;
 if ( exists($config->{EventBus}) )
 {
     no warnings 'once';
-    $Pinscher::Core::EventBus::ebid = $config->{EventBus}->{ebid} if exists($config->{EventBus}->{ebid}); 
-    $Pinscher::Core::EventBus::ipckey1 = $config->{EventBus}->{ipckey1} if exists($config->{EventBus}->{ipckey1}); 
-    $Pinscher::Core::EventBus::ipckey2 = $config->{EventBus}->{ipckey2} if exists($config->{EventBus}->{ipckey2}); 
-    $Pinscher::Core::EventBus::threadprefix = $config->{EventBus}->{threadprefix} if exists($config->{EventBus}->{threadprefix}); 
+    $Pinscher::Core::EventBus::ebid = $config->{EventBus}->{ebid} if exists($config->{EventBus}->{ebid});
+    $Pinscher::Core::EventBus::ipckey1 = $config->{EventBus}->{ipckey1} if exists($config->{EventBus}->{ipckey1});
+    $Pinscher::Core::EventBus::ipckey2 = $config->{EventBus}->{ipckey2} if exists($config->{EventBus}->{ipckey2});
+    $Pinscher::Core::EventBus::threadprefix = $config->{EventBus}->{threadprefix} if exists($config->{EventBus}->{threadprefix});
 }
 
 my $engine = Synacor::Disbatch::Engine->new( $config );
@@ -149,7 +149,7 @@ foreach my $pluginclass (@pluginclasses)
 {
     load $pluginclass;
     $engine->logger->info( 'Loading plugin class: ' . $pluginclass );
-    my $load_plugin = 
+    my $load_plugin =
       "use $pluginclass;\n" .
       "\$engine->register_queue_constructor( '$pluginclass', \\&" . $pluginclass . "::new );\n";
     eval $load_plugin;
@@ -218,7 +218,7 @@ $engine->logger->trace( 'Spinning up HTTP service' );
 my $http = Synacor::Disbatch::HTTP->new( $config->{'httpport'} );
 
 $http->start;
-$timer->start;                               
+$timer->start;
 $timer2->start;
 
 
@@ -278,7 +278,7 @@ while( 1 )
           $engine->load_queues;
       }
     }
-    
+
     $engine->{'eb'}->oneiteration;
 }
 

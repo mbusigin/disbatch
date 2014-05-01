@@ -9,16 +9,16 @@
 ************************************************************************ */
 
 /**
- * This class demonstrates how to define simulated interaction tests for your 
+ * This class demonstrates how to define simulated interaction tests for your
  * application. See the manual for details:
  * {@link http://manual.qooxdoo.org/1.6/pages/development/simulator.html}
- * 
+ *
  * @lint ignoreUndefined(simulator)
  */
 qx.Class.define("disbatch_frontend.simulation.DemoSimulation", {
 
   extend : simulator.unit.TestCase,
-  
+
   members :
   {
     /*
@@ -26,13 +26,13 @@ qx.Class.define("disbatch_frontend.simulation.DemoSimulation", {
       TESTS
     ---------------------------------------------------------------------------
     */
-    
+
     /** Check if a widget is present (part of the DOM) */
     testButtonPresent : function()
     {
       this.assertNotNull(this.getSimulation().getWidgetOrNull("qxh=qx.ui.form.Button"), "Button widget not present!");
     },
-    
+
     /** Click a button and check if an alert box pops up */
     testButtonClick : function()
     {
@@ -40,5 +40,5 @@ qx.Class.define("disbatch_frontend.simulation.DemoSimulation", {
       this.assertEquals("true", String(this.getQxSelenium().isAlertPresent()));
     }
   }
-  
+
 });

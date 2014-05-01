@@ -8,7 +8,7 @@ use Data::Dumper;
 sub new
 {
     my $class = shift;
-    
+
     my ( $engine, $queueid, $collection, $filter, $parameters_hashref ) = @_;
 
     my $self =
@@ -23,7 +23,7 @@ sub new
 
     $self->{ 'done' } = $self->{ 'count' } = 0
         if !$self->init;
-    
+
     return $self;
 }
 
@@ -46,13 +46,13 @@ sub slice
 {
     my $self = shift;
     my $maxs = shift;
-    
+
     return if !($self->{'cursor'}->has_next);
 
     my $parameters_hashref = $self->{ 'parameters' };
     my $start = [ Time::HiRes::gettimeofday( ) ];
-    
-    my $x = 0;    
+
+    my $x = 0;
     while( Time::HiRes::tv_interval($start) <= $maxs and (my $document = $self->{'cursor'}->next) )
     {
         $x ++;
@@ -61,7 +61,7 @@ sub slice
         foreach my $key ( keys %{ $parameters_hashref })
         {
             my $value = $parameters_hashref->{ $key };
-            
+
             if ( $value =~ /^(document\.[a-zA-Z][a-zA-Z0-9_]*)$/ )
             {
                 my $var = $1;
@@ -89,7 +89,7 @@ sub slice
         my $iobject = $self->{'queue'}->create_task( \%params );
         $self->{ 'done' } ++;
     }
-    
+
     warn "$x processed this slice";
 }
 

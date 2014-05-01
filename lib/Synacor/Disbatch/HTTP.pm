@@ -76,7 +76,7 @@ sub do_authenticate {
         $self->logger->error( "No HTTPAuth config section.  Rejecting connection attempts." );
         return 0;
     }
-    
+
     return 1 if $self->{config}->{HTTPAuth}->{method} eq 'none';
 
     if ( $self->{config}->{HTTPAuth}->{method} ne 'basic' )
@@ -90,7 +90,7 @@ sub do_authenticate {
         $self->logger->error( "No passwd file specified in HTTPAuth.  Rejecting connection attempts." );
         return 0;
     }
-    
+
     my $passwd = new Apache::Htpasswd( {passwdFile => $self->{config}->{HTTPAuth}->{passwd},
                                  ReadOnly   => 1}
                                 );
@@ -99,11 +99,11 @@ sub do_authenticate {
         $self->logger->error( "Couldn't create Apache::Htpaswd from " . $self->{config}->{HTTPAuth}->{passwd} );
         return 0;
     }
-    
-    
+
+
     if (($ENV{HTTP_AUTHORIZATION} || '') =~ /^Basic (.*?)$/) {
         my($user, $pass) = split /:/, (MIME::Base64::decode($1) || ':');
-        
+
         return 1 if $passwd->htCheckPassword( $user, $pass );
         $self->logger->error( "Authentication error on $user" );
         return 0;
@@ -141,7 +141,7 @@ sub handle_request
         return;
     }
 
-    
+
     $json = new JSON::XS if ( !$json );
     my $path = $cgi->path_info();
     $path = '/index.html' if $path eq '/';
@@ -160,7 +160,7 @@ sub handle_request
                     $cgi->param( -name => $k, -value => $obj->{$k} );
                 }
             }
-    
+
             my $result;
             eval
             {
@@ -187,41 +187,41 @@ sub handle_request
                                  );
                 print
                                  $converted;
-                $self->logger->trace( 
+                $self->logger->trace(
                     "Served '$path'" );
-            }                                 
+            }
         }
     }
     elsif ( -r "$self->{base}/etc/disbatch/htdocs/$path" && !($path =~ /\.\./) )
     {
         print "HTTP/1.0 200 OK\r\n";
-        
+
         my $type = 'text/html';
         $type = 'text/javascript' if $path =~ /\.js$/;
         $type = 'text/css' if $path =~ /\.css$/;
         $type = 'image/png' if $path =~ /\.png$/;
         $type = 'image/gif' if $path =~ /\.gif$/;
-        
+
         print $cgi->header( -type => $type );
         open F, "<$self->{base}/etc/disbatch/htdocs/$path";
-        
+
                 while( <F> )
                 {
                         print;
                 }
     }
-     
+
     else
-      {   
+      {
         print "HTTP/1.0 404 Not found\r\n";
         print $cgi->header(
 #                                                        -cookie => $cookie,
                                                 ),
               $cgi->start_html('Not found'),
-              $cgi->h1("Not found: $path"), 
+              $cgi->h1("Not found: $path"),
               $cgi->end_html;
     }
-    
+
 }
 
 
@@ -281,11 +281,11 @@ sub kill {
 Enumerate through queues, collecting statistics on items to-do, complete and in-progress. Also includes maxthreads & preemptive. Callable via eventbus.
 
 =cut
-    
+
 sub scheduler_json
 {
     my $cgi = shift;
-    
+
     my $scheduler_report = $Synacor::Disbatch::Engine::EventBus->scheduler_report;
     return $scheduler_report;
 }
@@ -312,14 +312,14 @@ sub set_queue_attr_json
     my @validattrs = qw( maxthreads preemptive );
 
     my $attr = $cgi->param( 'attr' );
-    
+
     if ( !grep($attr, @validattrs) )
     {
         $ret{ 'success' } = 0;
         $ret{ 'error' } = 'Invalid attr';
         return \%ret;
     }
-    
+
     my $value = $cgi->param( 'value' );
     if ( !defined($value) )
     {
@@ -335,10 +335,10 @@ sub set_queue_attr_json
         $ret{ 'error' } = 'You must supply a queueid';
         return \%ret;
     }
-    
+
     my ($r, $e) = @{ $Synacor::Disbatch::Engine::EventBus->set_queue_attr($queueid, $attr, $value) };
     $ret{ 'success' } = $r;
-    $ret{ 'error' } = $e if defined($e); 
+    $ret{ 'error' } = $e if defined($e);
     return \%ret;
 }
 
@@ -364,7 +364,7 @@ Filter examples:
 sub list_users_json
 {
     my $cgi = shift;
-    
+
     return $Synacor::Disbatch::Engine::EventBus->list_users( $cgi->param('group'), $cgi->param('filter') );
 }
 
@@ -383,10 +383,10 @@ Parameters:
 sub start_queue_json
 {
     my $cgi = shift;
-    
+
     my $type = $cgi->param( 'type' );
     my $name = $cgi->param( 'name' );
-    
+
     return $Synacor::Disbatch::Engine::EventBus->construct_queue( $type, $name );
 }
 
@@ -399,13 +399,13 @@ Parameters:
 
     queueid		Task ID
     object		Javascript Object containing queues
-    
+
 =cut
 
 sub queue_create_tasks_json
 {
     my $cgi = shift;
-    
+
     my $queueid = $cgi->param( 'queueid' );
     my $jsobj = $cgi->param( 'object' );
     my $obj = $json->decode( $jsobj );
@@ -429,7 +429,7 @@ Parameters:
 sub queue_create_tasks_from_query_json
 {
     my $cgi = shift;
-    
+
     my $queueid = $cgi->param( 'queueid' );
     my $collection = $cgi->param( 'collection' );
     my $filter = $cgi->param( 'filter' );
@@ -441,7 +441,7 @@ sub queue_create_tasks_from_query_json
         $f = $json->decode($cgi->param('jsonfilter') );
         $filter = $f;
     }
-    
+
     return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $parameters );
 }
 
@@ -455,7 +455,7 @@ Returns a hash of the queues with each parameter defined.
 sub queue_prototypes_json
 {
     my $cgi = shift;
-    
+
     return $Synacor::Disbatch::Engine::EventBus->queue_prototypes;
 }
 
@@ -482,7 +482,7 @@ Search through tasks.
 sub search_tasks_json
 {
     my $cgi = shift;
-    
+
     my $tasks = $Synacor::Disbatch::Engine::EventBus->search_tasks( $cgi->param('queue'), $cgi->param('filter'), $cgi->param('json') || 0, $cgi->param('limit') || 0, $cgi->param('skip') || 0, $cgi->param('count') || 0, $cgi->param('terse') || 0 );
 
     return $tasks;
@@ -498,7 +498,7 @@ Delete a Queue.
 sub delete_queue_json
 {
     my $cgi = shift;
-    
+
     return { 'success' => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id')) };
 }
 
@@ -509,7 +509,7 @@ sub logger
     my $self = shift or confess "No self!";
     my $classname = ref($self);
     $classname =~ s/^.*:://;
-    
+
     my $logger = shift;
     if ( $logger )
     {
@@ -520,14 +520,14 @@ sub logger
     {
         $logger = "disbatch.httpd";
     }
-    
+
     if ( !$self->{log4perl_initialised} )
-    {    
+    {
         Log::Log4perl::init($self->{config}->{log4perl_conf});
         $self->{log4perl_initialised} = 1;
         $self->{loggers} = {};
     }
-    
+
     return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
     $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
     return $self->{loggers}->{$logger};

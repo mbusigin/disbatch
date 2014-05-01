@@ -2,7 +2,7 @@ package Synacor::Disbatch::Timer;
 
 use strict;
 
-=head1 NAME 
+=head1 NAME
 
 Synacor::Timer - thread which acts as an alerting timer for Synacor::Engine.
 
@@ -11,7 +11,7 @@ Synacor::Timer - thread which acts as an alerting timer for Synacor::Engine.
   use Synacor::Timer;
   my $timer_thread = Synacor::Timer->new( 3 );  # will cause awaken signal every 3 seconds
   $timer_thread->start;
-  
+
 =head1 METHODS
 
 =over 1
@@ -34,13 +34,13 @@ sub new
 
     my $seconds = shift;
     my $callback = shift;
-    
-    my $self = 
+
+    my $self =
     {
         'seconds'	=> $seconds ||= 60,
         'callback'	=> $callback ||= undef,
     };
-    
+
     bless $self, $class;
     return $self;
 }
@@ -68,7 +68,7 @@ sub start
 sub thread_run
 {
     my $self = shift;
-    
+
     while( 1 )
     {
         sleep $self->{ 'seconds' };

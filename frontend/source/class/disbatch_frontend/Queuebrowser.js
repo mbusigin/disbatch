@@ -34,7 +34,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       this.app = app;
 
       this.load_queue_prototypes();
-    
+
       // Create the Window
       var win = new qx.ui.window.Window("Queue Browser");
       win.setLayout(new qx.ui.layout.VBox(10));
@@ -104,7 +104,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
           req.setParameter( "attr", attr );
           req.setParameter( "value", changedData.value );
           req.send();
-      
+
 /*          var model =
             this.getTableModel();
           this.info( "model: " + model );
@@ -114,7 +114,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
           var value =
             model.getValue(changedData.firstColumn, changedData.firstRow);
           this.info( "value: " + value );
-  
+
           this.info("User edited property '" + key +
                     "' and entered value '" + value +"'."); */
         },
@@ -135,7 +135,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       delButton.addListener("execute", function() {
         this.deleteQueueDialog();
       }, this );
-                                        
+
       toolbar.add( delButton );
 
 
@@ -145,7 +145,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
         this._table.getSelectionModel().iterateSelection(function(ind) {
             index = ind;
         });
-        
+
         var id = this._table.getTableModel().getValue( 0, index );
         var constructor = this._table.getTableModel().getValue( 1, index );
         this.app.showTaskBrowser( id, constructor );
@@ -159,14 +159,14 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       }, this );
       toolbar.add( refreshButton );
 
-      
+
 
       win.open();
       this.loadqueues();
       return win;
     },
-    
-    
+
+
     loadqueues : function()
     {
       this._window.setStatus("Loading queue data...");
@@ -177,7 +177,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
         var table = [];
         var model = this._table.getTableModel();
         model.removeRows( 0, model.getRowCount() );
-        
+
         for ( var x in queues )
         {
             this._window.setStatus( x );
@@ -187,9 +187,9 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
                 model.addRows( [[ q["id"], q["constructor"], q["name"], q["maxthreads"], q["tasks_done"], q["tasks_todo"], q["tasks_doing"], q["tasks_backfill"] ]] );
             }
         }
-        
+
         this._window.setStatus( "Queues loaded." );
-        
+
       }, this );
       req.send();
     },
@@ -204,8 +204,8 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       wm1.setAllowMaximize(false);
       wm1.setAllowMinimize(false);
       wm1.add( new qx.ui.basic.Label("Really delete queue?") );
-        
-        
+
+
       // send button with validation
       var yesButton = new qx.ui.form.Button("Yes");
       yesButton.addListener("execute", function() {
@@ -213,7 +213,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
         this._table.getSelectionModel().iterateSelection(function(ind) {
             index = ind;
         });
-        
+
         var id = this._table.getTableModel().getValue( 0, index );
         var req = new qx.io.remote.Request("/delete-queue-json", "POST", "application/json" );
         req.setParameter( "id", id );
@@ -224,7 +224,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
         this.dqDialog.close();
       }, this );
       wm1.add(yesButton);
-      
+
       var noButton = new qx.ui.form.Button( "No" );
       noButton.addListener( "execute", function() {
         this.dqDialog.close()
@@ -232,7 +232,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       wm1.add(noButton);
       wm1.open();
     },
-    
+
     newQueueDialog : function()
     {
       var wm1 = new qx.ui.window.Window("Start new queue");
@@ -242,7 +242,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       wm1.setLayout( new qx.ui.layout.Basic() );
       wm1.setAllowMaximize(false);
       wm1.setAllowMinimize(false);
-      
+
       this.app.getRoot().add(wm1);
 
       var form = new qx.ui.form.Form();
@@ -251,7 +251,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       var nqName = new qx.ui.form.TextField();
       nqName.setRequired( true );
       form.add( nqName, "Name" );
-      
+
       var nqType = new qx.ui.form.SelectBox();
       for ( var x in this.queue_types )
       {
@@ -278,7 +278,7 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
           req.addListener("completed", function (e) {
               this.loadqueues();
           }, this );
-          
+
           req.send();
           this.nqDialog.close();
         }
@@ -291,8 +291,8 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
         form.reset();
       }, this);
       form.addButton(resetButton);
-                                                                                                    
-      
+
+
       wm1.add(new qx.ui.form.renderer.Single(form), {left: 10, top: 10});
       wm1.open();
   },
@@ -311,6 +311,6 @@ qx.Class.define("disbatch_frontend.Queuebrowser",
       }, this );
       req.send();
   }
-  
+
   }
 });
