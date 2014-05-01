@@ -73,6 +73,8 @@ fi
 /usr/share/doc/%{name}-%{version}/
 
 %changelog
+* Thu May  1 2014 Ashley Willis <awillis@synacor.com> - 3.2.1
+- kill forks if main process dies, use MongoDB::MongoClient, clean up warnings
 * Fri May 10 2013 Ashley Willis <awillis@synacor.com> - 3.2.0
 - restructure for proper install and packaging
 * Thu Apr 11 2013 Matt Busigin <mbusigin@synacor.com> - 3.1
