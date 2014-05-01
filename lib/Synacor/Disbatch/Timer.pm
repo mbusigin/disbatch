@@ -47,7 +47,7 @@ sub new
 
 =item start()
 
-Spin up a new thread, and begin the timer process.
+Spin up a new thread, and begin the timer process. Returns PID.
 
 =cut
 
@@ -59,7 +59,9 @@ sub start
     if ( $pid == 0 )
     {
         $self->thread_run;
-    }    
+    }
+    $self->{pid} = $pid;
+    return $pid;
 }
 
 
@@ -74,5 +76,22 @@ sub thread_run
     }
 }
 
+=item kill()
+
+Kills timer thread
+
+=cut
+
+sub kill {
+    my $self = shift;
+    if (kill 'KILL', $self->{pid})
+    {
+        print 'killed ' . __PACKAGE__ . " with PID $self->{pid}\n";
+    }
+    else
+    {
+        print 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}\n";
+    }
+}
 
 1;

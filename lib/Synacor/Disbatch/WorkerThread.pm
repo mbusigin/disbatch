@@ -121,7 +121,7 @@ sub startstuff
 
 =item thread_start()
 
-Start thread.  This happens automatically with the default constructor.
+Start thread, return PID.  This happens automatically with the default constructor.
 
 =cut
 
@@ -136,9 +136,27 @@ sub thread_start
     }
     
 #    my $ret = threads->create( \&startstuff, $self );
-    return;
+    $self->{pid} = $pid;
+    return $pid;
 }
 
+=item kill()
+
+Kills worker thread.
+
+=cut
+
+sub kill {
+    my $self = shift;
+    if (kill 'KILL', $self->{pid})
+    {
+        print 'killed ' . __PACKAGE__ . " with PID $self->{pid}\n";
+    }
+    else
+    {
+        print 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}\n";
+    }
+}
 
 sub logger
 {

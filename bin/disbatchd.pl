@@ -242,6 +242,21 @@ sub REAPER {
 
 $SIG{CHLD} = \&REAPER;
 
+# make sure disbatch children die as well:
+$SIG{KILL} = sub { exit 137 };	# this worked in simple test script, but not here.
+$SIG{TERM} = sub { exit 143 };
+$SIG{HUP} = sub { exit 129 };
+#END { kill 'TERM', -$$; }
+
+END {
+    print "END block\n";
+    $http->kill;
+    $timer->kill;
+    $timer2->kill;
+    for my $queue (@{$engine->{'queues'}}) {
+        $_->kill for @{$queue->{threads}};
+    }
+}
 
 $engine->logger->info( 'Initialisation complete' );
 while( 1 )

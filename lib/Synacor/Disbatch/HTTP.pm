@@ -233,7 +233,7 @@ sub worker_thread
 
 =item start()
 
-Starts a new thread for the web-server, initialises itself, and returns.
+Starts a new thread for the web-server, initialises itself, and returns PID.
 
 =back
 =cut
@@ -246,6 +246,27 @@ sub start
     if ( $pid == 0 )
     {
         $self->worker_thread;
+    }
+    $self->{pid} = $pid;
+    return $pid;
+}
+
+=item kill()
+
+Kills thread for the web-server.
+
+=back
+=cut
+
+sub kill {
+    my $self = shift;
+    if (kill 'KILL', $self->{pid})
+    {
+        print 'killed ' . __PACKAGE__ . " with PID $self->{pid}\n";
+    }
+    else
+    {
+        print 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}\n";
     }
 }
 
