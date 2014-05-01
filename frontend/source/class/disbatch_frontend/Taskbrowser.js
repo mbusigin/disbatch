@@ -146,7 +146,7 @@ qx.Class.define("disbatch_frontend.Taskbrowser",
 
 
         req.setParameter( "queue", this._queueid );
-	req.setParameter( "json", 1 );
+        req.setParameter( "json", 1 );
         req.setParameter( "filter", qx.util.Json.stringify(filter) );
         req.addListener( "completed", function(e) {
           var model = this._table.getTableModel();

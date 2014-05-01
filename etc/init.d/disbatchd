@@ -76,7 +76,7 @@ case "$1" in
         force_reload
         ;;
     status)
-		rh_status
+        rh_status
         ;;
     condrestart|try-restart)
         restart

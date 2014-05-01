@@ -87,11 +87,11 @@ following elements must be included:
 
 	_id:		ObjectId()				// Node ID,
 	heartbeat:	{...}					// Heartbeat object (see
-			    		   			   below)
-	version:	"r-disbatch 1.21" 			// Engine version string
+								   below)
+	version:	"r-disbatch 1.21"			// Engine version string
 	spec_version:	"1.0"					// DEN Specification
 	queuetypes	[ { class: "Synacor::Migration::IMAP2IMAP",
-			    version: '1.1a' }, .. ] 		// Array of plugins enabled
+			    version: '1.1a' }, .. ]		// Array of plugins enabled
 
 
 

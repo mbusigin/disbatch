@@ -260,16 +260,16 @@ sub report_task_done
             $thr->{tasks_run} ++;
             if ( $self->{config}->{tasks_before_workerthread_retirement} != 0 and $thr->{tasks_run} >= $self->{config}->{tasks_before_workerthread_retirement} )
             {
-            	$self->logger->info( "Worker thread is retiring after $thr->{tasks_run} tasks" );
-				$self->{ threads_inuse }{ $taskid }->{'eb'}->retire;
-				POSIX::close( $self->{ threads_inuse }{ $taskid }->{'eb'}->{socket}->fileno );
-				delete $self->{ 'threads_inuse' }{ $taskid };
-				$self->start_thread_pool;
+                $self->logger->info( "Worker thread is retiring after $thr->{tasks_run} tasks" );
+                $self->{ threads_inuse }{ $taskid }->{'eb'}->retire;
+                POSIX::close( $self->{ threads_inuse }{ $taskid }->{'eb'}->{socket}->fileno );
+                delete $self->{ 'threads_inuse' }{ $taskid };
+                $self->start_thread_pool;
             }
             else
             {
-            	push @{ $self->{'threads'} }, $self->{ 'threads_inuse' }{ $taskid };
-				delete $self->{ 'threads_inuse' }{ $taskid };
+                push @{ $self->{'threads'} }, $self->{ 'threads_inuse' }{ $taskid };
+                delete $self->{ 'threads_inuse' }{ $taskid };
             }
 
             $self->logger->info( "taskid: $taskid;  stderr: $stderr;  status: $status" );

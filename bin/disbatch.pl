@@ -19,7 +19,7 @@ alter the parameters of the migration engine while in operation.
     -u <URL>            migrated JSON API URL
     -n <username>       API username
     -p <password>       API password
-    -h		   Display this message
+    -h                  Display this message
 
 =head2 COMMANDS
 
@@ -96,7 +96,7 @@ USAGE
                -u <URL>            migrated JSON API URL
                -n <username>       API username
                -p <password>       API password
-               -h		   Display this message
+               -h                  Display this message
 
       COMMANDS
                reloadqueues
@@ -457,8 +457,8 @@ sub status
         my $obj = $json->decode( $jsobj );
         my $count = 0;
 
-		my $sep = \' | ';
-		my $tl = Text::Table->new(
+        my $sep = \' | ';
+        my $tl = Text::Table->new(
             { title => 'ID', align => 'right' }, $sep,
             { title => 'Type', align => 'right' }, $sep,
             { title => 'Name', align => 'right' }, $sep,
@@ -472,7 +472,7 @@ sub status
 
         foreach my $queue ( @{$obj} )
         {
-			$tl->add(
+            $tl->add(
                     $queue->{'id'},
                     $queue->{'constructor'},
                     $queue->{'name'},
@@ -484,9 +484,9 @@ sub status
                     $queue->{'tasks_backfill'} );
         }
         #print $t1->draw;
-		print $tl->title;
-		print $tl->rule('-', '+');
-		print $tl->body;
+        print $tl->title;
+        print $tl->rule('-', '+');
+        print $tl->body;
         print "\n$count total queues.\n";
     }
 }
