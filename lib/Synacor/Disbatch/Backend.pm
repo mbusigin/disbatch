@@ -33,7 +33,7 @@ sub connect_mongo
 
     if ( $host )
     {
-        $conn = MongoDB::Connection->new( 
+        $conn = MongoDB::MongoClient->new( 
                                             host => $host,
                                             auto_reconnect => 1,
                                             auto_connect => 1,
@@ -45,7 +45,7 @@ sub connect_mongo
     }
     else
     {   
-        $conn = MongoDB::Connection->new( %extras );
+        $conn = MongoDB::MongoClient->new( %extras );
     }
     my $db = $conn->get_database( $dbname );
     $db->authenticate( $dbname, $username, $password ) if defined($username);
