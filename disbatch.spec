@@ -74,6 +74,8 @@ fi
 /usr/share/doc/%{name}-%{version}/
 
 %changelog
+* Thu Jul 18 2014 Ashley Willis <awillis@synacor.com> - 3.2.3
+- fix init script
 * Thu Jul 17 2014 Ashley Willis <awillis@synacor.com> - 3.2.2
 - full path for /var/log/disbatchd.log in etc/disbatch/disbatch-log4perl.conf
 * Thu May  1 2014 Ashley Willis <awillis@synacor.com> - 3.2.1
