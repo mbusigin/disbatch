@@ -59,6 +59,7 @@ install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
 
 %post
 /sbin/chkconfig --add disbatchd
+/sbin/chkconfig disbatchd on
 
 %preun
 if [ $1 -lt 1 ]; then
