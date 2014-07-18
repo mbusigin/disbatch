@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Daemon::Control;
+
+my @program_args = ();  # i.e.: ( '--lib', '/path/to/libs,/path/to/more/libs' );
+
+my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/disbatchd.pl', @program_args);
+
+Daemon::Control->new({
+    name         => 'disbatchd',
+    program      => '/usr/bin/disbatchd.pl',
+    program_args => \@program_args,
+    directory    => '/',
+
+    lsb_start    => '$syslog $remote_fs',
+    lsb_stop     => '$syslog',
+    lsb_sdesc    => 'disbatchd',
+    lsb_desc     => 'Daemon for disbatchd.pl',
+
+    pid_file     => '/var/run/disbatchd.pid',
+    stdout_file  => '/var/log/disbatchd.out',
+    stderr_file  => '/var/log/disbatchd.out',
+
+    #user         => 'awillis',
+    #group        => 'systems',
+
+    scan_name    => qr/$scan_name/,
+
+    fork         => 2,
+
+})->run;
