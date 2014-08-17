@@ -1,6 +1,7 @@
 Makefile.PL
 MANIFEST
 t/001_base.t
+bin/QueueBalance.pl
 bin/disbatchd.pl
 bin/disbatch.pl
 lib/Pinscher/Core/EventBus.pm
@@ -13,3 +14,6 @@ lib/Synacor/Disbatch/Engine.pm
 lib/Synacor/Disbatch/Queue.pm
 lib/Synacor/Disbatch/HTTP.pm
 lib/Synacor/Disbatch/Backend.pm
+lib/Synacor/Disbatch/MongoDB.pm
+lib/Synacor/Disbatch/QueueBalance.pm
+lib/Synacor/Disbatch/Utils.pm

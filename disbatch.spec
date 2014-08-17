@@ -56,24 +56,33 @@ install -d -m0755 %{buildroot}/etc/disbatch
 cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
 
 install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
+install -D -m0755 etc/init.d/queuebalanced %{buildroot}/etc/init.d/queuebalanced
 
 %post
 /sbin/chkconfig --add disbatchd
 /sbin/chkconfig disbatchd on
 
+/sbin/chkconfig --add queuebalanced
+/sbin/chkconfig queuebalanced on
+
 %preun
 if [ $1 -lt 1 ]; then
 	/sbin/service disbatchd stop > /dev/null 2>&1
-
 	/sbin/chkconfig --del disbatchd
+
+	/sbin/service queuebalanced stop > /dev/null 2>&1
+	/sbin/chkconfig --del queuebalanced
 fi
 
 %files -f %{name}-%{version}-filelist
 /etc/init.d/disbatchd
+/etc/init.d/queuebalanced
 /etc/disbatch/
 /usr/share/doc/%{name}-%{version}/
 
 %changelog
+* Sun Aug 17 2014 Ashley Willis <awillis@synacor.com> - queuebalance01
+- first pass at integrating QueueBalance into repo
 * Thu Jul 18 2014 Ashley Willis <awillis@synacor.com> - 3.2.3
 - fix init script
 * Thu Jul 17 2014 Ashley Willis <awillis@synacor.com> - 3.2.2
