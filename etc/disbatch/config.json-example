@@ -1,0 +1,27 @@
+{
+  "disbatch": {
+    "mongodb": {
+      "connection": {
+        "host": "mongodb://mongo01,mongo02",
+        "find_master": 1,
+        "timeout": 60000,
+        "query_timeout": 60000,
+      },
+      "database": "disbatch300",
+      "collections": {
+        "tasks": "tasks",
+        "queues": "queues",
+        "reports": "reports",
+        "users": "users",
+        "balance": "balance",
+        "analysis": "analysis",
+      },
+    },
+    "balance": {
+      "enabled": true,
+      "log": true,
+      "verbose": false,
+      "pretend": false,
+    },
+  },
+}

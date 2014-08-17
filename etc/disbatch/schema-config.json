@@ -1,0 +1,11 @@
+# mandatory keys, values must be scalar unless end with @ or %
+[
+  "mongodb.connection.host",
+  "mongodb.database",
+  "mongodb.collections.tasks",
+  "mongodb.collections.queues",
+  "mongodb.collections.reports",
+  "mongodb.collections.users",
+  "mongodb.collections.balance",
+  "mongodb.collections.analysis",
+]

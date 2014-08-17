@@ -1,0 +1,29 @@
+#!/usr/bin/perl
+
+use 5.12.0;
+use warnings;
+use Daemon::Control;
+
+Daemon::Control->new({
+    name         => 'queuebalanced',
+    program      => '/usr/bin/QueueBalance.pl',
+    #program_args => [ '' ],
+    directory    => '/',
+
+    lsb_start    => '$syslog $remote_fs',
+    lsb_stop     => '$syslog',
+    lsb_sdesc    => 'queuebalanced',
+    lsb_desc     => 'Daemon for QueueBalance.pl',
+
+    pid_file     => '/var/run/queuebalanced.pid',
+    stdout_file  => '/var/run/queuebalanced.log',
+    stderr_file  => '/var/run/queuebalanced.log',
+
+    #user         => 'awillis',
+    #group        => 'systems',
+
+    scan_name    => qr|/usr/bin/perl /usr/bin/QueueBalance\.pl|,
+
+    fork         => 2,
+
+})->run;
