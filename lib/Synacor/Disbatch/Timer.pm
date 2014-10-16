@@ -18,7 +18,6 @@ Synacor::Timer - thread which acts as an alerting timer for Synacor::Engine.
 
 =cut
 
-
 =item new()
 
 Creates new instance of Synacor::Timer object.  Optional parameters:
@@ -28,17 +27,15 @@ Creates new instance of Synacor::Timer object.  Optional parameters:
 
 =cut
 
-sub new
-{
+sub new {
     my $class = shift;
 
-    my $seconds = shift;
+    my $seconds  = shift;
     my $callback = shift;
 
-    my $self =
-    {
-        'seconds'	=> $seconds ||= 60,
-        'callback'	=> $callback ||= undef,
+    my $self = {
+        'seconds'  => $seconds  ||= 60,
+        'callback' => $callback ||= undef,
     };
 
     bless $self, $class;
@@ -51,28 +48,23 @@ Spin up a new thread, and begin the timer process. Returns PID.
 
 =cut
 
-sub start
-{
+sub start {
     my $self = shift;
 
     my $pid = fork();
-    if ( $pid == 0 )
-    {
+    if ( $pid == 0 ) {
         $self->thread_run;
     }
     $self->{pid} = $pid;
     return $pid;
 }
 
-
-sub thread_run
-{
+sub thread_run {
     my $self = shift;
 
-    while( 1 )
-    {
-        sleep $self->{ 'seconds' };
-        $self->{ 'callback' }->();
+    while (1) {
+        sleep $self->{'seconds'};
+        $self->{'callback'}->();
     }
 }
 
@@ -84,12 +76,10 @@ Kills timer thread
 
 sub kill {
     my $self = shift;
-    if (kill 'KILL', $self->{pid})
-    {
+    if ( kill 'KILL', $self->{pid} ) {
         print 'killed ' . __PACKAGE__ . " with PID $self->{pid}\n";
     }
-    else
-    {
+    else {
         print 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}\n";
     }
 }

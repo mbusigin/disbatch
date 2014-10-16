@@ -16,7 +16,6 @@ use Log::Log4perl;
 
 $Storable::interwork_56_64bit = 1;
 
-
 =head1 NAME
 
 Synacor::Engine - the core execution engine.
@@ -41,7 +40,6 @@ of all of its queues (and their tasks).
 
 =cut
 
-
 =item new()
 
 Creates a new instance of the Synacor::Engine.  You really should only use one of these at one time.
@@ -57,46 +55,42 @@ our $Engine;
 
 our $json;
 
-
-sub new
-{
-    my $class = shift;
+sub new {
+    my $class  = shift;
     my $config = shift;
 
     my @queues;
     my %queue_constructors;
 
-    my $self =
-    {
-        'queues'		=> \@queues,
-        'queue_constructors'	=> \%queue_constructors,
-        'config'		=> $config,
-        'reloadqueues'		=> 0,
-        'chunkedtaskfactories'	=> [],
-        'task_observers'	=> {},
+    my $self = {
+        'queues'               => \@queues,
+        'queue_constructors'   => \%queue_constructors,
+        'config'               => $config,
+        'reloadqueues'         => 0,
+        'chunkedtaskfactories' => [],
+        'task_observers'       => {},
     };
-
 
     bless $self, $class;
 
     # Configure event bus
-    $EventBus = $self->{ 'eb' } = Pinscher::Core::EventBus->new( $self, 'Synacor::Engine' );
-    $self->{ 'eb' }->{ 'methods' }{ 'awaken' } = \&awaken;
-    $self->{ 'eb' }->{ 'methods' }{ 'scheduler_report' } = \&scheduler_report;
-    $self->{ 'eb' }->{ 'methods' }{ 'set_queue_attr' } = \&set_queue_attr;
-    $self->{ 'eb' }->{ 'methods' }{ 'construct_queue' } = \&construct_queue;
-    $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks'} = \&queue_create_tasks;
-    $self->{ 'eb' }->{ 'methods' }{ 'queue_create_tasks_from_query' } = \&queue_create_tasks_from_query;
-    $self->{ 'eb' }->{ 'methods' }{ 'queue_prototypes' } = \&queue_prototypes;
-    $self->{ 'eb' }->{ 'methods' }{ 'search_tasks' } = \&search_tasks;
-    $self->{ 'eb' }->{ 'methods' }{ 'delete_queue' } = \&delete_queue;
-    $self->{ 'eb' }->{ 'procedures' }{ 'report_task_done' } = \&report_task_done;
-    $self->{ 'eb' }->{ 'procedures' }{ 'update_node_status' } = \&update_node_status;
-    $self->{ 'eb' }->{ 'procedures' }{ 'reload_queues' } = \&reload_queues;
-    $self->{ 'eb' }->{ 'procedures' }{ 'register_task_status_observer' } = \&register_task_status_observer;
+    $EventBus = $self->{'eb'} = Pinscher::Core::EventBus->new( $self, 'Synacor::Engine' );
+    $self->{'eb'}->{'methods'}{'awaken'}                           = \&awaken;
+    $self->{'eb'}->{'methods'}{'scheduler_report'}                 = \&scheduler_report;
+    $self->{'eb'}->{'methods'}{'set_queue_attr'}                   = \&set_queue_attr;
+    $self->{'eb'}->{'methods'}{'construct_queue'}                  = \&construct_queue;
+    $self->{'eb'}->{'methods'}{'queue_create_tasks'}               = \&queue_create_tasks;
+    $self->{'eb'}->{'methods'}{'queue_create_tasks_from_query'}    = \&queue_create_tasks_from_query;
+    $self->{'eb'}->{'methods'}{'queue_prototypes'}                 = \&queue_prototypes;
+    $self->{'eb'}->{'methods'}{'search_tasks'}                     = \&search_tasks;
+    $self->{'eb'}->{'methods'}{'delete_queue'}                     = \&delete_queue;
+    $self->{'eb'}->{'procedures'}{'report_task_done'}              = \&report_task_done;
+    $self->{'eb'}->{'procedures'}{'update_node_status'}            = \&update_node_status;
+    $self->{'eb'}->{'procedures'}{'reload_queues'}                 = \&reload_queues;
+    $self->{'eb'}->{'procedures'}{'register_task_status_observer'} = \&register_task_status_observer;
 
-    $config->{'tasks_collection'} = 'tasks' if !defined($config->{'tasks_collection'});
-    $config->{'queues_collection'} = 'queues' if !defined($config->{'queues_collection'});
+    $config->{'tasks_collection'}  = 'tasks'  if !defined( $config->{'tasks_collection'} );
+    $config->{'queues_collection'} = 'queues' if !defined( $config->{'queues_collection'} );
 
     Synacor::Disbatch::Backend::initialise( $config->{'mongohost'}, $config->{'mongodb'}, $config->{'mongouser'}, $config->{'mongopassword'}, $config->{'tasks_collection'}, $config->{'queues_collection'} );
     $Engine = $self;
@@ -106,52 +100,46 @@ sub new
     return $self;
 }
 
-
 =item orphan_tasks()
 
 Find any tasks that were not completed in the past iteration, and set their status to orphaned
 
 =cut
 
-sub orphan_tasks
-{
+sub orphan_tasks {
     my $self = shift or die "No self";
-    Synacor::Disbatch::Backend::update_collection( $self->{'config'}->{'tasks_collection'}, {'node' => $self->{config}->{node}, 'status' => 0},
-                                                            { '$set' => {'status' => -6} }, {multiple => 1} );
+    Synacor::Disbatch::Backend::update_collection(
+        $self->{'config'}->{'tasks_collection'}, { 'node' => $self->{config}->{node}, 'status' => 0 },
+        { '$set' => { 'status' => -6 } }, { multiple => 1 }
+    );
 }
-
 
 =item logger()
 
  Returns a log4perl instance
 =cut
 
-sub logger
-{
+sub logger {
     my $self = shift or confess "No self!";
     my $logger = shift;
-    if ( $logger )
-    {
+    if ($logger) {
         my $l = "disbatch.engine.$logger";
         $logger = $l;
     }
-    else
-    {
+    else {
         $logger = "disbatch.engine";
     }
 
-    if ( !$self->{log4perl_initialised} )
-    {
-        Log::Log4perl::init($self->{config}->{log4perl_conf});
+    if ( !$self->{log4perl_initialised} ) {
+        Log::Log4perl::init( $self->{config}->{log4perl_conf} );
         $self->{log4perl_initialised} = 1;
-        $self->{loggers} = {};
+        $self->{loggers}              = {};
     }
 
     return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
-    $self->{loggers}->{$logger} = Log::Log4perl->get_logger( $logger );
+    $self->{loggers}->{$logger} = Log::Log4perl->get_logger($logger);
     return $self->{loggers}->{$logger};
 }
-
 
 =item add_queue()
 
@@ -160,15 +148,13 @@ periodically and strategically call $queue->schedule().
 
 =cut
 
-sub add_queue
-{
-    my $self = shift;
+sub add_queue {
+    my $self  = shift;
     my $queue = shift;
 
     push @{ $self->{'queues'} }, $queue;
-    $queue->{ 'id' } = $self->{_id};
+    $queue->{'id'} = $self->{_id};
 }
-
 
 =item start()
 
@@ -177,12 +163,10 @@ Synacor::Engine object to listen and react to events.
 
 =cut
 
-sub start
-{
+sub start {
     my $self = shift;
     $self->{'eb'}->run;
 }
-
 
 =item awaken()
 
@@ -190,48 +174,39 @@ Pause from blocking event loop to fire off all queue schedulers.
 
 =cut
 
-sub awaken
-{
+sub awaken {
     my $self = shift;
 
-    foreach my $queue (@{ $self->{'queues'} })
-    {
+    foreach my $queue ( @{ $self->{'queues'} } ) {
         $queue->schedule;
     }
 
-
     my $deletecount = 0;
-    return if scalar( @{$self->{'chunkedtaskfactories'}} ) == 0;
-    my $slice = $self->{'ctfquantum'} / scalar( @{$self->{'chunkedtaskfactories'}} );
-    foreach my $ctf (@{ $self->{'chunkedtaskfactories'} })
-    {
-        $ctf->slice( $slice ) if $ctf->{'done'} < $ctf->{'count'};
-        $deletecount ++ if $ctf->{'done'} == $ctf->{'count'};
+    return if scalar( @{ $self->{'chunkedtaskfactories'} } ) == 0;
+    my $slice = $self->{'ctfquantum'} / scalar( @{ $self->{'chunkedtaskfactories'} } );
+    foreach my $ctf ( @{ $self->{'chunkedtaskfactories'} } ) {
+        $ctf->slice($slice) if $ctf->{'done'} < $ctf->{'count'};
+        $deletecount++ if $ctf->{'done'} == $ctf->{'count'};
     }
 
-
-    for ( my $x = 0; $x < $deletecount; $x ++ )
-    {
+    for ( my $x = 0; $x < $deletecount; $x++ ) {
         my $index = 0;
-        foreach my $ctf (@{ $self->{'chunkedtaskfactories'} })
-        {
-            if ( $ctf->{'done'} == $ctf->{'count'} )
-            {
+        foreach my $ctf ( @{ $self->{'chunkedtaskfactories'} } ) {
+            if ( $ctf->{'done'} == $ctf->{'count'} ) {
                 splice @{ $self->{'chunkedtaskfactories'} }, $index, 1;
-                $self->logger->info( 'Completed a CTF' );
+                $self->logger->info('Completed a CTF');
                 goto done;
             }
 
-            $index ++;
+            $index++;
         }
-        done:
+      done:
     }
 
     Synacor::Disbatch::Backend::process_redolog();
 
     return;
 }
-
 
 =item report_item_done()
 
@@ -241,38 +216,29 @@ scheduler can start a new queued item.
 
 =cut
 
-
-sub report_task_done
-{
+sub report_task_done {
     my $self = shift;
     my ( $queueid, $task, $status, $stdout, $stderr ) = @_;
 
-    $self->logger->trace( "Worker PID $$ reporting done: queue #$queueid/$task" );
+    $self->logger->trace("Worker PID $$ reporting done: queue #$queueid/$task");
 
-    if ( $self->{'task_observers'}->{$task} )
-    {
-        $self->logger->warn( "Found registered observer.  Enqueuing status." );
-        $self->{'task_observers'}->{$task}->enqueue( $status );
-        delete $self->{ 'task_observers' }->{ $task };
+    if ( $self->{'task_observers'}->{$task} ) {
+        $self->logger->warn("Found registered observer.  Enqueuing status.");
+        $self->{'task_observers'}->{$task}->enqueue($status);
+        delete $self->{'task_observers'}->{$task};
     }
 
-    foreach my $queue (@{ $self->{'queues'} })
-    {
-        if ( $queue->{'id'} eq $queueid )
-        {
+    foreach my $queue ( @{ $self->{'queues'} } ) {
+        if ( $queue->{'id'} eq $queueid ) {
             $queue->report_task_done( $task, $status, $stdout, $stderr );
             return;
         }
     }
 
-
-    $self->logger->warn( "Task #$queueid doesn't exist!" );
+    $self->logger->warn("Task #$queueid doesn't exist!");
 
     return;
 }
-
-
-
 
 =item scheduler_report()
 
@@ -281,42 +247,38 @@ in-progress.  Also includes maxthreads & preemptive.  Callable via eventbus.
 
 =cut
 
-sub scheduler_report
-{
+sub scheduler_report {
     my $self = shift;
 
     my @rpt;
 
-    foreach my $queue ( @{$self->{'queues'}} )
-    {
+    foreach my $queue ( @{ $self->{'queues'} } ) {
         my %t;
 
-#        warn Dumper( $queue );
-        $t{ 'id' } = $queue->{ 'id' }->to_string;
-        $t{ 'tasks_todo' } = $queue->count_todo;
-        $t{ 'tasks_done' } = $queue->count_total - scalar( @{$queue->{'tasks_doing'}} ) - $t{ 'tasks_todo' };
-        $t{ 'tasks_doing' } = scalar( @{$queue->{'tasks_doing'}} );
-        $t{ 'maxthreads' } =  $queue->{ 'maxthreads' };
-        $t{ 'preemptive' } = $queue->{ 'preemptive' };
-        $t{ 'name' } = $queue->{ 'name' };
-        $t{ 'constructor' } = $queue->{ 'constructor' };
+        #        warn Dumper( $queue );
+        $t{'id'}          = $queue->{'id'}->to_string;
+        $t{'tasks_todo'}  = $queue->count_todo;
+        $t{'tasks_done'}  = $queue->count_total - scalar( @{ $queue->{'tasks_doing'} } ) - $t{'tasks_todo'};
+        $t{'tasks_doing'} = scalar( @{ $queue->{'tasks_doing'} } );
+        $t{'maxthreads'}  = $queue->{'maxthreads'};
+        $t{'preemptive'}  = $queue->{'preemptive'};
+        $t{'name'}        = $queue->{'name'};
+        $t{'constructor'} = $queue->{'constructor'};
 
-        $t{ 'tasks_backfill' } = 0;
-        foreach my $ctf ( @{$self->{'chunkedtaskfactories'}} )
-        {
-            if ( $ctf->{'queue'} == $queue )
-            {
-                $t{ 'tasks_backfill' } += $ctf->{ 'count' } - $ctf->{ 'done' };
+        $t{'tasks_backfill'} = 0;
+        foreach my $ctf ( @{ $self->{'chunkedtaskfactories'} } ) {
+            if ( $ctf->{'queue'} == $queue ) {
+                $t{'tasks_backfill'} += $ctf->{'count'} - $ctf->{'done'};
             }
         }
 
         push @rpt, \%t;
-#        $rpt{ $queue->{'id'} } = \%t;
+
+        #        $rpt{ $queue->{'id'} } = \%t;
     }
 
     return \@rpt;
 }
-
 
 =item set_queue_attr()
 
@@ -324,20 +286,18 @@ Set queue attribute.  Callable via eventbus.
 
 =cut
 
-sub set_queue_attr
-{
+sub set_queue_attr {
     my ( $self, $queueid, $attr, $value ) = @_;
 
-    my %queues = map { $_->{'id'} => $_ } @{$self->{'queues'}};
-    return [0, 'Invalid queue ID'] if ( !exists($queues{$queueid}) );
+    my %queues = map { $_->{'id'} => $_ } @{ $self->{'queues'} };
+    return [ 0, 'Invalid queue ID' ] if ( !exists( $queues{$queueid} ) );
 
-    my $queue = $queues{ $queueid };
-    $queue->{ $attr } = $value;
+    my $queue = $queues{$queueid};
+    $queue->{$attr} = $value;
     Synacor::Disbatch::Backend::update_queue( $queueid, $attr, $value );
 
-    return( [1, undef] );
+    return ( [ 1, undef ] );
 }
-
 
 =item filter_collection()
 
@@ -352,72 +312,60 @@ NOT an object-oriented method for Engine.
 
 =cut
 
-sub filter_collection
-{
+sub filter_collection {
     my ( $collection, $filter, $type, $key ) = @_;
     $type ||= "hash";
 
     my $hr = {};
 
-    if ( ref($filter) eq 'HASH' )
-    {
+    if ( ref($filter) eq 'HASH' ) {
+
         # de-share it
-        foreach my $k ( keys %{$filter} )
-        {
-            $hr->{ $k } = $filter->{ $k };
+        foreach my $k ( keys %{$filter} ) {
+            $hr->{$k} = $filter->{$k};
         }
     }
-    else
-    {
-        eval
-        {
+    else {
+        eval {
             $hr = eval $filter;
-            if ( $@ )
-            {
-                $Engine->logger->warn( "Filter eval failure: $@" );
+            if ($@) {
+                $Engine->logger->warn("Filter eval failure: $@");
                 return {};
             }
         };
-        if ( $@ )
-        {
-            $Engine->logger->warn( "Error processing filter: $@" );
+        if ($@) {
+            $Engine->logger->warn("Error processing filter: $@");
             return {};
         }
     }
 
-    if ( ref($hr) ne 'HASH' )
-    {
-        $Engine->logger->error( "Couldn't process filter hash because it's not a hashref" );
+    if ( ref($hr) ne 'HASH' ) {
+        $Engine->logger->error("Couldn't process filter hash because it's not a hashref");
         return {};
     }
 
-
-    foreach my $k ( keys %{$hr} )
-    {
-        if ( $hr->{$k} =~ /^qr\/(.*)\/$/ )
-        {
+    foreach my $k ( keys %{$hr} ) {
+        if ( $hr->{$k} =~ /^qr\/(.*)\/$/ ) {
             my $re = $1;
-            $hr->{ $k } = qr/$re/;
+            $hr->{$k} = qr/$re/;
         }
     }
 
-    my $query = Synacor::Disbatch::Backend::query_collection( $collection, $hr, {retry => 'synchronous'} );
+    my $query = Synacor::Disbatch::Backend::query_collection( $collection, $hr, { retry => 'synchronous' } );
     return $query
-            if $type eq 'query';
+      if $type eq 'query';
     my @all = $query->all;
     return \@all
-            if $type eq 'array';
+      if $type eq 'array';
 
     my %results;
 
-    foreach my $document ( @all )
-    {
+    foreach my $document (@all) {
         $results{ $document->{$key} } = $document;
     }
 
     return \%results;
 }
-
 
 =item register_queue_constructor()
 
@@ -425,14 +373,12 @@ Registers a queue constructor with the engine.  Required for on-demand creation.
 
 =cut
 
-sub register_queue_constructor
-{
+sub register_queue_constructor {
     my ( $self, $name, $constructor ) = @_;
 
-    $self->{ 'queue_constructors' }->{ $name } = $constructor;
+    $self->{'queue_constructors'}->{$name} = $constructor;
     return;
 }
-
 
 =item construct_queue()
 
@@ -447,26 +393,24 @@ Callable via eventbus.
 
 =cut
 
-sub construct_queue
-{
+sub construct_queue {
     my ( $self, $type, $name ) = @_;
 
-    my $constructor = $self->{ 'queue_constructors' }->{ $type };
+    my $constructor = $self->{'queue_constructors'}->{$type};
     return [ 0, 'Task constructor not found' ] if !$constructor;
     my $queue = &$constructor( $type, $self );
-    $queue->{ 'name' } = $name;
-    $queue->{ 'constructor' } = $type;
+    $queue->{'name'}        = $name;
+    $queue->{'constructor'} = $type;
 
-    $self->add_queue( $queue );
+    $self->add_queue($queue);
 
     my %obj;
-    $obj{ 'constructor' } = $type;
-    $obj{ 'name' } = $name;
-    my $oid = Synacor::Disbatch::Backend::insert_collection( $self->{'config'}->{'queues_collection'}, \%obj, {retry => 'synchronous'} );
-    $queue->{ 'id' } = $queue->{ '_id' } = $oid;
+    $obj{'constructor'} = $type;
+    $obj{'name'}        = $name;
+    my $oid = Synacor::Disbatch::Backend::insert_collection( $self->{'config'}->{'queues_collection'}, \%obj, { retry => 'synchronous' } );
+    $queue->{'id'} = $queue->{'_id'} = $oid;
     return [ 1, $queue->{'id'} ];
 }
-
 
 =item delete_queue()
 
@@ -478,27 +422,23 @@ Parameters:
 
 =cut
 
-sub delete_queue
-{
+sub delete_queue {
     my ( $self, $id ) = @_;
 
-    Synacor::Disbatch::Backend::delete_collection( $self->{'config'}->{'queues_collection'},  { '_id' => $id }, {retry => 'redolog'} );
+    Synacor::Disbatch::Backend::delete_collection( $self->{'config'}->{'queues_collection'}, { '_id' => $id }, { retry => 'redolog' } );
 
     my $index = 0;
-    foreach my $q ( @{ $self->{'queues'} } )
-    {
-        if ( $q->{'id'} eq $id )
-        {
+    foreach my $q ( @{ $self->{'queues'} } ) {
+        if ( $q->{'id'} eq $id ) {
             splice @{ $self->{'queues'} }, $index, 1;
             return 1;
         }
 
-        $index ++;
+        $index++;
     }
 
     return 0;
 }
-
 
 =item get_queue_by_id()
 
@@ -512,21 +452,17 @@ Callable via eventbus.
 
 =cut
 
-sub get_queue_by_id
-{
+sub get_queue_by_id {
     my ( $self, $queueid ) = @_;
 
-    foreach my $queue ( @{$self->{'queues'}} )
-    {
-        if ( $queue->{ 'id' } eq $queueid or $queue->{ 'name' } eq $queueid )
-        {
-            return( $queue );
+    foreach my $queue ( @{ $self->{'queues'} } ) {
+        if ( $queue->{'id'} eq $queueid or $queue->{'name'} eq $queueid ) {
+            return ($queue);
         }
     }
 
     return undef;
 }
-
 
 =item queue_create_tasks()
 
@@ -541,29 +477,26 @@ Callable via eventbus.
 
 =cut
 
-sub queue_create_tasks
-{
+sub queue_create_tasks {
     my ( $self, $queueid, $tasks_arrayref, $returntids ) = @_;
     untie $tasks_arrayref;
 
-    my $queue = $self->get_queue_by_id( $queueid );
+    my $queue = $self->get_queue_by_id($queueid);
     return [ 0, 'Task not found' ] if !$queue;
 
     my @tids;
 
     my $count = 0;
-    foreach my $task ( @{$tasks_arrayref} )
-    {
-        my $iobject = $queue->create_task( $task );
+    foreach my $task ( @{$tasks_arrayref} ) {
+        my $iobject = $queue->create_task($task);
         next if !defined($iobject);
-        $count ++;
-        push @tids, $iobject->{ '_id' } if defined($returntids);
+        $count++;
+        push @tids, $iobject->{'_id'} if defined($returntids);
     }
 
     return [ 1, $count, @tids ] if defined($returntids);
     return [ 1, $count ];
 }
-
 
 =item queue_create_tasks_from_query()
 
@@ -581,22 +514,18 @@ Callable via eventbus.
 
 =cut
 
-sub queue_create_tasks_from_query
-{
+sub queue_create_tasks_from_query {
     my ( $self, $queueid, $collection, $filter, $columns_arrayref ) = @_;
 
-    try
-    {
+    try {
         my $ctf = Synacor::Disbatch::ChunkedTaskFactory->new( $self, $queueid, $collection, $filter, $columns_arrayref );
-        push @{$self->{'chunkedtaskfactories'}}, $ctf;
-        return [1, $ctf->{'count'}];
+        push @{ $self->{'chunkedtaskfactories'} }, $ctf;
+        return [ 1, $ctf->{'count'} ];
     }
-    catch
-    {
-        return [-1, 0, 'Error creating chunked task factory from query: ' . $_ ];
+    catch {
+        return [ -1, 0, 'Error creating chunked task factory from query: ' . $_ ];
     };
 }
-
 
 =item is_filtered_queue()
 
@@ -604,32 +533,26 @@ Determine whether queue is filtered in by the INI file
 
 =cut
 
-sub is_active_queue
-{
+sub is_active_queue {
     my $self = shift;
-    my $q = shift;
+    my $q    = shift;
 
     return 1 if !$self->{'activequeues'} and !$self->{'ignorequeues'};
 
-    if ( $self->{'activequeues'} )
-    {
-        foreach my $f (@{$self->{'activequeues'}})
-        {
+    if ( $self->{'activequeues'} ) {
+        foreach my $f ( @{ $self->{'activequeues'} } ) {
             return 1 if $f eq $q;
         }
         return 0;
     }
 
-    if ( $self->{'ignorequeues'} )
-    {
-        foreach my $f (@{$self->{'ignorequeues'}})
-        {
+    if ( $self->{'ignorequeues'} ) {
+        foreach my $f ( @{ $self->{'ignorequeues'} } ) {
             return 0 if $f eq $q;
         }
         return 1;
     }
 }
-
 
 =item load_queues()
 
@@ -638,47 +561,38 @@ associated with those queues.
 
 =cut
 
-sub load_queues
-{
+sub load_queues {
     my $self = shift;
 
-    my @queues = Synacor::Disbatch::Backend::query_collection( $self->{'config'}->{'queues_collection'}, {}, {retry => 'synchronous'} )->all;
-    my %queues = map { $_->{'id'} => $_ } @{$self->{'queues'}};
+    my @queues = Synacor::Disbatch::Backend::query_collection( $self->{'config'}->{'queues_collection'}, {}, { retry => 'synchronous' } )->all;
+    my %queues = map { $_->{'id'} => $_ } @{ $self->{'queues'} };
 
-
-    foreach my $row ( @queues )
-    {
-        next if $queues{$row->{'_id'}};
+    foreach my $row (@queues) {
+        next if $queues{ $row->{'_id'} };
         next if $self->is_active_queue( $row->{'_id'} ) == 0;
 
-        my $constructor = $self->{ 'queue_constructors' }->{ $row->{'constructor'} };
-        if ( !$constructor )
-        {
-            $self->logger->warn( "Couldn't load constructor for $row->{constructor}" );
+        my $constructor = $self->{'queue_constructors'}->{ $row->{'constructor'} };
+        if ( !$constructor ) {
+            $self->logger->warn("Couldn't load constructor for $row->{constructor}");
             next;
         }
 
         my $queue;
 
-        eval
-        {
-            $queue = &$constructor( $row->{'constructor'}, $self );
-        };
-        if ( $@ )
-        {
-            $self->logger->error( "Unable to construct queue $row->{name}: $@" );
+        eval { $queue = &$constructor( $row->{'constructor'}, $self ); };
+        if ($@) {
+            $self->logger->error("Unable to construct queue $row->{name}: $@");
             next;
         }
 
-        $queue->{ 'id' } = $queue->{_id} = $row->{ '_id' };
-#        $queue->{ 'name' } = $row->{ 'name' };
-#        $queue->{ 'constructor' } = $row->{ 'constructor' };
+        $queue->{'id'} = $queue->{_id} = $row->{'_id'};
 
-        foreach my $attr (keys %{$row})
-        {
-            if ( $attr ne '_id' )
-            {
-                $queue->{ $attr } = $row->{ $attr };
+        #        $queue->{ 'name' } = $row->{ 'name' };
+        #        $queue->{ 'constructor' } = $row->{ 'constructor' };
+
+        foreach my $attr ( keys %{$row} ) {
+            if ( $attr ne '_id' ) {
+                $queue->{$attr} = $row->{$attr};
             }
         }
 
@@ -686,22 +600,19 @@ sub load_queues
     }
 }
 
-
 =item update_node_status()
 
 Updates node status to MongoDB.
 
 =cut
 
-sub update_node_status()
-{
+sub update_node_status() {
     my $self = shift;
 
     my $status = Synacor::Disbatch::Backend::query_one( 'nodes', { 'node' => $self->{'config'}->{'node'} } );
-    $status->{ 'node' } = $self->{ 'config' }->{ 'node' };
-    $status->{ 'queues' } = $self->scheduler_report;
-    $status->{ 'timestamp' } = DateTime->now;
-
+    $status->{'node'}      = $self->{'config'}->{'node'};
+    $status->{'queues'}    = $self->scheduler_report;
+    $status->{'timestamp'} = DateTime->now;
 
     Synacor::Disbatch::Backend::update_collection( 'nodes', { 'node' => $self->{'config'}->{'node'} }, $status, { 'upsert' => 1 } );
     $self->reflect_queue_changes();
@@ -713,30 +624,25 @@ Reflect changes made to queue attributes, ostensibly made initially on another n
 
 =cut
 
-sub reflect_queue_changes
-{
+sub reflect_queue_changes {
     my $self = shift;
 
-    my $query = Synacor::Disbatch::Backend::query_collection( $self->{'config'}->{'queues_collection'}, {}, {}, {retry => 'no'} );
+    my $query = Synacor::Disbatch::Backend::query_collection( $self->{'config'}->{'queues_collection'}, {}, {}, { retry => 'no' } );
     return if !$query;
 
     my @queues = $query->all;
-    my %queues = map { $_->{'_id'} => $_ } @{$self->{'queues'}};
+    my %queues = map { $_->{'_id'} => $_ } @{ $self->{'queues'} };
 
-    foreach my $queue ( @queues )
-    {
+    foreach my $queue (@queues) {
         my $queue2 = $queues{ $queue->{'_id'} };
-        if ( !$queue2 )
-        {
+        if ( !$queue2 ) {
             $self->load_queues if $self->is_active_queue( $queue->{'_id'} ) == 1;
             next;
         }
 
-        foreach my $key ( keys %{$queue} )
-        {
+        foreach my $key ( keys %{$queue} ) {
             next if $key eq '_id';
-            if ( $queue->{$key} ne $queue2->{$key} )
-            {
+            if ( $queue->{$key} ne $queue2->{$key} ) {
                 $self->logger->info( "Setting $queue->{_id} $key from " . $queue2->{$key} . ' to ' . $queue->{$key} );
                 $queue2->{$key} = $queue->{$key};
             }
@@ -744,42 +650,36 @@ sub reflect_queue_changes
     }
 }
 
-
 =item queue_prototypes()
 
 Returns a hashref of queues, and the arguments they take to create new tasks;
 
 =cut
 
-sub queue_prototypes
-{
+sub queue_prototypes {
     my $self = shift;
 
     my %r;
-    foreach my $type ( keys %{ $self->{'queue_constructors'} } )
-    {
-        my $constructor = $self->{ 'queue_constructors' }->{ $type };
-        if ( !$constructor )
-        {
-            $self->logger->error( "No such constructor '$type'!" );
+    foreach my $type ( keys %{ $self->{'queue_constructors'} } ) {
+        my $constructor = $self->{'queue_constructors'}->{$type};
+        if ( !$constructor ) {
+            $self->logger->error("No such constructor '$type'!");
             next;
         }
 
         my $queue = &$constructor( $type, $self );
 
-        if ( !$queue )
-        {
-            $self->logger->error( "Couldn't create queue '$type' from constructor!" );
+        if ( !$queue ) {
+            $self->logger->error("Couldn't create queue '$type' from constructor!");
             next;
         }
 
-        $r{ $type } = $queue->parameters_definitions;
-        $r{ 'settings' } = $queue->queue_definitions;
+        $r{$type} = $queue->parameters_definitions;
+        $r{'settings'} = $queue->queue_definitions;
     }
 
     return \%r;
 }
-
 
 =item reload_queues()
 
@@ -787,14 +687,12 @@ Tells engine to reload queues on next iteration of the engine main loop
 
 =cut
 
-sub reload_queues
-{
+sub reload_queues {
     my $self = shift;
 
-    $self->{ 'reloadqueues' } = 1;
+    $self->{'reloadqueues'} = 1;
     return 1;
 }
-
 
 =item search_tasks()
 
@@ -802,83 +700,72 @@ Search through tasks.
 
 =cut
 
-sub search_tasks
-{
+sub search_tasks {
     my $self = shift;
 
-    my $queue = shift;
+    my $queue  = shift;
     my $filter = shift;
     my $isjson = shift;
-    my $limit = shift;
-    my $skip = shift;
-    my $count = shift;
-    my $terse = shift;
-
+    my $limit  = shift;
+    my $skip   = shift;
+    my $count  = shift;
+    my $terse  = shift;
 
     my $attrs = {};
-    $attrs->{ 'limit' } = $limit if $limit;
-    $attrs->{ 'skip' } = $skip if $skip;
+    $attrs->{'limit'} = $limit if $limit;
+    $attrs->{'skip'}  = $skip  if $skip;
 
     my $hr;
 
-    if ( !$isjson )
-    {
+    if ( !$isjson ) {
         $hr = eval $filter;
-        if ( $@ )
-        {
-            $self->logger->error( "Error evaluating filter: $@" );
+        if ($@) {
+            $self->logger->error("Error evaluating filter: $@");
             return [];
         }
     }
-    else
-    {
+    else {
         $json = new JSON if ( !$json );
-        $hr = $json->decode( $filter );
+        $hr = $json->decode($filter);
 
-        foreach my $k ( keys %{$hr} )
-        {
-            if ( $hr->{$k} =~ /^qr\/(.*)\/$/ )
-            {
+        foreach my $k ( keys %{$hr} ) {
+            if ( $hr->{$k} =~ /^qr\/(.*)\/$/ ) {
                 my $re = $1;
-                $hr->{ $k } = qr/$re/;
+                $hr->{$k} = qr/$re/;
             }
         }
     }
 
-    if ( ref($hr) ne 'HASH' )
-    {
-        $self->logger->error( "Filter not a hashref" );
-            $hr = {};
-#        return [];
+    if ( ref($hr) ne 'HASH' ) {
+        $self->logger->error("Filter not a hashref");
+        $hr = {};
+
+        #        return [];
     }
 
-    $hr->{ 'queue' } = MongoDB::OID->new( value => $queue );
+    $hr->{'queue'} = MongoDB::OID->new( value => $queue );
     $hr->{'_id'} = MongoDB::OID->new( value => $hr->{'id'} ) if ( $hr->{'id'} );
     delete $hr->{id};
 
-    $hr->{status} = int($hr->{status}) if defined($hr->{status});
+    $hr->{status} = int( $hr->{status} ) if defined( $hr->{status} );
 
-    my $cursor = Synacor::Disbatch::Backend::query_collection( $self->{config}->{'tasks_collection'}, $hr, $attrs, {retry => 'synchronous'} );
+    my $cursor = Synacor::Disbatch::Backend::query_collection( $self->{config}->{'tasks_collection'}, $hr, $attrs, { retry => 'synchronous' } );
     return [ 1, $cursor->count() ] if $count;
     my @tasks = $cursor->all;
 
-    foreach my $task (@tasks)
-    {
-        my $parameters = $task->{ 'parameters' };
-        $task->{ 'parameters' } = $self->{'parameterformat_read'}( $parameters ) if $parameters;
-        if ( $terse )
-        {
-            $task->{ 'stdout' } = '';
-            $task->{ 'stderr' } = '';
+    foreach my $task (@tasks) {
+        my $parameters = $task->{'parameters'};
+        $task->{'parameters'} = $self->{'parameterformat_read'}($parameters) if $parameters;
+        if ($terse) {
+            $task->{'stdout'} = '';
+            $task->{'stderr'} = '';
         }
 
-        if ( $task->{mtime} )
-        {
+        if ( $task->{mtime} ) {
             my $dt = DateTime->from_epoch( epoch => $task->{mtime} );
             $task->{mtime_str} = $dt->ymd . ' ' . $dt->hms;
         }
-        if ( $task->{ctime} )
-        {
+        if ( $task->{ctime} ) {
             my $dt = DateTime->from_epoch( epoch => $task->{ctime} );
             $task->{ctime_str} = $dt->ymd . ' ' . $dt->hms;
         }
@@ -886,58 +773,45 @@ sub search_tasks
     return \@tasks;
 }
 
-
-sub register_task_status_observer
-{
-    my $self = shift;
-    my $tid = shift;
+sub register_task_status_observer {
+    my $self  = shift;
+    my $tid   = shift;
     my $queue = shift;
 
-    my $task =  $Synacor::Disbatch::Engine::mongo->get_collection($self->{'config'}->{'tasks_collection'})->find_one( {_id => MongoDB::OID->new(value => $tid)} );
-    if ( !$task )
-    {
+    my $task = $Synacor::Disbatch::Engine::mongo->get_collection( $self->{'config'}->{'tasks_collection'} )->find_one( { _id => MongoDB::OID->new( value => $tid ) } );
+    if ( !$task ) {
         die "Couldn't find task by $tid\n";
     }
-    if ( $task->{'status'} == 1 )
-    {
-        $queue->enqueue( 1 );
+    if ( $task->{'status'} == 1 ) {
+        $queue->enqueue(1);
     }
-    else
-    {
-        $self->{ 'task_observers' }->{ $tid } = $queue;
+    else {
+        $self->{'task_observers'}->{$tid} = $queue;
     }
 }
 
-
-sub storable_write
-{
+sub storable_write {
     my $param = shift;
-    return nfreeze( $param );
+    return nfreeze($param);
 }
 
-
-sub storable_read
-{
+sub storable_read {
     my $param = shift;
-    return thaw( $param );
+    return thaw($param);
 }
 
-sub json_write
-{
+sub json_write {
     my $param = shift;
     return $param;
     $json = new JSON if ( !$json );
-    return $json->encode( $param );
+    return $json->encode($param);
 }
 
-
-sub json_read
-{
+sub json_read {
     my $param = shift;
     return $param;
     $json = new JSON if ( !$json );
-    return $json->decode( $param );
+    return $json->decode($param);
 }
-
 
 1;

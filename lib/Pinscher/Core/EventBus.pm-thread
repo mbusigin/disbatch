@@ -9,162 +9,141 @@ use Thread::Queue;
 use Clone qw(clone);
 use Thread::Semaphore;
 
-
 our $AUTOLOAD;
 
-sub new
-{
-    my $class = shift;
+sub new {
+    my $class     = shift;
     my $self_self = shift;
-    my $name = shift;
+    my $name      = shift;
 
-    my $txqueue: shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
-    my $rxqueue: shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
-    my $s :shared = Thread::Semaphore->new();
+    my $txqueue : shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
+    my $rxqueue : shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
+    my $s : shared       = Thread::Semaphore->new();
 
-    my $self =
-    {
+    my $self = {
         'name'      => $name,
-        'rxqueue'       => $rxqueue,
-        'txqueue'       => $txqueue,
+        'rxqueue'   => $rxqueue,
+        'txqueue'   => $txqueue,
         'semaphore' => $s,
-        'key'           => 'value',
-        'methods'       =>
-                        {
-                                'test'          => \&footest,
-                        },
-            'procedures' =>
-                {
-                    'test'      => \&footest,
-                },
-                'self'      => $self_self,
-                'pre_call_trap' => undef,
-                'post_call_trap' => undef,
+        'key'       => 'value',
+        'methods'   => {
+            'test' => \&footest,
+        },
+        'procedures' => {
+            'test' => \&footest,
+        },
+        'self'           => $self_self,
+        'pre_call_trap'  => undef,
+        'post_call_trap' => undef,
     };
     bless $self, $class;
 
     return $self;
 }
 
+sub AUTOLOAD {
+    my $self = shift;
+    my $type = ref($self)
+      or die "$self is not an object";
 
-sub AUTOLOAD
-{
-        my $self = shift;
-        my $type = ref($self)
-                    or die "$self is not an object";
-
-        my $name = $AUTOLOAD;
-        $name =~ s/.*://;   # strip fully-qualified portion
-        return $self->call_thread( $name, @_ );
+    my $name = $AUTOLOAD;
+    $name =~ s/.*://;    # strip fully-qualified portion
+    return $self->call_thread( $name, @_ );
 }
 
-
-sub call_thread
-{
+sub call_thread {
     my $self = shift;
     my $name = shift;
     my $args = \@_;
 
-#    print "call_thread(): $self->{name} :: $name:\n" . Dumper( $args ) . "\n\n";
-#    warn "$self->{name} :: $name Semaphore down\n";
-#    $self->{'semaphore'}->down();
-#    warn "\t$self->{name} :: $name Enqueue & clone\n";
-    my $txqueue: shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
-    my @send = threads::shared::shared_clone([$name, $args, $txqueue]);
-    $self->{rxqueue}->enqueue( @send );
+    #    print "call_thread(): $self->{name} :: $name:\n" . Dumper( $args ) . "\n\n";
+    #    warn "$self->{name} :: $name Semaphore down\n";
+    #    $self->{'semaphore'}->down();
+    #    warn "\t$self->{name} :: $name Enqueue & clone\n";
+    my $txqueue : shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
+    my @send = threads::shared::shared_clone( [ $name, $args, $txqueue ] );
+    $self->{rxqueue}->enqueue(@send);
     goto call_thread_done if ( $self->{'procedures'}->{$name} );
 
-#    warn "\t$self->{name} :: $name Dequeue reply\n";
+    #    warn "\t$self->{name} :: $name Dequeue reply\n";
     my $ret = $txqueue->dequeue;
-#    warn "\t$self->{name} :: $name Semaphore up\n";
-#    $self->{'semaphore'}->up();
 
-call_thread_done:
-#    warn "$self->{name} :: $name Done\n";
+    #    warn "\t$self->{name} :: $name Semaphore up\n";
+    #    $self->{'semaphore'}->up();
+
+  call_thread_done:
+
+    #    warn "$self->{name} :: $name Done\n";
     return $ret if defined($ret);
 }
 
-sub set_self
-{
-    my $self = shift;
+sub set_self {
+    my $self    = shift;
     my $newself = shift;
     $self->{'self'} = shift;
 }
 
-sub run
-{
+sub run {
     my $self = shift;
 
-    while( 1 )
-    {
+    while (1) {
         $self->oneiteration;
     }
 }
 
+sub oneiteration {
+    my $self = shift;
 
-sub oneiteration
-{
-        my $self = shift;
-
-        my $message = $self->{rxqueue}->dequeue;
-        {
-                if ( scalar(@{$message}) != 3 )
-                {
-                    print "\n\nW T F: message is not 3:\n" . Dumper( $message ) . "\n\n";
-                    next;
-                }
-                my $command = $message->[0];
-                my $args = $message->[1];
-                my $txqueue = $message->[2];
-
-                my $procedure = 0;
-                my $func = $self->{methods}->{$command};
-                if ( !$func )
-                {
-                    $func = $self->{procedures}->{$command};
-                    $procedure = 1;
-                    if ( !$func )
-                    {
-                            die "No such function or procedure '$command'\n" . Dumper( $self->{'methods'} );
-                        }
-                }
-
-                my @arguments;
-                push @arguments, $self->{'self'};
-                if ( ref($args) eq 'ARRAY')
-                {
-                        foreach my $p ( @{$args} )
-                        {
-                                push @arguments, $p;
-                        }
-                }
-                else
-                {
-                        push @arguments, $args;
-                }
-
-
-                $self->{'pre_call_trap'}->( \@arguments )
-                    if ( $self->{'pre_call_trap'} );
-
-                my $ret = $func->( @arguments ); #@{ $self, $args } );
-#               warn "      Return for $command : " . Dumper( $ret );
-                $self->{'post_call_trap'}->( $self, \@arguments, $ret )
-                    if ( $self->{'post_call_trap'} );
-                if ( $procedure != 1 )
-                {
-                    $ret = 0 if !defined($ret);
-                    $txqueue->enqueue( threads::shared::shared_clone($ret) );
-                }
+    my $message = $self->{rxqueue}->dequeue;
+    {
+        if ( scalar( @{$message} ) != 3 ) {
+            print "\n\nW T F: message is not 3:\n" . Dumper($message) . "\n\n";
+            next;
         }
+        my $command = $message->[0];
+        my $args    = $message->[1];
+        my $txqueue = $message->[2];
+
+        my $procedure = 0;
+        my $func      = $self->{methods}->{$command};
+        if ( !$func ) {
+            $func      = $self->{procedures}->{$command};
+            $procedure = 1;
+            if ( !$func ) {
+                die "No such function or procedure '$command'\n" . Dumper( $self->{'methods'} );
+            }
+        }
+
+        my @arguments;
+        push @arguments, $self->{'self'};
+        if ( ref($args) eq 'ARRAY' ) {
+            foreach my $p ( @{$args} ) {
+                push @arguments, $p;
+            }
+        }
+        else {
+            push @arguments, $args;
+        }
+
+        $self->{'pre_call_trap'}->( \@arguments )
+          if ( $self->{'pre_call_trap'} );
+
+        my $ret = $func->(@arguments);    #@{ $self, $args } );
+
+        #               warn "      Return for $command : " . Dumper( $ret );
+        $self->{'post_call_trap'}->( $self, \@arguments, $ret )
+          if ( $self->{'post_call_trap'} );
+        if ( $procedure != 1 ) {
+            $ret = 0 if !defined($ret);
+            $txqueue->enqueue( threads::shared::shared_clone($ret) );
+        }
+    }
 }
 
-sub footest
-{
-        my $self = shift;
-        my ( $a, $b, $c ) = @_;
-        return $a + $b + $c;
+sub footest {
+    my $self = shift;
+    my ( $a, $b, $c ) = @_;
+    return $a + $b + $c;
 }
-
 
 1;

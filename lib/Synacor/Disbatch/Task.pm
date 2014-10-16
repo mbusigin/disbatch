@@ -4,7 +4,6 @@ use strict;
 use Carp;
 use Try::Tiny;
 
-
 =head1 NAME
 
 Synacor::Disbatch::Task - a single discrete task.  This is a base
@@ -17,9 +16,7 @@ imapsync.
 
 =cut
 
-
-sub new
-{
+sub new {
     my $class = shift;
 
     my %self;
@@ -28,14 +25,12 @@ sub new
     return \%self;
 }
 
-sub start
-{
+sub start {
     my $self = shift;
 
-#    $self->{ 'thread_handle' } = threads->create( \&run, $self );
+    #    $self->{ 'thread_handle' } = threads->create( \&run, $self );
     return;
 }
-
 
 =item run()
 
@@ -43,8 +38,7 @@ Override this to implement the most atomic individual operation your task can pe
 
 =cut
 
-sub run
-{
+sub run {
     my $self = shift;
 
     print "*** STUB run\n";
@@ -52,32 +46,27 @@ sub run
     return;
 }
 
-
-
 =item wait_task_status_change()
 
 Connect to the engine, wait for status change on a task
 
 =cut
 
-sub wait_task_status_change
-{
+sub wait_task_status_change {
     my $class = shift;
-    my $self = shift;
-    my $tid = shift;
+    my $self  = shift;
+    my $tid   = shift;
 
     warn "tid: $tid\n";
 
-    my $queue: shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
+    my $queue : shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
 
     $Synacor::Disbatch::Engine::EventBus->register_task_status_observer( $tid, $queue );
     my $ret = $queue->dequeue;
-    return threads::shared::shared_clone( $ret );
+    return threads::shared::shared_clone($ret);
 }
 
-
-sub workerthread
-{
+sub workerthread {
     my $self = shift or confess "no self";
     my $workerthread = $self->{workerthread} or confess "No workerthread defined";
     return $workerthread;
