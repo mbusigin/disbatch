@@ -1,0 +1,12 @@
+-b
+-l=400		# 400 chars per line
+-i=4		# 4 columns per indentation
+-dt=4
+-it=4
+-bar		# opening brace always on right, even for long clauses
+-nsfs
+-nolq
+--break-at-old-comma-breakpoints	# boc?
+--format-skipping
+--format-skipping-begin='#\s*tidyoff'
+--format-skipping-end='#\s*tidyon'
