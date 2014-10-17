@@ -1,15 +1,5 @@
 package Synacor::Disbatch::Queue::Enclosure;
 
-=head1 NAME
-
-Synacor::Disbatch::Queue::Enclosure - queue which allows you to run arbitrary Perl expressions
-
-=head1 METHODS
-
-=over 1
-
-=cut
-
 use strict;
 use Synacor::Disbatch::Task;
 use Data::Dumper;
@@ -32,15 +22,8 @@ sub create_task_actual {
     my $data = shift;
 
     my $task = eval {
-
-=back
-=head1 NAME
-
-Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation task
-
-=cut
-
         package Synacor::Disbatch::Queue::Enclosure::Task;
+
         use strict;
         use Synacor::Disbatch::Task;
         use Synacor::Disbatch::Engine;
@@ -81,6 +64,13 @@ Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation ta
             return;
         }
         __PACKAGE__;
+
+        #=head1 NAME
+        #
+        #Synacor::Disbatch::Queue::Enclosure::task - single Perl expression evaluation task
+        #
+        #=cut
+
     }->new( $self, $data );
 
     return $task;
@@ -102,3 +92,16 @@ sub queue_definitions {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Disbatch::Queue::Enclosure - queue which allows you to run arbitrary Perl expressions
+
+=head1 METHODS
+
+=over 1
+
+=back
+

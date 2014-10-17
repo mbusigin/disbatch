@@ -1,26 +1,5 @@
 package Synacor::Disbatch::HTTP;
 
-=head1 NAME
-
-HTTP Server - API & document server
-
-=head1 OVERVIEW
-
-A simple web-server built atop HTTP::Server::Simple::CGI, this is the
-primary vector to telling the execution engine what to do.
-
-Nearly every operation this software can perform has a JSON API call.
-
-Implementing a new API call is trivial:  simply write a subroutine which
-accepts a CGI object, return a hashref or arrayref, add it to the %dispatch
-hash, and your new API call is ready.
-
-=head1 METHODS
-
-=over 1
-
-=cut
-
 use strict;
 use Carp;
 use Try::Tiny;
@@ -47,12 +26,6 @@ my %dispatch = (
     '/queue-prototypes-json'              => \&queue_prototypes_json,
     '/search-tasks-json'                  => \&search_tasks_json,
 );
-
-=item new()
-
-Instantiate new web-server.
-
-=cut
 
 sub new {
     my $class = shift;
@@ -105,18 +78,6 @@ sub do_authenticate {
     $self->logger->error("Authentication error");
     return 0;
 }
-
-=item handle_request()
-
-This method overrides the HTTP::Server::Simple default, and is called when a request is made.
-
-It maintains a JSON object, and makes JSON API calls (translating the
-responses to JSON for output) if the request path ends in "-json".
-
-If the request path does not end in "-json", it will attempt to grab a file
-out of the /etc/disbatch/htdocs/ directory.
-
-=cut
 
 sub handle_request {
     my $self = shift;
@@ -209,13 +170,6 @@ sub worker_thread {
     $self->run;
 }
 
-=item start()
-
-Starts a new thread for the web-server, initialises itself, and returns PID.
-
-=back
-=cut
-
 sub start {
     my $self = shift;
 
@@ -227,12 +181,6 @@ sub start {
     return $pid;
 }
 
-=item kill()
-
-Kills thread for the web-server.
-
-=back
-=cut
 
 sub kill {
     my $self = shift;
@@ -244,37 +192,12 @@ sub kill {
     }
 }
 
-=head1 JSON API Calls
-
-=over 1
-
-=cut
-
-=item /scheduler-json
-
-Enumerate through queues, collecting statistics on items to-do, complete and in-progress. Also includes maxthreads & preemptive. Callable via eventbus.
-
-=cut
-
 sub scheduler_json {
     my $cgi = shift;
 
     my $scheduler_report = $Synacor::Disbatch::Engine::EventBus->scheduler_report;
     return $scheduler_report;
 }
-
-=item /set-queue-attr-json
-
-Sets a queue attribute.
-
-Parameters:
-
-    attr		Attribute name
-    value		Attribute value
-
-Valid attributes: maxthreads preemptive
-
-=cut
 
 sub set_queue_attr_json {
     my $cgi = shift;
@@ -310,39 +233,11 @@ sub set_queue_attr_json {
     return \%ret;
 }
 
-=item /list-users-json
-
-Returns an array of users from a group, optionally with a Perl expression filter.
-
-Parameters:
-
-    group		Group name
-    filter		Perl expression filter
-
-Filter examples:
-
-    1				All users
-    $username =~ /^[Aa]/	Users beginning with a or A
-    $user.password eq 'foo'	User password is foo
-
-=cut
-
 sub list_users_json {
     my $cgi = shift;
 
     return $Synacor::Disbatch::Engine::EventBus->list_users( $cgi->param('group'), $cgi->param('filter') );
 }
-
-=item /start-queue-json
-
-Instansiate & commence a new queue.
-
-Parameters:
-
-    type		Class of queue to create
-    name		Name of new queue (unused)
-
-=cut
 
 sub start_queue_json {
     my $cgi = shift;
@@ -353,17 +248,6 @@ sub start_queue_json {
     return $Synacor::Disbatch::Engine::EventBus->construct_queue( $type, $name );
 }
 
-=item /queue-create-items-json
-
-Create & queue items under a queue from a JSON object.
-
-Parameters:
-
-    queueid		Task ID
-    object		Javascript Object containing queues
-
-=cut
-
 sub queue_create_tasks_json {
     my $cgi = shift;
 
@@ -372,19 +256,6 @@ sub queue_create_tasks_json {
     my $obj     = $json->decode($jsobj);
     return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks( $queueid, $obj );
 }
-
-=item /queue-create-tasks-from-users-json
-
-Create new tasks and add them to a queue queue using the result of a user filter to populate & substitute parameter data.
-
-Parameters:
-
-    queueid		Task ID
-    group		Group name
-    filter		Perl expression filter
-    columns		JSON object containing parameters to create tasks with
-
-=cut
 
 sub queue_create_tasks_from_query_json {
     my $cgi = shift;
@@ -403,34 +274,16 @@ sub queue_create_tasks_from_query_json {
     return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $parameters );
 }
 
-=item /queue-prototypes-json
-
-Returns a hash of the queues with each parameter defined.
-
-=cut
-
 sub queue_prototypes_json {
     my $cgi = shift;
 
     return $Synacor::Disbatch::Engine::EventBus->queue_prototypes;
 }
 
-=item /reload-queues-json
-
-Ask engine to reload the Perl queue classes.
-
-=cut
-
 sub reload_queues_json {
     $Synacor::Disbatch::Engine::EventBus->reload_queues();
     return [1];
 }
-
-=item /search-tasks-json
-
-Search through tasks.
-
-=cut
 
 sub search_tasks_json {
     my $cgi = shift;
@@ -439,12 +292,6 @@ sub search_tasks_json {
 
     return $tasks;
 }
-
-=item /delete-queue-json
-
-Delete a Queue.
-
-=cut
 
 sub delete_queue_json {
     my $cgi = shift;
@@ -478,3 +325,130 @@ sub logger {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+HTTP Server - API & document server
+
+=head1 OVERVIEW
+
+A simple web-server built atop HTTP::Server::Simple::CGI, this is the
+primary vector to telling the execution engine what to do.
+
+Nearly every operation this software can perform has a JSON API call.
+
+Implementing a new API call is trivial:  simply write a subroutine which
+accepts a CGI object, return a hashref or arrayref, add it to the %dispatch
+hash, and your new API call is ready.
+
+=head1 METHODS
+
+=over 1
+
+=item new()
+
+Instantiate new web-server.
+
+=item handle_request()
+
+This method overrides the HTTP::Server::Simple default, and is called when a request is made.
+
+It maintains a JSON object, and makes JSON API calls (translating the
+responses to JSON for output) if the request path ends in "-json".
+
+If the request path does not end in "-json", it will attempt to grab a file
+out of the /etc/disbatch/htdocs/ directory.
+
+=item start()
+
+Starts a new thread for the web-server, initialises itself, and returns PID.
+
+=back
+
+=item kill()
+
+Kills thread for the web-server.
+
+=back
+
+=head1 JSON API Calls
+
+=over 1
+
+=item /scheduler-json
+
+Enumerate through queues, collecting statistics on items to-do, complete and in-progress. Also includes maxthreads & preemptive. Callable via eventbus.
+
+=item /set-queue-attr-json
+
+Sets a queue attribute.
+
+Parameters:
+
+    attr		Attribute name
+    value		Attribute value
+
+Valid attributes: maxthreads preemptive
+
+=item /list-users-json
+
+Returns an array of users from a group, optionally with a Perl expression filter.
+
+Parameters:
+
+    group		Group name
+    filter		Perl expression filter
+
+Filter examples:
+
+    1				All users
+    $username =~ /^[Aa]/	Users beginning with a or A
+    $user.password eq 'foo'	User password is foo
+
+=item /start-queue-json
+
+Instansiate & commence a new queue.
+
+Parameters:
+
+    type		Class of queue to create
+    name		Name of new queue (unused)
+
+=item /queue-create-items-json
+
+Create & queue items under a queue from a JSON object.
+
+Parameters:
+
+    queueid		Task ID
+    object		Javascript Object containing queues
+
+=item /queue-create-tasks-from-users-json
+
+Create new tasks and add them to a queue queue using the result of a user filter to populate & substitute parameter data.
+
+Parameters:
+
+    queueid		Task ID
+    group		Group name
+    filter		Perl expression filter
+    columns		JSON object containing parameters to create tasks with
+
+=item /queue-prototypes-json
+
+Returns a hash of the queues with each parameter defined.
+
+=item /reload-queues-json
+
+Ask engine to reload the Perl queue classes.
+
+=item /search-tasks-json
+
+Search through tasks.
+
+=item /delete-queue-json
+
+Delete a Queue.
+

@@ -8,35 +8,6 @@ use Try::Tiny;
 use Carp;
 use Synacor::Disbatch::Engine;
 
-=head1 NAME
-
-Synacor::Disbatch::WorkerThread - thread execution container
-
-=head1 DESCRIPTION
-
-A queue will spawn worker threads, and then saturate them with work as
-available.
-
-The thread management & work scheduling process is completely handled by the
-framework, so you needn't know about this thread unless you're tinkering
-with the inner workings of the engine.
-
-=head1 NETHODS
-
-=over 1
-
-=cut
-
-=item new()
-
-Creates a new Synacor::Disbatch::WorkerThread.
-
-Arguments:
-
-  $id		The ID for the new worker thread
-
-=cut
-
 sub new {
     my $class = shift;
     my $id    = shift;
@@ -58,16 +29,6 @@ sub new {
 
     return $self;
 }
-
-=item start_task()
-
-Begin work on a new Synacor::Disbatch::Task.
-
-Arguments:
-
-  $task		Task to work on
-
-=cut
 
 sub start_task {
     my $self = shift or confess "No self!";
@@ -105,12 +66,6 @@ sub startstuff {
     exit(0);
 }
 
-=item thread_start()
-
-Start thread, return PID.  This happens automatically with the default constructor.
-
-=cut
-
 sub thread_start {
     my $self = shift;
 
@@ -123,12 +78,6 @@ sub thread_start {
     $self->{pid} = $pid;
     return $pid;
 }
-
-=item kill()
-
-Kills worker thread.
-
-=cut
 
 sub kill {
     my $self = shift;
@@ -193,3 +142,47 @@ sub unset {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Disbatch::WorkerThread - thread execution container
+
+=head1 DESCRIPTION
+
+A queue will spawn worker threads, and then saturate them with work as
+available.
+
+The thread management & work scheduling process is completely handled by the
+framework, so you needn't know about this thread unless you're tinkering
+with the inner workings of the engine.
+
+=head1 NETHODS
+
+=over 1
+
+=item new()
+
+Creates a new Synacor::Disbatch::WorkerThread.
+
+Arguments:
+
+  $id		The ID for the new worker thread
+
+=item start_task()
+
+Begin work on a new Synacor::Disbatch::Task.
+
+Arguments:
+
+  $task		Task to work on
+
+=item thread_start()
+
+Start thread, return PID.  This happens automatically with the default constructor.
+
+=item kill()
+
+Kills worker thread.
+

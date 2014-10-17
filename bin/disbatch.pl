@@ -1,71 +1,5 @@
 #!/usr/bin/perl -W
 
-=head1 NAME
-
-disbatch - Distributed Elastic Batch Processing Framework - Client CLI Tool
-
-=head1 DESCRIPTION
-
-This tool interfaces with the migrated process via the JSON API.  It
-allows you create new queues, spin off new tasks, and
-alter the parameters of the migration engine while in operation.
-
-=head1 USAGE
-
-    disbatch.pl [<options>] [<command>...]
-
-=head2 OPTIONS
-
-    -u <URL>            migrated JSON API URL
-    -n <username>       API username
-    -p <password>       API password
-    -h                  Display this message
-
-=head2 COMMANDS
-
-    reloadqueues
-
-    status
-
-    queue types
-    queue set <queue> <key> <value>
-    queue start <type> <name>
-    queue task <queue> [<key> <value>, ...]
-    queue tasks <queue> <collection> [<filter key> <value>, ...] -- [<parameter key> <value>, ...]
-
-    enclosure <queue> <collection> <filter> [<col1>, ...]
-
-=head1 EXAMPLES
-
-=head2 STATUS
-
-The first example is to grab the current running status of the migrated
-process.  This will list all queues, and the state they are in:
-
-  mbusigin@tesla:~/synacor-migration-framework$ ./synmig.pl status
-  .------------+-----------+--------+------------+--------+------------.
-  | Queue #    | Threads   | To-Do  | Preemptive | Done   | Processing |
-  +------------+-----------+--------+------------+--------+------------+
-  | 2158219    | 3         | 26013  | 1          | 1427   | 3          |
-  '------------+-----------+--------+------------+--------+------------'
-
-=head2 TWEAKING QUEUE SETTINGS
-
-Since there are more than 26,000 tasks, 3 threads seems a bit spartan.  We
-can increase that by increasing the maxthread queue attribute:
-
-  mbusigin@tesla:~/synacor-migration-framework$ ./synmig.pl queue set 2158219 maxthreads 10
-
-=head2 STARTING A NEW QUEUE
-
-Next, let's create a new queue:
-
-  mbusigin@tesla:~/synacor-migration-framework$ ./synmig.pl queue start Synacor::Disbatch::Queue::IMAP2IMAP foo
-  New Queue #2185663
-
-
-=cut
-
 use strict;
 use Data::Dumper;
 use LWP::UserAgent;
@@ -590,3 +524,69 @@ if ( $params->{'help'} ) {
 
 my $func = $params->{'execute'};
 &$func($params);
+
+__END__
+
+=head1 NAME
+
+disbatch - Distributed Elastic Batch Processing Framework - Client CLI Tool
+
+=head1 DESCRIPTION
+
+This tool interfaces with the migrated process via the JSON API.  It
+allows you create new queues, spin off new tasks, and
+alter the parameters of the migration engine while in operation.
+
+=head1 USAGE
+
+    disbatch.pl [<options>] [<command>...]
+
+=head2 OPTIONS
+
+    -u <URL>            migrated JSON API URL
+    -n <username>       API username
+    -p <password>       API password
+    -h                  Display this message
+
+=head2 COMMANDS
+
+    reloadqueues
+
+    status
+
+    queue types
+    queue set <queue> <key> <value>
+    queue start <type> <name>
+    queue task <queue> [<key> <value>, ...]
+    queue tasks <queue> <collection> [<filter key> <value>, ...] -- [<parameter key> <value>, ...]
+
+    enclosure <queue> <collection> <filter> [<col1>, ...]
+
+=head1 EXAMPLES
+
+=head2 STATUS
+
+The first example is to grab the current running status of the migrated
+process.  This will list all queues, and the state they are in:
+
+  mbusigin@tesla:~/synacor-migration-framework$ ./synmig.pl status
+  .------------+-----------+--------+------------+--------+------------.
+  | Queue #    | Threads   | To-Do  | Preemptive | Done   | Processing |
+  +------------+-----------+--------+------------+--------+------------+
+  | 2158219    | 3         | 26013  | 1          | 1427   | 3          |
+  '------------+-----------+--------+------------+--------+------------'
+
+=head2 TWEAKING QUEUE SETTINGS
+
+Since there are more than 26,000 tasks, 3 threads seems a bit spartan.  We
+can increase that by increasing the maxthread queue attribute:
+
+  mbusigin@tesla:~/synacor-migration-framework$ ./synmig.pl queue set 2158219 maxthreads 10
+
+=head2 STARTING A NEW QUEUE
+
+Next, let's create a new queue:
+
+  mbusigin@tesla:~/synacor-migration-framework$ ./synmig.pl queue start Synacor::Disbatch::Queue::IMAP2IMAP foo
+  New Queue #2185663
+

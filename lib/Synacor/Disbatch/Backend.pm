@@ -11,12 +11,6 @@ my @redolog;
 my $tasks_collection  = 'tasks';
 my $queues_collection = 'queues';
 
-=item connect_mongo()
-
-Establish a new connection to a MongoDB.
-
-=cut
-
 sub connect_mongo {
     my $host     = shift;
     my $dbname   = shift;
@@ -49,12 +43,6 @@ sub connect_mongo {
     return $db;
 }
 
-=item initialise()
-
-Initialise Backend module
-
-=cut
-
 sub initialise {
     my ( $host, $db, $username, $password, $xtasks_collection, $xqueues_collection ) = @_;
     $tasks_collection  = $xtasks_collection;
@@ -62,12 +50,6 @@ sub initialise {
     $mongo             = connect_mongo( $host, $db, $username, $password );
     ensureIndices( $mongo, $tasks_collection, $queues_collection );
 }
-
-=item ensureIndices()
-
-Ensure that the appropriate Disbatch indices exist.
-
-=cut
 
 sub ensureIndices {
     my $mongo             = shift;
@@ -90,23 +72,11 @@ sub ensureIndices {
 
 }
 
-=item random_pause()
-
-Pause for a random period of time to retry for a system resource
-
-=cut
-
 sub random_pause {
     srand time * $$;
     my $sleepfor = rand(1);
     select( undef, undef, undef, $sleepfor );
 }
-
-=item update_collection()
-
-Update a collection
-
-=cut
 
 sub update_collection {
     my ( $cid, $where, $update, $options, $extra ) = @_;
@@ -135,23 +105,11 @@ sub update_collection {
     }
 }
 
-=item update_queue()
-
-Update a queue attribute
-
-=cut
-
 sub update_queue {
     my ( $queueid, $attr, $value ) = @_;
     print Dumper( \@_ );
     update_collection( $queues_collection, { '_id' => MongoDB::OID->new( value => $queueid ) }, { '$set' => { $attr => $value } }, {}, { retry => 'synchronous' } );
 }
-
-=item query_collection()
-
-Query a Mongo collection
-
-=cut
 
 sub query_collection {
     my ( $cid, $hr, $attrs, $extra ) = @_;
@@ -177,12 +135,6 @@ sub query_collection {
     return $query;
 }
 
-=item query_one()
-
-Query a Mongo collection for the single top result
-
-=cut
-
 sub query_one {
     my ( $cid, $hr, $extra ) = @_;
 
@@ -205,12 +157,6 @@ sub query_one {
     return $result;
 }
 
-=item count()
-
-Count the result of a query
-
-=cut
-
 sub count {
     my ( $cid, $hr, $extra ) = @_;
 
@@ -232,12 +178,6 @@ sub count {
 
     return $count;
 }
-
-=item insert_collection()
-
-Insert into a Mongo collection
-
-=cut
 
 sub insert_collection {
     my ( $cid, $hr, $extra ) = @_;
@@ -266,12 +206,6 @@ sub insert_collection {
     }
 }
 
-=item delete_collection()
-
-Delete from a Mongo collection
-
-=cut
-
 sub delete_collection {
     my ( $cid, $hr, $extra ) = @_;
 
@@ -294,12 +228,6 @@ sub delete_collection {
     }
 }
 
-=item process_redolog()
-
-Process redo log
-
-=cut
-
 sub process_redolog {
     while ( ( my $tx = pop @redolog ) ) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Re-do log entry is being ignored");
@@ -307,3 +235,54 @@ sub process_redolog {
 }
 
 1;
+
+__END__
+
+=item connect_mongo()
+
+Establish a new connection to a MongoDB.
+
+=item initialise()
+
+Initialise Backend module
+
+=item ensureIndices()
+
+Ensure that the appropriate Disbatch indices exist.
+
+=item random_pause()
+
+Pause for a random period of time to retry for a system resource
+
+=item update_collection()
+
+Update a collection
+
+=item update_queue()
+
+Update a queue attribute
+
+=item query_collection()
+
+Query a Mongo collection
+
+=item query_one()
+
+Query a Mongo collection for the single top result
+
+=item count()
+
+Count the result of a query
+
+=item insert_collection()
+
+Insert into a Mongo collection
+
+=item delete_collection()
+
+Delete from a Mongo collection
+
+=item process_redolog()
+
+Process redo log
+

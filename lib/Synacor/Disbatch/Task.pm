@@ -4,18 +4,6 @@ use strict;
 use Carp;
 use Try::Tiny;
 
-=head1 NAME
-
-Synacor::Disbatch::Task - a single discrete task.  This is a base
-class that is inherited, with run() overridden to do useful things like run
-imapsync.
-
-=head1 METHODS
-
-=over 1
-
-=cut
-
 sub new {
     my $class = shift;
 
@@ -32,12 +20,6 @@ sub start {
     return;
 }
 
-=item run()
-
-Override this to implement the most atomic individual operation your task can perform.
-
-=cut
-
 sub run {
     my $self = shift;
 
@@ -45,12 +27,6 @@ sub run {
     $self->run;
     return;
 }
-
-=item wait_task_status_change()
-
-Connect to the engine, wait for status change on a task
-
-=cut
 
 sub wait_task_status_change {
     my $class = shift;
@@ -73,3 +49,24 @@ sub workerthread {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Disbatch::Task - a single discrete task.  This is a base
+class that is inherited, with run() overridden to do useful things like run
+imapsync.
+
+=head1 METHODS
+
+=over 1
+
+=item run()
+
+Override this to implement the most atomic individual operation your task can perform.
+
+=item wait_task_status_change()
+
+Connect to the engine, wait for status change on a task
+

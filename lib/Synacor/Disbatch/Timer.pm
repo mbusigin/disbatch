@@ -2,31 +2,6 @@ package Synacor::Disbatch::Timer;
 
 use strict;
 
-=head1 NAME
-
-Synacor::Timer - thread which acts as an alerting timer for Synacor::Engine.
-
-=head1 SYNOPSIS
-
-  use Synacor::Timer;
-  my $timer_thread = Synacor::Timer->new( 3 );  # will cause awaken signal every 3 seconds
-  $timer_thread->start;
-
-=head1 METHODS
-
-=over 1
-
-=cut
-
-=item new()
-
-Creates new instance of Synacor::Timer object.  Optional parameters:
-
-  $seconds		The number of seconds to wait between executions
-  $callback		A reference to a callback function which is called
-
-=cut
-
 sub new {
     my $class = shift;
 
@@ -41,12 +16,6 @@ sub new {
     bless $self, $class;
     return $self;
 }
-
-=item start()
-
-Spin up a new thread, and begin the timer process. Returns PID.
-
-=cut
 
 sub start {
     my $self = shift;
@@ -68,12 +37,6 @@ sub thread_run {
     }
 }
 
-=item kill()
-
-Kills timer thread
-
-=cut
-
 sub kill {
     my $self = shift;
     if ( kill 'KILL', $self->{pid} ) {
@@ -85,3 +48,35 @@ sub kill {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Timer - thread which acts as an alerting timer for Synacor::Engine.
+
+=head1 SYNOPSIS
+
+  use Synacor::Timer;
+  my $timer_thread = Synacor::Timer->new( 3 );  # will cause awaken signal every 3 seconds
+  $timer_thread->start;
+
+=head1 METHODS
+
+=over 1
+
+=item new()
+
+Creates new instance of Synacor::Timer object.  Optional parameters:
+
+  $seconds		The number of seconds to wait between executions
+  $callback		A reference to a callback function which is called
+
+=item start()
+
+Spin up a new thread, and begin the timer process. Returns PID.
+
+=item kill()
+
+Kills timer thread
+

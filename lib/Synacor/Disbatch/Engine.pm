@@ -16,40 +16,6 @@ use Log::Log4perl;
 
 $Storable::interwork_56_64bit = 1;
 
-=head1 NAME
-
-Synacor::Engine - the core execution engine.
-
-=head1 DESCRIPTION
-
-This module runs the main event loop, brokers threads, and generally decides
-when to do something.
-
-The execution engine is also responsible for maintaining the physical state
-of all of its queues (and their tasks).
-
-=head1 SYNOPSIS
-
-  use Synacor::Engine;
-  my $engine = Synacor::Engine->new;
-  $engine->start;
-
-=head1 METHODS
-
-=over 4
-
-=cut
-
-=item new()
-
-Creates a new instance of the Synacor::Engine.  You really should only use one of these at one time.
-
-Parameters:
-
-    $users		hashref to users
-
-=cut
-
 our $EventBus;
 our $Engine;
 
@@ -100,12 +66,6 @@ sub new {
     return $self;
 }
 
-=item orphan_tasks()
-
-Find any tasks that were not completed in the past iteration, and set their status to orphaned
-
-=cut
-
 sub orphan_tasks {
     my $self = shift or die "No self";
     Synacor::Disbatch::Backend::update_collection(
@@ -113,11 +73,6 @@ sub orphan_tasks {
         { '$set' => { 'status' => -6 } }, { multiple => 1 }
     );
 }
-
-=item logger()
-
- Returns a log4perl instance
-=cut
 
 sub logger {
     my $self = shift or confess "No self!";
@@ -141,13 +96,6 @@ sub logger {
     return $self->{loggers}->{$logger};
 }
 
-=item add_queue()
-
-Adds a queue to the Engine for execution.  This will essentially just
-periodically and strategically call $queue->schedule().
-
-=cut
-
 sub add_queue {
     my $self  = shift;
     my $queue = shift;
@@ -156,23 +104,10 @@ sub add_queue {
     $queue->{'id'} = $self->{_id};
 }
 
-=item start()
-
-Blocking function call which begins the event bus loop.  This will cause the
-Synacor::Engine object to listen and react to events.
-
-=cut
-
 sub start {
     my $self = shift;
     $self->{'eb'}->run;
 }
-
-=item awaken()
-
-Pause from blocking event loop to fire off all queue schedulers.
-
-=cut
 
 sub awaken {
     my $self = shift;
@@ -208,14 +143,6 @@ sub awaken {
     return;
 }
 
-=item report_item_done()
-
-Report that an item is complete.  Generally called from an Item's run()
-function via the eventbus, this records that an item is complete so the
-scheduler can start a new queued item.
-
-=cut
-
 sub report_task_done {
     my $self = shift;
     my ( $queueid, $task, $status, $stdout, $stderr ) = @_;
@@ -239,13 +166,6 @@ sub report_task_done {
 
     return;
 }
-
-=item scheduler_report()
-
-Enumerate through queues, collecting statistics on tasks to-do, complete and
-in-progress.  Also includes maxthreads & preemptive.  Callable via eventbus.
-
-=cut
 
 sub scheduler_report {
     my $self = shift;
@@ -280,12 +200,6 @@ sub scheduler_report {
     return \@rpt;
 }
 
-=item set_queue_attr()
-
-Set queue attribute.  Callable via eventbus.
-
-=cut
-
 sub set_queue_attr {
     my ( $self, $queueid, $attr, $value ) = @_;
 
@@ -298,19 +212,6 @@ sub set_queue_attr {
 
     return ( [ 1, undef ] );
 }
-
-=item filter_collection()
-
-Parameters:
-
-  $collection	Collection
-  $filter		Perl expression filter
-  $type			Hash or array (default: hash)
-  $key          Key attribute (Optional, requires $type to eq 'hash')
-
-NOT an object-oriented method for Engine.
-
-=cut
 
 sub filter_collection {
     my ( $collection, $filter, $type, $key ) = @_;
@@ -367,31 +268,12 @@ sub filter_collection {
     return \%results;
 }
 
-=item register_queue_constructor()
-
-Registers a queue constructor with the engine.  Required for on-demand creation.
-
-=cut
-
 sub register_queue_constructor {
     my ( $self, $name, $constructor ) = @_;
 
     $self->{'queue_constructors'}->{$name} = $constructor;
     return;
 }
-
-=item construct_queue()
-
-Using a previously register constructor, instantiate a new queue object.
-
-Parameters:
-
-    $type	String name of class
-    $name	Name of new queue (currently ignored)
-
-Callable via eventbus.
-
-=cut
 
 sub construct_queue {
     my ( $self, $type, $name ) = @_;
@@ -412,16 +294,6 @@ sub construct_queue {
     return [ 1, $queue->{'id'} ];
 }
 
-=item delete_queue()
-
-Delete a queue from engine & database.
-
-Parameters:
-
-    $id		Queue ID
-
-=cut
-
 sub delete_queue {
     my ( $self, $id ) = @_;
 
@@ -440,18 +312,6 @@ sub delete_queue {
     return 0;
 }
 
-=item get_queue_by_id()
-
-Returns a queue structure by ID.
-
-Parameters:
-
-    $queueid		Task ID
-
-Callable via eventbus.
-
-=cut
-
 sub get_queue_by_id {
     my ( $self, $queueid ) = @_;
 
@@ -463,19 +323,6 @@ sub get_queue_by_id {
 
     return undef;
 }
-
-=item queue_create_tasks()
-
-Create new tasks and add them to a queue queue.
-
-Parameters:
-
-    $queueid		Task ID
-    $tasks_arrayref	Array-ref to arrays of parameters
-
-Callable via eventbus.
-
-=cut
 
 sub queue_create_tasks {
     my ( $self, $queueid, $tasks_arrayref, $returntids ) = @_;
@@ -498,22 +345,6 @@ sub queue_create_tasks {
     return [ 1, $count ];
 }
 
-=item queue_create_tasks_from_query()
-
-Create new tasks and add them to a queue queue using the result of a user
-filter to populate & substitute parameter data.
-
-Parameters:
-
-    $queueid            Task ID
-    collection          Collection
-    $filter             Perl expression filter
-    $columns_arrayref	Array-ref of parameters
-
-Callable via eventbus.
-
-=cut
-
 sub queue_create_tasks_from_query {
     my ( $self, $queueid, $collection, $filter, $columns_arrayref ) = @_;
 
@@ -526,12 +357,6 @@ sub queue_create_tasks_from_query {
         return [ -1, 0, 'Error creating chunked task factory from query: ' . $_ ];
     };
 }
-
-=item is_filtered_queue()
-
-Determine whether queue is filtered in by the INI file
-
-=cut
 
 sub is_active_queue {
     my $self = shift;
@@ -553,13 +378,6 @@ sub is_active_queue {
         return 1;
     }
 }
-
-=item load_queues()
-
-Load & initialise queues from database.  This will also load all of the tasks
-associated with those queues.
-
-=cut
 
 sub load_queues {
     my $self = shift;
@@ -600,12 +418,6 @@ sub load_queues {
     }
 }
 
-=item update_node_status()
-
-Updates node status to MongoDB.
-
-=cut
-
 sub update_node_status() {
     my $self = shift;
 
@@ -617,12 +429,6 @@ sub update_node_status() {
     Synacor::Disbatch::Backend::update_collection( 'nodes', { 'node' => $self->{'config'}->{'node'} }, $status, { 'upsert' => 1 } );
     $self->reflect_queue_changes();
 }
-
-=item reflect_queue_changes()
-
-Reflect changes made to queue attributes, ostensibly made initially on another node.
-
-=cut
 
 sub reflect_queue_changes {
     my $self = shift;
@@ -650,12 +456,6 @@ sub reflect_queue_changes {
     }
 }
 
-=item queue_prototypes()
-
-Returns a hashref of queues, and the arguments they take to create new tasks;
-
-=cut
-
 sub queue_prototypes {
     my $self = shift;
 
@@ -681,24 +481,12 @@ sub queue_prototypes {
     return \%r;
 }
 
-=item reload_queues()
-
-Tells engine to reload queues on next iteration of the engine main loop
-
-=cut
-
 sub reload_queues {
     my $self = shift;
 
     $self->{'reloadqueues'} = 1;
     return 1;
 }
-
-=item search_tasks()
-
-Search through tasks.
-
-=cut
 
 sub search_tasks {
     my $self = shift;
@@ -815,3 +603,171 @@ sub json_read {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Engine - the core execution engine.
+
+=head1 DESCRIPTION
+
+This module runs the main event loop, brokers threads, and generally decides
+when to do something.
+
+The execution engine is also responsible for maintaining the physical state
+of all of its queues (and their tasks).
+
+=head1 SYNOPSIS
+
+  use Synacor::Engine;
+  my $engine = Synacor::Engine->new;
+  $engine->start;
+
+=head1 METHODS
+
+=over 4
+
+=item new()
+
+Creates a new instance of the Synacor::Engine.  You really should only use one of these at one time.
+
+Parameters:
+
+    $users		hashref to users
+
+=item orphan_tasks()
+
+Find any tasks that were not completed in the past iteration, and set their status to orphaned
+
+=item logger()
+
+ Returns a log4perl instance
+
+=item add_queue()
+
+Adds a queue to the Engine for execution.  This will essentially just
+periodically and strategically call $queue->schedule().
+
+=item start()
+
+Blocking function call which begins the event bus loop.  This will cause the
+Synacor::Engine object to listen and react to events.
+
+=item awaken()
+
+Pause from blocking event loop to fire off all queue schedulers.
+
+=item report_item_done()
+
+Report that an item is complete.  Generally called from an Item's run()
+function via the eventbus, this records that an item is complete so the
+scheduler can start a new queued item.
+
+=item scheduler_report()
+
+Enumerate through queues, collecting statistics on tasks to-do, complete and
+in-progress.  Also includes maxthreads & preemptive.  Callable via eventbus.
+
+=item set_queue_attr()
+
+Set queue attribute.  Callable via eventbus.
+
+=item filter_collection()
+
+Parameters:
+
+  $collection	Collection
+  $filter		Perl expression filter
+  $type			Hash or array (default: hash)
+  $key          Key attribute (Optional, requires $type to eq 'hash')
+
+NOT an object-oriented method for Engine.
+
+=item register_queue_constructor()
+
+Registers a queue constructor with the engine.  Required for on-demand creation.
+
+=item construct_queue()
+
+Using a previously register constructor, instantiate a new queue object.
+
+Parameters:
+
+    $type	String name of class
+    $name	Name of new queue (currently ignored)
+
+Callable via eventbus.
+
+=item delete_queue()
+
+Delete a queue from engine & database.
+
+Parameters:
+
+    $id		Queue ID
+
+=item get_queue_by_id()
+
+Returns a queue structure by ID.
+
+Parameters:
+
+    $queueid		Task ID
+
+Callable via eventbus.
+
+=item queue_create_tasks()
+
+Create new tasks and add them to a queue queue.
+
+Parameters:
+
+    $queueid		Task ID
+    $tasks_arrayref	Array-ref to arrays of parameters
+
+Callable via eventbus.
+
+=item queue_create_tasks_from_query()
+
+Create new tasks and add them to a queue queue using the result of a user
+filter to populate & substitute parameter data.
+
+Parameters:
+
+    $queueid            Task ID
+    collection          Collection
+    $filter             Perl expression filter
+    $columns_arrayref	Array-ref of parameters
+
+Callable via eventbus.
+
+=item is_filtered_queue()
+
+Determine whether queue is filtered in by the INI file
+
+=item load_queues()
+
+Load & initialise queues from database.  This will also load all of the tasks
+associated with those queues.
+
+=item update_node_status()
+
+Updates node status to MongoDB.
+
+=item reflect_queue_changes()
+
+Reflect changes made to queue attributes, ostensibly made initially on another node.
+
+=item queue_prototypes()
+
+Returns a hashref of queues, and the arguments they take to create new tasks;
+
+=item reload_queues()
+
+Tells engine to reload queues on next iteration of the engine main loop
+
+=item search_tasks()
+
+Search through tasks.
+

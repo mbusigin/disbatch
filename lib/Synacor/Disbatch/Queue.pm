@@ -8,29 +8,6 @@ use Try::Tiny;
 use Synacor::Disbatch::Engine;
 use POSIX ();
 
-=head1 NAME
-
-Synacor::Disbatch::Queue - the base class for a migration queue.  This
-contains the housekeeping functions, and encapsulates
-Synacor::Disbatch::Task objects which do the actual work.
-
-
-=head1 METHODS
-
-=over 1
-
-=cut
-
-=item new()
-
-Creates new Synacor::Disbatch::Queue.
-
-Arguments:
-
-  $maxthreads		The maximum number of concurrent threads
-
-=cut
-
 sub new {
     my $class = shift;
 
@@ -60,13 +37,6 @@ sub new {
     return $self;
 }
 
-=item find_next_task($node)
-
-   This method finds the next task to schedule.  It is overridable by plugin classes
-   for custom scheduler algorithms.
-
-=cut
-
 sub find_next_task {
     my $self = shift or die "No self";
     my $node = shift or die "No node";
@@ -78,13 +48,6 @@ sub find_next_task {
     my $row = Synacor::Disbatch::Backend::query_one( $self->{'engine'}->{'config'}->{'tasks_collection'}, { 'node' => $node, 'status' => -1, 'queue' => $self->{'id'} } );
     return ($row);
 }
-
-=item schedule()
-
-  This method decides when to spin up new threads, using a very simple
-  algorithm which simply attempts to saturate **maxthreads** with work.
-
-=cut
 
 sub schedule {
     my $self = shift;
@@ -132,20 +95,6 @@ sub schedule {
     return 1;
 }
 
-=item create_task_actual()
-
-Virtual/stub method which Queue implementors must override to provide to create
-the new queue.  View Synacor::Disbatch::Queue::IMAP2IMAP as an example.
-
-=cut
-
-=item create_task()
-
-Create an task using the create_task_actual() virtual/stub method, and save
-it to the database.
-
-=cut
-
 sub create_task {
     my $self       = shift;
     my $parameters = shift;
@@ -179,47 +128,15 @@ sub create_task {
     return $task;
 }
 
-=item parameters_definitions()
-
-Reports back an arrayref containing hashrefs of task parameter definitions.
-
-    [
-        { name => 'foo', type => 'int', default => 1, description => 'unnecessary' },
-    ]
-
-=cut
-
 sub parameters_definitions {
     my $self = shift;
     return $self->parameters_definitions;
 }
 
-=item queue_parameters()
-
-Reports back an arrayref containing hashrefs of queue parameter definitions.
-
-    [
-        { name => 'foo', type => 'int', default => 1, description => 'unnecessary' },
-    ]
-
-
-=cut
-
 sub queue_parameters {
     my $self = shift;
     return $self->queue_parameters;
 }
-
-=item report_task_done()
-
-Reports that an task for this queue is complete.  This is useful information
-for the scheduler.
-
-Parameters:
-
-  $taskid		completed task ID
-
-=cut
 
 my $update_tasks_sth = undef;
 
@@ -381,3 +298,70 @@ sub logger {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Disbatch::Queue - the base class for a migration queue.  This
+contains the housekeeping functions, and encapsulates
+Synacor::Disbatch::Task objects which do the actual work.
+
+
+=head1 METHODS
+
+=over 1
+
+=item new()
+
+Creates new Synacor::Disbatch::Queue.
+
+Arguments:
+
+  $maxthreads		The maximum number of concurrent threads
+
+=item find_next_task($node)
+
+   This method finds the next task to schedule.  It is overridable by plugin classes
+   for custom scheduler algorithms.
+
+=item schedule()
+
+  This method decides when to spin up new threads, using a very simple
+  algorithm which simply attempts to saturate **maxthreads** with work.
+
+=item create_task_actual()
+
+Virtual/stub method which Queue implementors must override to provide to create
+the new queue.  View Synacor::Disbatch::Queue::IMAP2IMAP as an example.
+
+=item create_task()
+
+Create an task using the create_task_actual() virtual/stub method, and save
+it to the database.
+
+=item parameters_definitions()
+
+Reports back an arrayref containing hashrefs of task parameter definitions.
+
+    [
+        { name => 'foo', type => 'int', default => 1, description => 'unnecessary' },
+    ]
+
+=item queue_parameters()
+
+Reports back an arrayref containing hashrefs of queue parameter definitions.
+
+    [
+        { name => 'foo', type => 'int', default => 1, description => 'unnecessary' },
+    ]
+
+=item report_task_done()
+
+Reports that an task for this queue is complete.  This is useful information
+for the scheduler.
+
+Parameters:
+
+  $taskid		completed task ID
+

@@ -1,20 +1,5 @@
 #!/usr/bin/perl
 
-=head1 NAME
-
-Disbatch - Distributed Batch
-
-=head1 OVERVIEW
-
-A tool for doing large distributed batch processing jobs, such as
-mass-migrating email, calendars & contacts in a concurrent, well documenting
-transacted, flexible and extensible way.
-
-It is particularly suited for performing very large operations (tens or
-hundreds of thousands), pausing, and re-starting from a stopped state.
-
-=cut
-
 use strict;
 use warnings;
 
@@ -24,40 +9,6 @@ use Config::Any;
 use Cwd 'abs_path';
 use Getopt::Long;
 use Pod::Usage;
-
-=head1 OPTIONS
-
-=over 2
-
-=item --inifile
-
-Name of ini file to use instead of C<disbatch.ini>. Include the path if not using C<--base>.
-
-=item --inidir
-
-Name of ini directory to use instead of C<disbatch.d>. Include the path if not using C<--base>.
-
-=item --lib
-
-Additional perl lib directories to load. If more than one, separate with a comma (C<,>).
-
-=item --base
-
-Takes a value that is the base directory for ini file and directory, as well as adds C<$base/lib> to included lib directories.
-Also includes C<$path/lib> where C<$path> is the directory below the directory of this file, if this file is not in C</usr/bin>,
-and passes C<$path> to the HTTP server to prepend the document root. This allows running C<disbatchd.pl> uninstalled.
-
-=item --help
-
-Shows usage and options.
-
-=item --man
-
-Shows all documentation.
-
-=back
-
-=cut
 
 my $ini_file = '';
 my $ini_dir  = '';
@@ -264,3 +215,51 @@ while (1) {
 sub afterlife {
     $engine->logger->error( Dumper(@_) );
 }
+
+__END__
+
+=head1 NAME
+
+Disbatch - Distributed Batch
+
+=head1 OVERVIEW
+
+A tool for doing large distributed batch processing jobs, such as
+mass-migrating email, calendars & contacts in a concurrent, well documenting
+transacted, flexible and extensible way.
+
+It is particularly suited for performing very large operations (tens or
+hundreds of thousands), pausing, and re-starting from a stopped state.
+
+=head1 OPTIONS
+
+=over 2
+
+=item --inifile
+
+Name of ini file to use instead of C<disbatch.ini>. Include the path if not using C<--base>.
+
+=item --inidir
+
+Name of ini directory to use instead of C<disbatch.d>. Include the path if not using C<--base>.
+
+=item --lib
+
+Additional perl lib directories to load. If more than one, separate with a comma (C<,>).
+
+=item --base
+
+Takes a value that is the base directory for ini file and directory, as well as adds C<$base/lib> to included lib directories.
+Also includes C<$path/lib> where C<$path> is the directory below the directory of this file, if this file is not in C</usr/bin>,
+and passes C<$path> to the HTTP server to prepend the document root. This allows running C<disbatchd.pl> uninstalled.
+
+=item --help
+
+Shows usage and options.
+
+=item --man
+
+Shows all documentation.
+
+=back
+
