@@ -1,19 +1,21 @@
 package Synacor::Disbatch::HTTP;
 
-use strict;
-use Carp;
-use Try::Tiny;
-use HTTP::Server::Simple::CGI;
-use Data::Dumper;
-use JSON::XS;    # -convert_blessed_universally;
-use Text::CSV_XS;
-use POSIX;
-use MIME::Base64;
+use 5.12.0;
+use warnings;
+
 use Apache::Htpasswd;
+use Carp;
+use Data::Dumper;
+use HTTP::Server::Simple::CGI;
+use JSON::XS;    # -convert_blessed_universally;
+use MIME::Base64;
+use POSIX;
+use Text::CSV_XS;
+use Try::Tiny;
 
-use base qw(HTTP::Server::Simple::CGI);
+use base qw/ HTTP::Server::Simple::CGI /;
 
-my $json = undef;
+my $json = JSON::XS->new;
 
 my %dispatch = (
     '/scheduler-json'                     => \&scheduler_json,
@@ -29,48 +31,42 @@ my %dispatch = (
 
 sub new {
     my $class = shift;
-    my $self  = HTTP::Server::Simple->new(@_);
-    $self->{'config'} = $Synacor::Disbatch::Engine::Engine->{config};
+    my $self = HTTP::Server::Simple->new(@_);
+    $self->{config} = $Synacor::Disbatch::Engine::Engine->{config};
     $self->{base} = $self->{config}{htdocs_base};
-    return bless $self, $class;
+    bless $self, $class;
 }
 
 sub do_authenticate {
-    my $self = shift;
-    my $cgi  = shift;
+    my ($self, $cgi) = @_;
 
-    if ( !defined( $self->{config}->{HTTPAuth} ) ) {
+    unless (defined $self->{config}{HTTPAuth}) {
         $self->logger->error("No HTTPAuth config section.  Rejecting connection attempts.");
         return 0;
     }
 
-    return 1 if $self->{config}->{HTTPAuth}->{method} eq 'none';
+    return 1 if $self->{config}{HTTPAuth}{method} eq 'none';
 
-    if ( $self->{config}->{HTTPAuth}->{method} ne 'basic' ) {
-        $self->logger->error( "Rejecting connection attempts.  Unknown HTTPAuth method: " . $self->{config}->{HTTPAuth}->{method} );
+    if ($self->{config}{HTTPAuth}{method} ne 'basic') {
+        $self->logger->error("Rejecting connection attempts.  Unknown HTTPAuth method: $self->{config}{HTTPAuth}{method}");
         return 0;
     }
 
-    if ( !defined( $self->{config}->{HTTPAuth}->{passwd} ) ) {
+    unless (defined $self->{config}{HTTPAuth}{passwd}) {
         $self->logger->error("No passwd file specified in HTTPAuth.  Rejecting connection attempts.");
         return 0;
     }
 
-    my $passwd = new Apache::Htpasswd(
-        {
-            passwdFile => $self->{config}->{HTTPAuth}->{passwd},
-            ReadOnly   => 1
-        }
-    );
-    if ( !$passwd ) {
-        $self->logger->error( "Couldn't create Apache::Htpaswd from " . $self->{config}->{HTTPAuth}->{passwd} );
+    my $passwd = new Apache::Htpasswd({ passwdFile => $self->{config}{HTTPAuth}{passwd}, ReadOnly => 1 });
+    unless ($passwd) {
+        $self->logger->error("Couldn't create Apache::Htpaswd from $self->{config}{HTTPAuth}{passwd}");
         return 0;
     }
 
-    if ( ( $ENV{HTTP_AUTHORIZATION} || '' ) =~ /^Basic (.*?)$/ ) {
-        my ( $user, $pass ) = split /:/, ( MIME::Base64::decode($1) || ':' );
+    if (($ENV{HTTP_AUTHORIZATION} // '') =~ /^Basic (.*)$/) {
+        my ($user, $pass) = split /:/, (MIME::Base64::decode($1) || ':');
 
-        return 1 if $passwd->htCheckPassword( $user, $pass );
+        return 1 if $passwd->htCheckPassword($user, $pass);
         $self->logger->error("Authentication error on $user");
         return 0;
     }
@@ -80,62 +76,50 @@ sub do_authenticate {
 }
 
 sub handle_request {
-    my $self = shift;
-    my $cgi  = shift;
+    my ($self, $cgi) = @_;
 
-    if ( !$self->do_authenticate($cgi) ) {
+    unless ($self->do_authenticate($cgi)) {
         print "HTTP/1.0 401 Not authorized\r\n";
-        print $cgi->header(
-            -type               => 'text/html',
-            '-WWW-Authenticate' => 'Basic realm="disbatch"',
-          ),
-          "<h1>Please login</h1>";
+        print $cgi->header(-type => 'text/html', '-WWW-Authenticate' => 'Basic realm="disbatch"');
+        print "<h1>Please login</h1>";
         return;
     }
 
-    $json = new JSON::XS if ( !$json );
     my $path = $cgi->path_info();
     $path = '/index.html' if $path eq '/';
     my $handler = $dispatch{$path};
-    if ( ref($handler) eq "CODE" ) {
-        if ( $path =~ /-json$/ ) {
-
-            #            print "HTTP/1.0 200 OK\r\n";
-            if ( $cgi->param('POSTDATA') ) {
+    if (ref $handler eq 'CODE') {
+        if ($path =~ /-json$/) {
+            #print "HTTP/1.0 200 OK\r\n";
+            if ($cgi->param('POSTDATA')) {
                 my $postdata = $cgi->param('POSTDATA');
                 my $obj      = $json->decode($postdata);
-                foreach my $k ( keys %{$obj} ) {
-                    $cgi->param( -name => $k, -value => $obj->{$k} );
+                for my $k (keys %$obj) {
+                    $cgi->param(-name => $k, -value => $obj->{$k});
                 }
             }
 
-            my $result;
-            eval { $result = $handler->($cgi); };
-            if ( $@ ne '' ) {
-                print "HTTP/1.0 500 Perl Module Failure\r\n";
-                $self->logger->error("Error processing '$path': $@");
-                print $cgi->header(
-                    -type => 'application/json',
-
-                    #                                 -cookie => $cookie,
-                  ),
-                  $json->encode( [ 0, 'Error executing JSON handler: ' . $@ ] );
-            }
-            else {
+            try {
+                my $result = $handler->($cgi) // {};
                 print "HTTP/1.0 200 OK\r\n";
-                $result = {} if ( !defined($result) );
                 my $converted = $json->allow_blessed->convert_blessed->encode($result);
                 print $cgi->header(
                     -type => 'application/json',
-
-                    #                                 -cookie => $cookie,
+                    #-cookie => $cookie,
                 );
                 print $converted;
                 $self->logger->trace("Served '$path'");
-            }
+            } catch {
+                print "HTTP/1.0 500 Perl Module Failure\r\n";
+                $self->logger->error("Error processing '$path': $_");
+                print $cgi->header(
+                    -type => 'application/json',
+                    #-cookie => $cookie,
+                );
+                print $json->encode([ 0, "Error executing JSON handler: $_" ]);
+            };
         }
-    }
-    elsif ( -r "$self->{base}/etc/disbatch/htdocs/$path" && !( $path =~ /\.\./ ) ) {
+    } elsif (-r "$self->{base}/etc/disbatch/htdocs/$path" && $path !~ /\.\./) {
         print "HTTP/1.0 200 OK\r\n";
 
         my $type = 'text/html';
@@ -144,184 +128,122 @@ sub handle_request {
         $type = 'image/png'       if $path =~ /\.png$/;
         $type = 'image/gif'       if $path =~ /\.gif$/;
 
-        print $cgi->header( -type => $type );
-        open F, "<$self->{base}/etc/disbatch/htdocs/$path";
-
-        while (<F>) {
-            print;
-        }
-    }
-
-    else {
+        print $cgi->header(-type => $type);
+        open my $f, '<', "$self->{base}/etc/disbatch/htdocs/$path";
+        print while (<$f>);
+    } else {
         print "HTTP/1.0 404 Not found\r\n";
         print $cgi->header(
-
-            #                                                        -cookie => $cookie,
-          ),
-          $cgi->start_html('Not found'),
-          $cgi->h1("Not found: $path"),
-          $cgi->end_html;
+            #-cookie => $cookie,
+        );
+        print $cgi->start_html('Not found'), $cgi->h1("Not found: $path"), $cgi->end_html;
     }
-
-}
-
-sub worker_thread {
-    my $self = shift;
-    $self->run;
 }
 
 sub start {
-    my $self = shift;
+    my ($self) = @_;
 
-    my $pid = fork();
-    if ( $pid == 0 ) {
-        $self->worker_thread;
+    defined(my $pid = fork) or die "fork failed: $!";
+    if (!$pid) {
+        $self->run;
     }
     $self->{pid} = $pid;
-    return $pid;
 }
 
 
 sub kill {
-    my $self = shift;
-    if ( kill 'KILL', $self->{pid} ) {
+    my ($self) = @_;
+    if (kill 'KILL', $self->{pid}) {
         print 'killed ' . __PACKAGE__ . " with PID $self->{pid}\n";
-    }
-    else {
+    } else {
         print 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}\n";
     }
 }
 
 sub scheduler_json {
-    my $cgi = shift;
-
-    my $scheduler_report = $Synacor::Disbatch::Engine::EventBus->scheduler_report;
-    return $scheduler_report;
+    #my ($cgi) = @_;
+    $Synacor::Disbatch::Engine::EventBus->scheduler_report;
 }
 
 sub set_queue_attr_json {
-    my $cgi = shift;
+    my ($cgi) = @_;
 
-    my %ret;
-    my @validattrs = qw( maxthreads preemptive );
+    my @validattrs = qw/ maxthreads preemptive /;
 
     my $attr = $cgi->param('attr');
-
-    if ( !grep( $attr, @validattrs ) ) {
-        $ret{'success'} = 0;
-        $ret{'error'}   = 'Invalid attr';
-        return \%ret;
-    }
+    return { success => 0, error => 'Invalid attr' } unless grep $attr, @validattrs;
 
     my $value = $cgi->param('value');
-    if ( !defined($value) ) {
-        $ret{'success'} = 0;
-        $ret{'error'}   = 'You must supply a value';
-        return \%ret;
-    }
+    return { success => 0, error => 'You must supply a value' } unless defined $value;
 
     my $queueid = $cgi->param('queueid');
-    if ( !$queueid ) {
-        $ret{'success'} = 0;
-        $ret{'error'}   = 'You must supply a queueid';
-        return \%ret;
-    }
+    return { success => 0, error => 'You must supply a queueid' } unless $queueid;
 
-    my ( $r, $e ) = @{ $Synacor::Disbatch::Engine::EventBus->set_queue_attr( $queueid, $attr, $value ) };
-    $ret{'success'} = $r;
-    $ret{'error'} = $e if defined($e);
-    return \%ret;
+    my ($r, $e) = @{ $Synacor::Disbatch::Engine::EventBus->set_queue_attr($queueid, $attr, $value) };
+    my $ret = {success => $r};
+    $ret->{error} = $e if defined $e;
+    $ret;
 }
 
 sub list_users_json {
-    my $cgi = shift;
-
-    return $Synacor::Disbatch::Engine::EventBus->list_users( $cgi->param('group'), $cgi->param('filter') );
+    my ($cgi) = @_;
+    $Synacor::Disbatch::Engine::EventBus->list_users($cgi->param('group'), $cgi->param('filter'));
 }
 
 sub start_queue_json {
-    my $cgi = shift;
-
-    my $type = $cgi->param('type');
-    my $name = $cgi->param('name');
-
-    return $Synacor::Disbatch::Engine::EventBus->construct_queue( $type, $name );
+    my ($cgi) = @_;
+    $Synacor::Disbatch::Engine::EventBus->construct_queue($cgi->param('type'), $cgi->param('name'));
 }
 
 sub queue_create_tasks_json {
-    my $cgi = shift;
+    my ($cgi) = @_;
 
-    my $queueid = $cgi->param('queueid');
     my $jsobj   = $cgi->param('object');
     my $obj     = $json->decode($jsobj);
-    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks( $queueid, $obj );
+    $Synacor::Disbatch::Engine::EventBus->queue_create_tasks($cgi->param('queueid'), $obj);
 }
 
 sub queue_create_tasks_from_query_json {
-    my $cgi = shift;
-
-    my $queueid    = $cgi->param('queueid');
-    my $collection = $cgi->param('collection');
-    my $filter     = $cgi->param('filter');
-    my $parameters = $json->decode( $cgi->param('parameters') );
-
-    if ( $cgi->param('jsonfilter') ) {
-        my $f;
-        $f      = $json->decode( $cgi->param('jsonfilter') );
-        $filter = $f;
-    }
-
-    return $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query( $queueid, $collection, $filter, $parameters );
+    my ($cgi) = @_;
+    my $filter = ($cgi->param('jsonfilter')) ? $json->decode($cgi->param('jsonfilter')) : $cgi->param('filter');
+    $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query($cgi->param('queueid'), $cgi->param('collection'), $filter, $json->decode($cgi->param('parameters')));
 }
 
 sub queue_prototypes_json {
-    my $cgi = shift;
-
-    return $Synacor::Disbatch::Engine::EventBus->queue_prototypes;
+    #my ($cgi) = @_;
+    $Synacor::Disbatch::Engine::EventBus->queue_prototypes;
 }
 
 sub reload_queues_json {
-    $Synacor::Disbatch::Engine::EventBus->reload_queues();
-    return [1];
+    $Synacor::Disbatch::Engine::EventBus->reload_queues;
+    [1];
 }
 
 sub search_tasks_json {
-    my $cgi = shift;
-
-    my $tasks = $Synacor::Disbatch::Engine::EventBus->search_tasks( $cgi->param('queue'), $cgi->param('filter'), $cgi->param('json') || 0, $cgi->param('limit') || 0, $cgi->param('skip') || 0, $cgi->param('count') || 0, $cgi->param('terse') || 0 );
-
-    return $tasks;
+    my ($cgi) = @_;
+    $Synacor::Disbatch::Engine::EventBus->search_tasks($cgi->param('queue'), $cgi->param('filter'), $cgi->param('json') || 0, $cgi->param('limit') || 0, $cgi->param('skip') || 0, $cgi->param('count') || 0, $cgi->param('terse') || 0);
 }
 
 sub delete_queue_json {
-    my $cgi = shift;
-
-    return { 'success' => $Synacor::Disbatch::Engine::EventBus->delete_queue( $cgi->param('id') ) };
+    my ($cgi) = @_;
+    { success => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id')) };
 }
 
 sub logger {
-    my $self = shift or confess "No self!";
-    my $classname = ref($self);
+    my ($self, $type) = @_;
+    my $classname = ref $self;
     $classname =~ s/^.*:://;
 
-    my $logger = shift;
-    if ($logger) {
-        my $l = "disbatch.httpd.$logger";
-        $logger = $l;
-    }
-    else {
-        $logger = "disbatch.httpd";
-    }
+    my $logger = defined $type ? "disbatch.httpd.$type" : "disbatch.httpd";
 
-    if ( !$self->{log4perl_initialised} ) {
-        Log::Log4perl::init( $self->{config}->{log4perl_conf} );
+    unless ($self->{log4perl_initialised}) {
+        Log::Log4perl::init($self->{config}{log4perl_conf});
         $self->{log4perl_initialised} = 1;
         $self->{loggers}              = {};
     }
 
-    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
-    $self->{loggers}->{$logger} = Log::Log4perl->get_logger($logger);
-    return $self->{loggers}->{$logger};
+    $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
+    $self->{loggers}{$logger};
 }
 
 1;

@@ -1,7 +1,8 @@
 package Synacor::Disbatch::Backend;
 
-use strict;
+use 5.12.0;
 use warnings;
+
 use Data::Dumper;
 use MongoDB;
 
@@ -12,91 +13,65 @@ my $tasks_collection  = 'tasks';
 my $queues_collection = 'queues';
 
 sub connect_mongo {
-    my $host     = shift;
-    my $dbname   = shift;
-    my $username = shift;
-    my $password = shift;
-    my $conn;
+    my ($host, $dbname, $username, $password) = @_;
 
-    my %extras;
-    $extras{'username'} = $username if defined($username);
-    $extras{'password'} = $password if defined($password);
+    my $extras;
+    $extras->{username} = $username if defined $username;
+    $extras->{password} = $password if defined $password;
 
-    print 'Synacor::Disbatch::Backend::connect_mongo extras: ', Dumper( \%extras ) . "\n";
+    say 'Synacor::Disbatch::Backend::connect_mongo extras: ', Dumper $extras;
 
-    if ($host) {
-        $conn = MongoDB::MongoClient->new(
-            host           => $host,
-            auto_reconnect => 1,
-            auto_connect   => 1,
-            query_timeout  => 30000,
-            find_master    => 1,
-            %extras,
-        );
-
-    }
-    else {
-        $conn = MongoDB::MongoClient->new(%extras);
-    }
+    my $conn = MongoDB::MongoClient->new(
+        host           => $host // 'localhost',
+        auto_reconnect => 1,
+        auto_connect   => 1,
+        query_timeout  => 30000,
+        find_master    => 1,
+        %$extras,
+    );
     my $db = $conn->get_database($dbname);
-    $db->authenticate( $dbname, $username, $password ) if defined($username);
-    return $db;
+    $db->authenticate($dbname, $username, $password) if defined $username;
+    $db;
 }
 
 sub initialise {
-    my ( $host, $db, $username, $password, $xtasks_collection, $xqueues_collection ) = @_;
+    # FIXME: this looks like it will always overwrite the defaults, even if undef
+    my ($host, $db, $username, $password, $xtasks_collection, $xqueues_collection) = @_;
     $tasks_collection  = $xtasks_collection;
     $queues_collection = $xqueues_collection;
-    $mongo             = connect_mongo( $host, $db, $username, $password );
-    ensureIndices( $mongo, $tasks_collection, $queues_collection );
+    $mongo             = connect_mongo($host, $db, $username, $password);
+    ensureIndices($mongo, $tasks_collection);
 }
 
 sub ensureIndices {
-    my $mongo             = shift;
-    my $tasks_collection  = shift;
-    my $queues_collection = shift;
-
-    $mongo->get_collection($tasks_collection)->ensure_index(
-        {
-            node   => 1,
-            status => 1,
-            queue  => 1,
-        }
-    );
-    $mongo->get_collection($tasks_collection)->ensure_index(
-        {
-            queue  => 1,
-            status => 1,
-        }
-    );
+    my ($mongo, $tasks_collection) = @_;
+    # FIXME: these indexes get created in no specific order:
+    $mongo->get_collection($tasks_collection)->ensure_index({ node => 1, status => 1, queue => 1 });
+    $mongo->get_collection($tasks_collection)->ensure_index({ queue => 1, status => 1 });
 
 }
 
 sub random_pause {
-    srand time * $$;
-    my $sleepfor = rand(1);
-    select( undef, undef, undef, $sleepfor );
+    select(undef, undef, undef, rand 1);
 }
 
 sub update_collection {
-    my ( $cid, $where, $update, $options, $extra ) = @_;
+    my ($cid, $where, $update, $options, $extra) = @_;
 
     eval {
-        my $collection = $mongo->get_collection($cid);
-        my $ret = $collection->update( $where, $update, $options );
-        if ( !$ret ) {
+        my $ret = $mongo->get_collection($cid)->update($where, $update, $options);
+        if (!$ret) {
             $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Couldn't update collection '$cid'!");
             die "Couldn't update collection '$cid'!";
         }
     };
-
     if ($@) {
-        return if ( !$extra or $extra->{'retry'} eq 'no' );
-        if ( $extra->{'retry'} eq 'synchronous' ) {
+        return if (!$extra or $extra->{retry} eq 'no');
+        if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return update_collection(@_);
         }
-        if ( $extra->{'retry'} eq 'redolog' ) {
+        if ($extra->{retry} eq 'redolog') {
             unshift @redolog, 'update';
             push @redolog, \@_;
             return;
@@ -106,38 +81,35 @@ sub update_collection {
 }
 
 sub update_queue {
-    my ( $queueid, $attr, $value ) = @_;
-    print Dumper( \@_ );
-    update_collection( $queues_collection, { '_id' => MongoDB::OID->new( value => $queueid ) }, { '$set' => { $attr => $value } }, {}, { retry => 'synchronous' } );
+    my ($queueid, $attr, $value) = @_;
+    print Dumper \@_;
+    update_collection($queues_collection, { _id => MongoDB::OID->new(value => $queueid) }, { '$set' => {$attr => $value} }, {}, { retry => 'synchronous' });
 }
 
 sub query_collection {
-    my ( $cid, $hr, $attrs, $extra ) = @_;
-
+    my ($cid, $hr, $attrs, $extra) = @_;
     my $query;
 
     eval {
         my $collection = $mongo->get_collection($cid);
-        $query = $collection->query( $hr, $attrs );
-        $query->count;
+        $query = $collection->query($hr, $attrs);
+        $query->count;	# FIXME: does this do anything here?
     };
     if ($@) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->warn("Error: $@");
-        return undef if ( !$extra or $extra->{'retry'} eq 'no' );
-        if ( $extra->{'retry'} eq 'synchronous' ) {
+        return undef if (!$extra or $extra->{retry} eq 'no');
+        if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return query_collection(@_);
         }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in query_collection on mongo timeout '$extra->{retry}'!!");
         return undef;
     }
-
-    return $query;
+    $query;
 }
 
 sub query_one {
-    my ( $cid, $hr, $extra ) = @_;
-
+    my ($cid, $hr, $extra) = @_;
     my $result;
 
     eval {
@@ -146,42 +118,40 @@ sub query_one {
     };
     if ($@) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->warn("Error: $@");
-        return undef if ( !$extra or $extra->{'retry'} eq 'no' );
-        if ( $extra->{'retry'} eq 'synchronous' ) {
+        return undef if (!$extra or $extra->{retry} eq 'no');
+        if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return query_one(@_);
         }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in query_one on mongo timeout '$extra->{retry}'!!");
         return undef;
     }
-    return $result;
+    $result;
 }
 
 sub count {
-    my ( $cid, $hr, $extra ) = @_;
-
+    my ($cid, $hr, $extra) = @_;
     my $count;
+
     eval {
         my $collection = $mongo->get_collection($cid);
         $count = $collection->count($hr);
     };
     if ($@) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->warn("Error: $@");
-        return undef if ( !$extra or $extra->{'retry'} eq 'no' );
-        if ( $extra->{'retry'} eq 'synchronous' ) {
+        return undef if (!$extra or $extra->{retry} eq 'no');
+        if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return count(@_);
         }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in count on mongo timeout '$extra->{retry}'!!");
         return undef;
     }
-
-    return $count;
+    $count;
 }
 
 sub insert_collection {
-    my ( $cid, $hr, $extra ) = @_;
-
+    my ($cid, $hr, $extra) = @_;
     my $oid;
 
     eval {
@@ -189,37 +159,36 @@ sub insert_collection {
         $oid = $collection->insert($hr);
     };
     if ($@) {
-        return if ( !$extra or $extra->{'retry'} eq 'no' );
-        if ( $extra->{'retry'} eq 'synchronous' ) {
+        return if (!$extra or $extra->{retry} eq 'no');
+        if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return insert_collection(@_);
         }
-        if ( $extra->{'retry'} eq 'redolog' ) {
+        if ($extra->{retry} eq 'redolog') {
             unshift @redolog, 'insert';
             push @redolog, \@_;
             return;
         }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in insert_collection on mongo timeout '$extra->{retry}'!!");
+        return undef;
     }
-    else {
-        return $oid;
-    }
+    $oid;
 }
 
 sub delete_collection {
-    my ( $cid, $hr, $extra ) = @_;
+    my ($cid, $hr, $extra) = @_;
 
     eval {
         my $collection = $mongo->get_collection($cid);
         $collection->remove($hr);
     };
     if ($@) {
-        return if ( !$extra or $extra->{'retry'} eq 'no' );
-        if ( $extra->{'retry'} eq 'synchronous' ) {
+        return if (!$extra or $extra->{retry} eq 'no');
+        if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return delete_collection(@_);
         }
-        if ( $extra->{'retry'} eq 'redolog' ) {
+        if ($extra->{retry} eq 'redolog') {
             unshift @redolog, 'delete';
             push @redolog, \@_;
             return;
@@ -229,7 +198,7 @@ sub delete_collection {
 }
 
 sub process_redolog {
-    while ( ( my $tx = pop @redolog ) ) {
+    while (my $tx = pop @redolog) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Re-do log entry is being ignored");
     }
 }

@@ -1,300 +1,216 @@
 package Synacor::Disbatch::Queue;
 
-use strict;
+use 5.12.0;
+use warnings;
+
+use Carp;
 use Data::Dumper;
 use JSON -convert_blessed_universally;
-use Carp;
-use Try::Tiny;
-use Synacor::Disbatch::Engine;
 use POSIX ();
+use Synacor::Disbatch::Engine;
+use Try::Tiny;
 
 sub new {
-    my $class = shift;
-
-    my $maxthreads = shift;
-
-    my @tasks_todo;
-    my @tasks_doing;
-    my @threads;
-    my %threads_inuse;
+    my ($class, $maxthreads) = @_;
 
     my $self = {
-        'tasks_doing'   => \@tasks_doing,
-        'maxthreads'    => $maxthreads,
-        'threads'       => \@threads,
-        'threads_inuse' => \%threads_inuse,
-        'preemptive'    => 1,
-        'lastthreadid'  => 0,
-
-        #        'tasks'			=> $Synacor::Disbatch::Backend::mongo->get_collection( 'tasks' ),
-        'name'        => '',
-        'constructor' => '',
-        'config'      => $Synacor::Disbatch::Engine::Engine->{config},
+        tasks_doing   => [],
+        maxthreads    => $maxthreads,
+        threads       => [],
+        threads_inuse => {},
+        preemptive    => 1,
+        lastthreadid  => 0,
+        name          => '',
+        constructor   => '',
+        config        => $Synacor::Disbatch::Engine::Engine->{config},
     };
 
     bless $self, $class;
-
-    return $self;
 }
 
 sub find_next_task {
-    my $self = shift or die "No self";
-    my $node = shift or die "No node";
-
-    Synacor::Disbatch::Backend::update_collection(
-        $self->{'engine'}->{'config'}->{'tasks_collection'}, { 'node' => -1, 'status' => -2, 'queue' => $self->{'id'} },
-        { '$set' => { 'node' => $node, 'status' => -1 } }
-    );
-    my $row = Synacor::Disbatch::Backend::query_one( $self->{'engine'}->{'config'}->{'tasks_collection'}, { 'node' => $node, 'status' => -1, 'queue' => $self->{'id'} } );
-    return ($row);
+    my ($self, $node) = @_;
+    die 'No node' unless defined $node;
+    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { node => -1, status => -2, queue => $self->{id} }, { '$set' => {node => $node, status => -1} });
+    Synacor::Disbatch::Backend::query_one($self->{engine}{config}{tasks_collection}, { node => $node, status => -1, queue => $self->{id} });
 }
 
 sub schedule {
-    my $self = shift;
+    my ($self) = @_;
 
-    # We fork now - no threads
-    #     foreach my $t ( threads->list(threads::joinable) )
-    #     {
-    #         $t->join;
-    #     }
+    my $node = $self->{engine}{config}{node};
+    my $free_threads = $self->{maxthreads} - @{$self->{tasks_doing}};
 
-    #    my $tasks = $self->{ 'tasks' };
-    my $node = $self->{'engine'}->{'config'}->{'node'};
-
-    #    print Dumper( $self->{tasks_doing} );
-
-    #    printf "%d / %d threads used.\n",
-    #            scalar(@{$self->{tasks_doing}}), $self->{maxthreads};
-
-    my $free_threads = $self->{maxthreads} - scalar( @{ $self->{tasks_doing} } );
-
-    #     return 1 if $self->start_thread_pool > 0;
-
-    for ( my $x = 0; $x < $free_threads; $x++ ) {
-        my $row = $self->find_next_task($node);
-        return if !$row;
-        Synacor::Disbatch::Backend::update_collection(
-            $self->{'engine'}->{'config'}->{'tasks_collection'}, { '_id' => $row->{'_id'} },
-            { '$set' => { 'status' => 0, 'mtime' => time() } },
-            { retry  => 'redolog' }
-        );
-        my $task = $self->load_task($row);
-
+    for (my $x = 0; $x < $free_threads; $x++) {
+        my $document = $self->find_next_task($node);
+        return unless $document;
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { _id => $document->{_id} }, { '$set' => {status => 0, mtime => time} }, { retry  => 'redolog' });
+        my $task = $self->load_task($document);
         my $thr = $self->get_free_thread();
-
-        #        print " ** Firing off $task->{id} to $thr->{id}\n";
-        $self->{'threads_inuse'}->{ $task->{'id'} } = $thr;
-        $thr->{'eb'}->start_task($task);
-
-        #        print " ** Returned from $task\n\n";
-        push @{ $self->{'tasks_doing'} }, $task;
-
+        $self->{threads_inuse}{$task->{id}} = $thr;
+        $thr->{eb}->start_task($task);
+        push @{$self->{tasks_doing}}, $task;
     }
-
-    #    print "Scheduler done.\n\n";
-    return 1;
+    1;
 }
 
 sub create_task {
-    my $self       = shift;
-    my $parameters = shift;
+    my ($self, $parameters) = @_;
 
     $self->logger->trace("Synacor::Disbatch::Queue->create_task()");
-    my $task;
 
-    try {
-        $task = $self->create_task_actual($parameters);
-    }
-    catch {
+    my $task = try {
+        $self->create_task_actual($parameters);
+    } catch {
         $self->logger->error("Error creating task: $_");
-        return undef;
+        undef;
     };
 
-    my $frozen_params = $self->{'engine'}->{'parameterformat_write'}($parameters);
-    my %obj;
-    $obj{'queue'}      = $self->{'id'};
-    $obj{'status'}     = -2;
-    $obj{'stdout'}     = '';
-    $obj{'stderr'}     = '';
-    $obj{'node'}       = -1;
-    $obj{'parameters'} = $frozen_params;
-    $obj{'ctime'}      = time();
-    $obj{'mtime'}      = time();
+    my $obj = {
+        queue      = $self->{id},
+        status     = -2,
+        stdout     = '',
+        stderr     = '',
+        node       = -1,
+        parameters = $self->{engine}{parameterformat_write}($parameters),
+        ctime      = time,
+        mtime      = time,
+    }
 
-    Synacor::Disbatch::Backend::update_collection( $self->{'engine'}->{'config'}->{'queues_collection'}, { _id => $self->{id} }, { '$inc' => { 'count_total' => 1, 'count_todo' => 1 } }, { retry => 'redolog' } );
-    my $id = Synacor::Disbatch::Backend::insert_collection( $self->{'engine'}->{'config'}->{'tasks_collection'}, \%obj, { retry => 'synchronous' } );
-    $obj{'_id'} = $obj{'id'} = $id;
-
-    return $task;
+    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$inc' => {count_total => 1, count_todo => 1} }, { retry => 'redolog' });
+    my $id = Synacor::Disbatch::Backend::insert_collection($self->{engine}{config}{tasks_collection}, $obj, { retry => 'synchronous' });
+    $obj->{_id} = $obj->{id} = $id;	# FIXME: i doubt this does anything
+    $task;
 }
 
 sub parameters_definitions {
-    my $self = shift;
-    return $self->parameters_definitions;
+    $_[0]->parameters_definitions;
 }
 
 sub queue_parameters {
-    my $self = shift;
-    return $self->queue_parameters;
+    $_[0]->queue_parameters;
 }
 
 my $update_tasks_sth = undef;
 
 sub report_task_done {
-    my $self   = shift;
-    my $taskid = shift;
-    my $status = shift;
-    my $stdout = shift;
-    my $stderr = shift;
+    my ($self, $taskid, $status, $stdout, $stderr) = @_;
 
-    for ( my $x = 0; $x < scalar( @{ $self->{tasks_doing} } ); $x++ ) {
-        if ( $self->{'tasks_doing'}->[$x]->{'_id'}->to_string eq $taskid ) {
-            my $task = $self->{'tasks_doing'}->[$x];
-            splice @{ $self->{'tasks_doing'} }, $x, 1;
+    for (my $x = 0; $x < @{$self->{tasks_doing}}; $x++) {
+        if ($self->{tasks_doing}[$x]{_id}->to_string eq $taskid) {
+            my $task = $self->{tasks_doing}[$x];
+            splice @{$self->{tasks_doing}}, $x, 1;
             my $thr = $self->{threads_inuse}{$taskid};
-            if ( !$thr ) {
-                $self->logger->error("wtf - no thread for $self $taskid $status $stdout $stderr");
-            }
+            $self->logger->error("wtf - no thread for $self $taskid $status $stdout $stderr") unless $thr;
             $thr->{tasks_run}++;
-            if ( $self->{config}->{tasks_before_workerthread_retirement} != 0 and $thr->{tasks_run} >= $self->{config}->{tasks_before_workerthread_retirement} ) {
+            if ($self->{config}{tasks_before_workerthread_retirement} != 0 and $thr->{tasks_run} >= $self->{config}{tasks_before_workerthread_retirement}) {
                 $self->logger->info("Worker thread is retiring after $thr->{tasks_run} tasks");
-                $self->{threads_inuse}{$taskid}->{'eb'}->retire;
-                POSIX::close( $self->{threads_inuse}{$taskid}->{'eb'}->{socket}->fileno );
-                delete $self->{'threads_inuse'}{$taskid};
+                $self->{threads_inuse}{$taskid}{eb}->retire;
+                POSIX::close($self->{threads_inuse}{$taskid}{eb}{socket}->fileno);
+                delete $self->{threads_inuse}{$taskid};
                 $self->start_thread_pool;
+            } else {
+                push @{$self->{threads}}, delete $self->{threads_inuse}{$taskid};
             }
-            else {
-                push @{ $self->{'threads'} }, $self->{'threads_inuse'}{$taskid};
-                delete $self->{'threads_inuse'}{$taskid};
-            }
-
             $self->logger->info("taskid: $taskid;  stderr: $stderr;  status: $status");
-            Synacor::Disbatch::Backend::update_collection( $self->{'engine'}->{'config'}->{'tasks_collection'}, { _id => $taskid }, { '$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status } }, { retry => 'redolog' } );
-            Synacor::Disbatch::Backend::update_collection( $self->{'engine'}->{'config'}->{'queues_collection'}, { _id => $self->{id} }, { '$inc' => { 'count_todo' => -1 } }, { retry => 'redolog' } );
-
-            $self->schedule if $self->{'preemptive'};
+            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { _id => $taskid }, { '$set' => {stdout => $stdout, stderr => $stderr, status => $status} }, { retry => 'redolog' });
+            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$inc' => {count_todo => -1} }, { retry => 'redolog' });
+            $self->schedule if $self->{preemptive};
             return;
         }
     }
-
     $self->logger->error("!! Synacor::Disbatch::Queue->report_task_done() called on invalid taskid #$taskid");
 }
 
 sub start_thread_pool {
-    my $self = shift;
+    my ($self) = @_;
 
-    if ( $self->{'engine'}->is_active_queue( $self->{'id'} ) == 0 ) {
+    if ($self->{engine}->is_active_queue($self->{id}) == 0) {
         $self->logger->error("No threads for $self->{id}");
         return 0;
     }
 
-    my $threads = scalar( @{ $self->{'threads'} } ) + scalar( keys %{ $self->{'threads_inuse'} } );
-    my $nt      = $self->{'maxthreads'} - $threads;
-
-    #    print "Have to create $nt new threads - $threads - $self->{maxthreads}.\n";
-    for ( my $x = 0; $x < $nt; $x++ ) {
-        $self->{'lastthreadid'}++;
-        my $worker = Synacor::Disbatch::WorkerThread->new( $self->{'lastthreadid'}, $self );
-
-        #        print "Starting worker #$self->{lastthreadid}\n";
-        #        $worker->thread_start;
-        #        threads->yield();
-        push @{ $self->{'threads'} }, $worker;
+    my $threads = @{$self->{threads}} + keys %{$self->{threads_inuse}};
+    my $nt      = $self->{maxthreads} - $threads;
+    for (my $x = 0; $x < $nt; $x++) {
+        $self->{lastthreadid}++;
+        my $worker = Synacor::Disbatch::WorkerThread->new($self->{lastthreadid}, $self);
+        push @{$self->{threads}}, $worker;
         $self->logger->trace("pushed $worker");
     }
-
-    return $nt;
+    $nt;
 }
 
 sub get_free_thread {
-    my $self = shift;
-
-    my $thread = pop @{ $self->{'threads'} };
-    return $thread;
+    pop @{$_[0]->{threads}};
 }
 
+# NOTE: unused
+# FIXME: use cursor and not ->all
 sub load_tasks {
-    my $self = shift;
+    my ($self) = @_;
 
-    my @tasks = $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->query( { 'queue' => $self->{'id'} } )->all;
-
-    foreach my $row (@tasks) {
-        my $parameters;
-        $parameters = $self->{'engine'}->{'parameterformat_read'}( $row->{'parameters'} ) if $row->{'parameters'};    # @{ $Synacor::Disbatch::Engine::dbh->selectcol_arrayref('select parameter from task_parameters where task_id = ? order by id asc', undef, ($iid) ) };
-
-        #        warn Dumper( \@parameters );
-        my $task = $self->create_task_actual($parameters);
+    my @tasks = $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->query({ queue => $self->{id} })->all;
+    for my $document (@tasks) {
+        my $parameters = $self->{engine}{parameterformat_read}($document->{parameters}) if $document->{parameters};
+        $self->create_task_actual($parameters);
     }
 }
 
 sub load_task {
-    my $self = shift;
-    my $row  = shift;
+    my ($self, $document) = @_;
 
-    my $parameters = $self->{'engine'}->{'parameterformat_read'}( $row->{'parameters'} ) if $row->{'parameters'};
+    my $parameters = $self->{engine}{parameterformat_read}($document->{parameters}) if $document->{parameters};
     my $task = $self->create_task_actual($parameters);
-    if ( !$task ) {
-        $self->logger->error( "Couldn't create task!  Parameters: " . Dumper($parameters) . "\n" . "row: " . Dumper($row) );
-    }
-
-    $task->{'id'} = $task->{'_id'} = $row->{'_id'};
-    return ($task);
+    $self->logger->error("Couldn't create task!  Parameters: " . Dumper($parameters) . "\n" . "document: " . Dumper $document) unless $task;
+    $task->{id} = $task->{_id} = $document->{_id};
+    $task;
 }
 
 sub count_todo {
-    my $self = shift;
+    my ($self) = @_;
 
-    my $r = Synacor::Disbatch::Backend::query_one( $self->{'engine'}->{'config'}->{'queues_collection'}, { _id => $self->{'id'} } );
+    my $r = Synacor::Disbatch::Backend::query_one($self->{engine}{config}{queues_collection}, { _id => $self->{id} });
     my $v = 0;
-    if ( defined($r) and defined( $r->{count_todo} ) ) {
+    if (defined $r and defined $r->{count_todo}) {
         $v = $r->{count_todo};
+    } else {
+        $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, { status => -2, queue => $self->{id} });
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$set' => {count_todo => $v} }, { retry => 'redolog' });
     }
-    else {
-        $v = Synacor::Disbatch::Backend::count( $self->{'engine'}->{'config'}->{'tasks_collection'}, { 'status' => -2, 'queue' => $self->{'id'} } );
-        Synacor::Disbatch::Backend::update_collection( $self->{'engine'}->{'config'}->{'queues_collection'}, { _id => $self->{id} }, { '$set' => { 'count_todo' => $v } }, { retry => 'redolog' } );
-    }
-
-    return $v;
+    $v;
 }
 
 sub count_total {
-    my $self = shift;
+    my ($self) = @_;
 
-    my $r = Synacor::Disbatch::Backend::query_one( $self->{'engine'}->{'config'}->{'queues_collection'}, { _id => $self->{'id'} } );
+    my $r = Synacor::Disbatch::Backend::query_one($self->{engine}{config}{queues_collection}, { _id => $self->{id} });
     my $v = 0;
-    if ( defined($r) and defined( $r->{count_total} ) ) {
+    if (defined $r and defined $r->{count_total}) {
         $v = $r->{count_total};
+    } else {
+        $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, { queue => $self->{id} });
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$set' => {count_total => $v} }, { retry => 'redolog' });
     }
-    else {
-        $v = Synacor::Disbatch::Backend::count( $self->{'engine'}->{'config'}->{'tasks_collection'}, { 'queue' => $self->{'id'} } );
-        Synacor::Disbatch::Backend::update_collection( $self->{'engine'}->{'config'}->{'queues_collection'}, { _id => $self->{id} }, { '$set' => { 'count_total' => $v } }, { retry => 'redolog' } );
-    }
-    return $v;
+    $v;
 }
 
 sub logger {
-    my $self = shift or confess "No self!";
-    my $classname = ref($self);
+    my ($self, $logger) = @_;
+    my $classname = ref $self;
     $classname =~ s/^.*:://;
 
-    my $logger = shift;
-    if ($logger) {
-        my $l = "disbatch.plugins.$classname.$logger";
-        $logger = $l;
-    }
-    else {
-        $logger = "disbatch.plugins.$classname";
-    }
+    $logger = defined $logger ? "disbatch.plugins.$classname.$logger" : "disbatch.plugins.$classname";
 
-    if ( !$self->{log4perl_initialised} ) {
-        Log::Log4perl::init( $self->{config}->{log4perl_conf} );
+    if (!$self->{log4perl_initialised}) {
+        Log::Log4perl::init($self->{config}{log4perl_conf});
         $self->{log4perl_initialised} = 1;
         $self->{loggers}              = {};
     }
 
-    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
-    $self->{loggers}->{$logger} = Log::Log4perl->get_logger($logger);
-    return $self->{loggers}->{$logger};
+    return $self->{loggers}{$logger} if $self->{loggers}{$logger};
+    $self->{loggers}{$logger} = Log::Log4perl->get_logger($logger);
+    $self->{loggers}{$logger};
 }
 
 1;

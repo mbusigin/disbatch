@@ -1,144 +1,122 @@
 package Synacor::Disbatch::WorkerThread;
 
-use strict;
+use 5.12.0;
+use warnings;
+
+use Carp;
 use Data::Dumper;
 use Pinscher::Core::EventBus;
 use Synacor::Disbatch::Engine;
 use Try::Tiny;
-use Carp;
-use Synacor::Disbatch::Engine;
 
 sub new {
-    my $class = shift;
-    my $id    = shift;
-    my $queue = shift;
+    my ($class, $id, $queue) = @_;
 
-    my $self = {};
+    my $self = {
+        eb        => Pinscher::Core::EventBus->new(bless({}, $class), "worker#$id" ),
+        id        => $id,
+        queue     => $queue,
+        config    => $Synacor::Disbatch::Engine::Engine->{config},
+        data      => {},
+        tasks_run => 0,
+    };
+
+    $self->{eb}{procedures}{start_task} = \&start_task;
+    $self->{eb}{methods}{retire}        = \&retire;
+
     bless $self, $class;
-
-    $self->{'eb'}                             = Pinscher::Core::EventBus->new( $self, 'worker#' . $id );
-    $self->{'id'}                             = $id;
-    $self->{'queue'}                          = $queue;
-    $self->{'eb'}{'procedures'}{'start_task'} = \&start_task;
-    $self->{'eb'}{'methods'}{'retire'}        = \&retire;
-    $self->{'config'}                         = $Synacor::Disbatch::Engine::Engine->{config};
-    $self->{'data'}                           = {};
-    $self->{'tasks_run'}                      = 0;
 
     $self->thread_start;
 
-    return $self;
+    $self;
 }
 
 sub start_task {
-    my $self = shift or confess "No self!";
-    my $task = shift or confess "No task!";
+    my ($self, $task) = @_;
+    confess "No task!" unless $task;
 
-    if ( !$self->{id} ) {
+    if (!$self->{id}) {
         confess "No 'id'!";
         return 1;
     }
 
-    #     print $self->{ 'id' } . ': ' . ref($task) . "\n";
-    $task->{'workerthread'} = $self;
+    #print $self->{ 'id' } . ': ' . ref($task) . "\n";
+    $task->{workerthread} = $self;
 
     try {
         $task->run($self);
-    }
-    catch {
+    } catch {
         $self->logger("Thread has uncaught exception: $_");
-        $Synacor::Disbatch::Engine::EventBus->report_task_done( $task->{'queue_id'}, $task->{'_id'}, 2, 'Unable to complete', "Thread has uncaught exception: $_" );
+        $Synacor::Disbatch::Engine::EventBus->report_task_done($task->{queue_id}, $task->{_id}, 2, 'Unable to complete', "Thread has uncaught exception: $_");
     };
 
-    return 1;
+    1;
 }
 
 sub retire {
-    my $self = shift or confess "No self!";
-    $self->{eb}->{retire} = 1;
-}
-
-sub startstuff {
-    my $self = shift;
-
-    $self->{'eb'}->run;
-    $self->logger->info("This thread $$ has outlived its usefulness");
-    exit(0);
+    my ($self) = @_;
+    $self->{eb}{retire} = 1;
 }
 
 sub thread_start {
-    my $self = shift;
+    my ($self) = @_;
 
-    my $pid = fork();
-    if ( $pid == 0 ) {
-        startstuff($self);
+    defined(my $pid = fork) or die "fork failed: $!";
+    if (!$pid) {
+        $self->{eb}->run;
+        $self->logger->info("This thread $$ has outlived its usefulness");
+        exit 0;
     }
 
-    #    my $ret = threads->create( \&startstuff, $self );
     $self->{pid} = $pid;
     return $pid;
 }
 
 sub kill {
-    my $self = shift;
-    if ( kill 'KILL', $self->{pid} ) {
-        print 'killed ' . __PACKAGE__ . " with PID $self->{pid}\n";
-    }
-    else {
-        print 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}\n";
+    my ($self) = @_;
+    if (kill 'KILL', $self->{pid}) {
+        say 'killed ' . __PACKAGE__ . " with PID $self->{pid}";
+    } else {
+        say 'could not kill ' . __PACKAGE__ . " with PID $self->{pid}";
     }
 }
 
 sub logger {
-    my $self = shift or confess "No self!";
-    my $classname = ref( $self->{queue} );
+    my ($self, $type) = @_;
+    my $classname = ref $self->{queue};
     $classname =~ s/^.*:://;
 
-    my $logger = shift;
-    if ($logger) {
-        my $l = "disbatch.plugins.$classname.$logger";
-        $logger = $l;
-    }
-    else {
-        $logger = "disbatch.engine.$classname";
-    }
+    my $logger = defined $type ? "disbatch.plugins.$classname.$type" : "disbatch.engine.$classname";
 
-    if ( !$self->{log4perl_initialised} ) {
-        Log::Log4perl::init( $self->{config}->{log4perl_conf} );
+    if (!$self->{log4perl_initialised}) {
+        Log::Log4perl::init($self->{config}{log4perl_conf});
         $self->{log4perl_initialised} = 1;
         $self->{loggers}              = {};
     }
 
-    return $self->{loggers}->{$logger} if ( $self->{loggers}->{$logger} );
-    $self->{loggers}->{$logger} = Log::Log4perl->get_logger($logger);
-    return $self->{loggers}->{$logger};
+    $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
+    $self->{loggers}{$logger};
 }
 
 sub mongo {
-    my $self = shift or confess "No self!";
-
-    return $self->{mongo} if defined( $self->{mongo} );
-    $self->{mongo} = Synacor::Disbatch::Backend::connect_mongo( $self->{'config'}->{'mongohost'}, $self->{'config'}->{'mongodb'} );
-    return $self->{mongo};
+    my ($self) = @_;
+    $self->{mongo} //= Synacor::Disbatch::Backend::connect_mongo($self->{config}->{mongohost}, $self->{config}->{mongodb});
+    $self->{mongo};
 }
 
 sub set {
-    my $self = shift or confess "No self!";
-    my $key  = shift or confess "No key!";
-    my $value = shift;
-    $self->{'data'}->{$key} = $value;
+    confess "No value!" unless @_ == 3;
+    $_[0]->{data}{$_[1]} = $_[2];
 }
 
 sub get {
-    my $self = shift or confess "No self!";
-    my $key  = shift or confess "No key!";
-    return $self->{'data'}->{$key};
+    confess "No key!" unless @_ == 2;
+    $_[0]->{data}{$_[1]};
 }
 
 sub unset {
-    my $self = shift or confess "No self!";
-    my $key  = shift or confess "No key!";
-    delete $self->{'data'}->{$key};
+    confess "No key!" unless @_ == 2;
+    delete $_[0]->{data}{$_[1]};
 }
 
 1;

@@ -1,51 +1,18 @@
 package Synacor::Disbatch::Task;
 
-use strict;
+use 5.12.0;
+use warnings;
+
 use Carp;
 use Try::Tiny;
 
-sub new {
-    my $class = shift;
+sub new { bless {}, shift }
 
-    my %self;
-
-    bless \%self, $class;
-    return \%self;
-}
-
-sub start {
-    my $self = shift;
-
-    #    $self->{ 'thread_handle' } = threads->create( \&run, $self );
-    return;
-}
-
-sub run {
-    my $self = shift;
-
-    print "*** STUB run\n";
-    $self->run;
-    return;
-}
-
-sub wait_task_status_change {
-    my $class = shift;
-    my $self  = shift;
-    my $tid   = shift;
-
-    warn "tid: $tid\n";
-
-    my $queue : shared = Thread::Queue->new() or die "Couldn't create thread queue\n";
-
-    $Synacor::Disbatch::Engine::EventBus->register_task_status_observer( $tid, $queue );
-    my $ret = $queue->dequeue;
-    return threads::shared::shared_clone($ret);
-}
+sub run {...}
 
 sub workerthread {
-    my $self = shift or confess "no self";
-    my $workerthread = $self->{workerthread} or confess "No workerthread defined";
-    return $workerthread;
+    $_[0]->{workerthread} or confess "No workerthread defined";
+    $_[0]->{workerthread};
 }
 
 1;
@@ -65,8 +32,4 @@ imapsync.
 =item run()
 
 Override this to implement the most atomic individual operation your task can perform.
-
-=item wait_task_status_change()
-
-Connect to the engine, wait for status change on a task
 
