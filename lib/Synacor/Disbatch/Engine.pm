@@ -18,10 +18,9 @@ use Try::Tiny;
 
 $Storable::interwork_56_64bit = 1;
 
+# used in Synacor::Disbatch::Backend, Synacor::Disbatch::HTTP, Synacor::Disbatch::Queue, and Synacor::Disbatch::WorkerThread
 our $EventBus;
 our $Engine;
-
-our $json = JSON->new;
 
 sub new {
     my ($class, $config) = @_;
@@ -459,7 +458,7 @@ sub search_tasks {
     my $hr;
 
     if ($isjson) {
-        $hr = $json->decode($filter);
+        $hr = JSON->new->decode($filter);
 
         for my $k (keys %$hr) {
             if ($hr->{$k} =~ /^qr\/(.*)\/$/) {
@@ -538,12 +537,12 @@ sub storable_read {
 
 sub json_write {
     $_[0];
-    #$json->encode($_[0]);
+    #JSON->new->encode($_[0]);
 }
 
 sub json_read {
     $_[0];
-    #$json->decode($_[0]);
+    #JSON->new->decode($_[0]);
 }
 
 1;

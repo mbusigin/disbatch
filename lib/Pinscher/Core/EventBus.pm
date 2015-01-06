@@ -14,20 +14,19 @@ use POSIX qw(ceil);
 use Storable qw(nfreeze thaw);
 use Try::Tiny;
 
-our $AUTOLOAD;
+# our because disbatchd.pl will set these if defined in disbatch.ini
 our $ebid         = 1234;
 our $ipckey1      = 'svmq';
 our $ipckey2      = 'idtq';
 our $threadprefix = "/tmp/thread_";
 
-our %sockets;
-
-my $MAXQSEND = 80000;
+my $AUTOLOAD;
 
 sub new {
     my ($class, $self_self, $name) = @_;
 
-    tie %sockets, 'IPC::Shareable', $ipckey1, {
+    my %sockets;
+    tie my %sockets, 'IPC::Shareable', $ipckey1, {
         create    => 1,
         exclusive => 0,
         mode      => 0644,

@@ -6,7 +6,9 @@ use warnings;
 use Data::Dumper;
 use MongoDB;
 
+# used in Synacor::Disbatch::Queue and Synacor::Disbatch::Engine as $Synacor::Disbatch::Engine::mongo
 our $mongo;
+
 my @redolog;
 
 my $tasks_collection  = 'tasks';
