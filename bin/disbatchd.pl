@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 
-use 5.10.0;
-use strict;
+use 5.12.0;
 use warnings;
 
 use Config::Any;
@@ -11,8 +10,8 @@ use Getopt::Long;
 use Module::Load;
 use Pod::Usage;
 
-my $ini_file = '';
-my $ini_dir  = '';
+my $ini_file;
+my $ini_dir;
 my $lib      = '';
 my $base     = '';
 my $help     = 0;
@@ -30,8 +29,8 @@ GetOptions(
 pod2usage(1) if $help;
 pod2usage(-verbose => 2) if $man;
 
-$ini_file ||= '/etc/disbatch/disbatch.ini';
-$ini_dir  ||= '/etc/disbatch/disbatch.d';
+$ini_file //= '/etc/disbatch/disbatch.ini';
+$ini_dir  //= '/etc/disbatch/disbatch.d';
 
 my @lib = split /,/, $lib;
 
@@ -76,8 +75,8 @@ $config->{htdocs_base}   = $path;
 my @pluginclasses;
 my $ini_dir_qm = quotemeta $ini_dir;
 for my $dfile (grep { /^$ini_dir_qm\// } keys %{$all_configs}) {
-    $config->{plugins}->{$dfile} = $all_configs->{$dfile};
-    push @pluginclasses, $config->{plugins}->{$dfile}->{class} if $config->{plugins}->{$dfile}->{class} and !$config->{plugins}->{$dfile}->{disabled};
+    $config->{plugins}{$dfile} = $all_configs->{$dfile};
+    push @pluginclasses, $config->{plugins}{$dfile}{class} if $config->{plugins}{$dfile}{class} and !$config->{plugins}{$dfile}{disabled};
 }
 $config->{pluginclasses} = \@pluginclasses;
 
@@ -85,10 +84,10 @@ $config->{pluginclasses} = \@pluginclasses;
 
 if (exists $config->{EventBus}) {
     no warnings 'once';
-    $Pinscher::Core::EventBus::ebid         = $config->{EventBus}->{ebid}         if exists $config->{EventBus}->{ebid};
-    $Pinscher::Core::EventBus::ipckey1      = $config->{EventBus}->{ipckey1}      if exists $config->{EventBus}->{ipckey1};
-    $Pinscher::Core::EventBus::ipckey2      = $config->{EventBus}->{ipckey2}      if exists $config->{EventBus}->{ipckey2};
-    $Pinscher::Core::EventBus::threadprefix = $config->{EventBus}->{threadprefix} if exists $config->{EventBus}->{threadprefix};
+    $Pinscher::Core::EventBus::ebid         = $config->{EventBus}{ebid}         if exists $config->{EventBus}{ebid};
+    $Pinscher::Core::EventBus::ipckey1      = $config->{EventBus}{ipckey1}      if exists $config->{EventBus}{ipckey1};
+    $Pinscher::Core::EventBus::ipckey2      = $config->{EventBus}{ipckey2}      if exists $config->{EventBus}{ipckey2};
+    $Pinscher::Core::EventBus::threadprefix = $config->{EventBus}{threadprefix} if exists $config->{EventBus}{threadprefix};
 }
 
 my $engine = Synacor::Disbatch::Engine->new($config);

@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 
-use 5.10.0;
-use strict;
+use 5.12.0;
 use warnings;
 
 use Data::Dumper;
@@ -47,23 +46,19 @@ my %commands = (
 );
 
 sub parse_reloadqueues {
-    my $params = shift;
-    my @ARGS   = shift;
+    my ($params) = @_;
     $params->{execute} = \&reloadqueues;
     return 1, 'Reload Queues';
 }
 
 sub parse_status {
-    my $params = shift;
-    my @ARGS   = shift;
-
+    my ($params) = @_;
     $params->{execute} = \&status;
     return 1, 'Status';
 }
 
 sub parse_enclosure {
-    my $params = shift;
-    my (@ARGS) = @_;
+    my ($params, @ARGS) = @_;
 
     my $perl = '';
     while (<STDIN>) {
@@ -82,8 +77,7 @@ sub parse_enclosure {
 }
 
 sub parse_queue {
-    my $params = shift;
-    my (@ARGS) = @_;
+    my ($params, @ARGS) = @_;
 
     my %queue_commands = (
         set    => \&parse_queue_set,
@@ -94,7 +88,7 @@ sub parse_queue {
         types  => \&parse_queue_types,
     );
 
-    return 0, "Command '$params->{command}' needs a sub-command.  Options: " . join(' ', keys %queue_commands) if scalar @ARGS < 1 or !defined $ARGS[0];
+    return 0, "Command '$params->{command}' needs a sub-command.  Options: " . join(' ', keys %queue_commands) if @ARGS < 1 or !defined $ARGS[0];
 
     my $command = shift @ARGS;
     return 0, "Queue sub-command '$command' does not exist." unless exists $queue_commands{$command};
@@ -106,12 +100,12 @@ sub parse_queue {
 sub parse_queue_types {
     my ($params, @ARGS) = @_;
     $params->{execute} = \&queue_types;
-    return ( ( 1, undef ) );
+    return 1, undef;
 }
 
 sub parse_queue_start {
     my ($params, @ARGS) = @_;
-    return 0, "Start takes 2 arguments:  type & name." if scalar @ARGS != 2;
+    return 0, "Start takes 2 arguments:  type & name." if @ARGS != 2;
     $params->{execute} = \&queue_start;
     ($params->{type}, $params->{name}) = @ARGS;
     return 1, undef;
@@ -119,7 +113,7 @@ sub parse_queue_start {
 
 sub parse_queue_search {
     my ($params, @ARGS) = @_;
-    return 0, "Search takes 2 arguments:  queue & filter." if scalar @ARGS != 2;
+    return 0, "Search takes 2 arguments:  queue & filter." if @ARGS != 2;
     $params->{execute} = \&queue_search;
     ($params->{queue}, $params->{filter} ) = @ARGS;
     return 1, undef;
@@ -127,7 +121,7 @@ sub parse_queue_search {
 
 sub parse_queue_set {
     my ($params, @ARGS) = @_;
-    return 0, "Set takes 3 arguments:  queueid, key & value." if scalar @ARGS != 3;
+    return 0, "Set takes 3 arguments:  queueid, key & value." if @ARGS != 3;
     $params->{execute} = \&queue_set;
     ($params->{queueid}, $params->{key}, $params->{value}) = @ARGS;
     return 1, undef;
@@ -135,7 +129,7 @@ sub parse_queue_set {
 
 sub parse_queue_task {
     my ($params, @ARGS) = @_;
-    return 0, "Item takes at least one argument:  queueid.\n" if scalar @ARGS < 1;
+    return 0, "Item takes at least one argument:  queueid.\n" if @ARGS < 1;
     $params->{execute} = \&queue_task;
     $params->{queueid} = shift @ARGS;
 
@@ -160,7 +154,7 @@ sub parse_queue_task {
 
 sub parse_queue_tasks {
     my ($params, @ARGS) = @_;
-    return 0, "Item takes at least 3 arguments: queueid, collection, filter" if scalar @ARGS < 3;
+    return 0, "Item takes at least 3 arguments: queueid, collection, filter" if @ARGS < 3;
     $params->{execute}    = \&queue_tasks;
     $params->{queueid}    = shift @ARGS;
     $params->{collection} = shift @ARGS;
@@ -168,7 +162,7 @@ sub parse_queue_tasks {
     my %filter;
     my $key;
     my $state = 0;
-    while ( (my $filter_term = shift @ARGS) ne '--' ) {
+    while ((my $filter_term = shift @ARGS) ne '--') {
         return 0, "Filter clause terminator '--' is required" unless $filter_term;
         if ($state == 0) {
             $key   = $filter_term;
@@ -201,50 +195,39 @@ sub parse_queue_tasks {
 }
 
 sub parse_arguments {
-    my @ARGS = @ARGV;
-
-    my %parameters;
-    my $argsleft = scalar @ARGS;
-
     ## No arguments?  Let caller know by returning -1.
-    return -1, \%parameters unless @ARGS;
+    return -1, {} unless @_;
 
-    ## Second:  parse commands
-    $argsleft = scalar(@ARGS);
-    if ($argsleft < 1) {
-        say "No command supplied.";
-        return 0, \%parameters;
+    my ($command, @ARGS) = @_;
+
+    my $parameters = { command => $command };
+    unless (exists $commands{$parameters->{command}}) {
+        say "No such command '$parameters->{command}'.";
+        return 0, $parameters;
     }
 
-    $parameters{command} = shift @ARGS;
-    if (!exists $commands{$parameters{command}}) {
-        say "No such command '$parameters{command}'.";
-        return 0, \%parameters;
-    }
-
-    if (my $func = $commands{$parameters{command}}) {
-        my ($ret, $msg) = &$func(\%parameters, @ARGS);
+    if (my $func = $commands{$parameters->{command}}) {
+        my ($ret, $msg) = &$func($parameters, @ARGS);
         if ($ret == 0) {
             say $msg;
-            return 0, \%parameters;
+            return 0, $parameters;
         }
     }
 
-    return 1, \%parameters;
+    return 1, $parameters;
 }
 
 sub status {
-    my $params = shift;
-    my $url    = "$url/scheduler-json";
+    #my ($params) = @_;
+    my $this_url = "$url/scheduler-json";
 
-    my $r = $ua->get($url);
+    my $r = $ua->get($this_url);
     if ($r->is_success) {
-        my $jsobj = $r->decoded_content;
-        my $obj   = $json->decode($jsobj);
+        my $obj   = $json->decode($r->decoded_content);
         my $count = 0;
 
         my $sep = \' | ';
-        my $tl  = Text::Table->new(
+        my $tl = Text::Table->new(
             { title => 'ID',         align => 'right' }, $sep,
             { title => 'Type',       align => 'right' }, $sep,
             { title => 'Name',       align => 'right' }, $sep,
@@ -256,7 +239,7 @@ sub status {
             { title => 'Backfill',   align => 'right' }
         );
 
-        for my $queue (@{$obj}) {
+        for my $queue (@$obj) {
             $tl->add(
                 $queue->{id},
                 $queue->{constructor},
@@ -272,31 +255,29 @@ sub status {
 
         #print $t1->draw;
         print $tl->title;
-        print $tl->rule( '-', '+' );
+        print $tl->rule('-', '+');
         say $tl->body;
         say "$count total queues.";
     }
 }
 
 sub reloadqueues {
-    my $params = shift;
-    my $url    = "$url/reload-queues-json";
+    #my ($params) = @_;
+    my $this_url = "$url/reload-queues-json";
 
-    my $r = $ua->get($url);
+    my $r = $ua->get($this_url);
     if ($r->is_success) {
-        my $jsobj = $r->decoded_content;
-        my $obj   = $json->decode($jsobj);
-        say Dumper $obj;
+        say Dumper $json->decode($r->decoded_content);
     } else {
-        say "Unable to connect to $url!";
+        say "Unable to connect to $this_url!";
     }
 }
 
 sub queue_set {
-    my $params = shift;
-    my $url    = "$url/set-queue-attr-json";
-    my $r      = $ua->post(
-        $url,
+    my ($params) = @_;
+    my $this_url = "$url/set-queue-attr-json";
+    my $r = $ua->post(
+        $this_url,
         [
             queueid => $params->{queueid},
             attr    => $params->{key},
@@ -309,20 +290,21 @@ sub queue_set {
         return if $obj->{success};
         say "Couldn't set queue attribute: $obj->{error}";
     } else {
-        say "Unable to connect to: $url";
+        say "Unable to connect to: $this_url";
     }
 }
 
 sub queue_start {
-    my $params = shift;
-    my $url    = "$url/start-queue-json";
-    my $r      = $ua->post(
-        $url,
+    my ($params) = @_;
+    my $this_url = "$url/start-queue-json";
+    my $r = $ua->post(
+        $this_url,
         [
             type => $params->{type},
             name => $params->{name},
         ]
     );
+
     if ($r->is_success) {
         my $obj = $json->decode($r->decoded_content);
         if ($obj->[0] == 1) {
@@ -332,35 +314,35 @@ sub queue_start {
             say "Couldn't create queue:  $obj->[1]";
         }
     } else {
-        say "Unable to connect to:  $url";
+        say "Unable to connect to:  $this_url";
     }
 }
 
 sub queue_task {
-    my $params = shift;
-    my $url    = "$url/queue-create-tasks-json";
-    my $r      = $ua->post(
-        $url,
+    my ($params) = @_;
+    my $this_url = "$url/queue-create-tasks-json";
+    my $r = $ua->post(
+        $this_url,
         [
             queueid => $params->{queueid},
             object  => $json->encode($params->{object}),
         ]
     );
+
     if ($r->is_success) {
         my @ret = @{$json->decode($r->decoded_content)};
         say $r->decoded_content;
         #say "New task #$ret[2]";
     } else {
-        say "Unable to connect to:  $url";
+        say "Unable to connect to:  $this_url";
     }
 }
 
 sub queue_tasks {
-    my $params = shift;
-    my $url    = "$url/queue-create-tasks-from-query-json";
-
+    my ($params) = @_;
+    my $this_url = "$url/queue-create-tasks-from-query-json";
     my $r = $ua->post(
-        $url,
+        $this_url,
         [
             queueid    => $params->{queueid},
             collection => $params->{collection},
@@ -368,48 +350,51 @@ sub queue_tasks {
             parameters => $params->{parameters},
         ]
     );
+
     if ($r->is_success) {
         print $r->decoded_content;
-        #my @ret = @{ $json->decode($r->decoded_content) };
+        #my @ret = @{$json->decode($r->decoded_content)};
         #say "New task #$ret[2]";
     } else {
-        say "Unable to connect to:  $url";
+        say "Unable to connect to:  $this_url";
     }
 }
 
 sub queue_types {
-    my $params = shift;
-    my $url    = "$url/queue-prototypes-json";
-    my $r      = $ua->post($url);
+    my ($params) = @_;
+    my $this_url = "$url/queue-prototypes-json";
+    my $r = $ua->post($this_url);
+
     if ($r->is_success) {
         #print $r->decoded_content;
-        my $obj = $json->decode( $r->decoded_content );
-        my $text = join("\n", keys %{$obj});
+        my $obj = $json->decode($r->decoded_content);
+        my $text = join("\n", keys %$obj);
         say $text;
     } else {
-        say "Unable to connect to:  $url";
+        say "Unable to connect to:  $this_url";
     }
 }
 
 sub queue_search {
-    my $params = shift;
-    my $url    = "$url/search-tasks-json";
-    my $r      = $ua->post(
-        $url,
+    my ($params) = @_;
+    my $this_url = "$url/search-tasks-json";
+    my $r = $ua->post(
+        $this_url,
         [
             queue  => $params->{queue},
             filter => $params->{filter},
         ]
     );
+
     if ($r->is_success) {
         print $r->decoded_content;
         #my $obj = $json->decode($r->decoded_content);
     } else {
-        say "Unable to connect to:  $url";
+        say "Unable to connect to:  $this_url";
     }
 }
 
-my ($ret, $params) = parse_arguments;
+my ($ret, $params) = parse_arguments(@ARGV);
 exit 1 unless $ret;
 
 pod2usage(-verbose => 2, -exitval => 0) if $ret == -1;
