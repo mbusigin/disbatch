@@ -5,6 +5,10 @@ Matt Busigin <mbusigin@gmail.com>
 Created: May, 2011
 Updated: Jan, 2013
 
+
+WARNING: This has been horribly out of date ever since it was added to the repo in Jan, 2013. – awillis
+
+
 Disbatch is a multi-platform, multi-language, elastic, distributed batch
 processing framework. This document outlines the protocol which a Disbatch
 Execution Node (DEN) must follow to correctly operate with Disbatch Command
