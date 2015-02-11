@@ -72,6 +72,7 @@ sub thread_start {
     return $pid;
 }
 
+# NOTE: is this used?
 sub kill {
     my ($self) = @_;
     if (kill 'KILL', $self->{pid}) {
@@ -81,6 +82,7 @@ sub kill {
     }
 }
 
+# NOTE: is this used?
 sub logger {
     my ($self, $type) = @_;
     my $classname = ref $self->{queue};
@@ -98,22 +100,26 @@ sub logger {
     $self->{loggers}{$logger};
 }
 
+# NOTE: i think this is used by plugins.
 sub mongo {
     my ($self) = @_;
     $self->{mongo} //= Synacor::Disbatch::Backend::connect_mongo($self->{config}->{mongohost}, $self->{config}->{mongodb});
     $self->{mongo};
 }
 
+# NOTE: i don't think this is used anywhere.
 sub set {
     confess "No value!" unless @_ == 3;
     $_[0]->{data}{$_[1]} = $_[2];
 }
 
+# NOTE: i don't think this is used anywhere.
 sub get {
     confess "No key!" unless @_ == 2;
     $_[0]->{data}{$_[1]};
 }
 
+# NOTE: i don't think this is used anywhere.
 sub unset {
     confess "No key!" unless @_ == 2;
     delete $_[0]->{data}{$_[1]};

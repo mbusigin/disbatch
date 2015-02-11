@@ -25,6 +25,8 @@ my $AUTOLOAD;
 sub new {
     my ($class, $self_self, $name) = @_;
 
+    # tie VAR, 'IPC::Shareable', GLUE, OPTIONS
+    # GLUE: an integer number or 4 character string that serves as a common identifier for data across process space
     tie my %sockets, 'IPC::Shareable', $ipckey1, {
         create    => 1,
         exclusive => 0,
@@ -84,6 +86,7 @@ sub AUTOLOAD {
     return $self->call_thread($name, @_);
 }
 
+# used once in AUTOLOAD()
 sub call_thread {
     my ($self, $name, @args) = @_;
 
@@ -134,15 +137,17 @@ sub call_thread {
     return $ret->[0] if defined $ret;
 }
 
+# called by Synacor::Disbatch::WorkerThread::thread_start()
 sub run {
     my ($self) = @_;
 
     while (1) {
-        my $r = $self->oneiteration;
-        return if defined $r and $r == 1;
+        my $retire = $self->oneiteration // 0;
+        return if $retire;
     }
 }
 
+# used once in run()
 sub oneiteration {
     my ($self) = @_;
 
@@ -211,11 +216,13 @@ sub oneiteration {
     }
 }
 
+# used in new() as $self->{methods}{test} and $self->{procedures}{test}
 sub footest {
     my ($self, $a, $b, $c) = @_;
     $a + $b + $c;
 }
 
+# used once in call_thread()
 sub connect_udx {
     my ($socketfn) = @_;
 
