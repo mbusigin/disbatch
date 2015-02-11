@@ -40,14 +40,20 @@ sub schedule {
 
     my $node = $self->{engine}{config}{node};
     my $free_threads = $self->{maxthreads} - @{$self->{tasks_doing}};
+    $self->wtfer->trace("schedule free_threads: $free_threads, maxthreads: $self->{maxthreads}, tasks_doing: " . scalar @{$self->{tasks_doing}});
 
     for (my $x = 0; $x < $free_threads; $x++) {
         my $document = $self->find_next_task($node);
+        $self->wtfer->trace("schedule found no more free tasks") unless defined $document;
         return unless $document;
+        $self->wtfer->trace("schedule found free task: $document->{_id}");
         Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { _id => $document->{_id} }, { '$set' => {status => 0, mtime => time} }, { retry  => 'redolog' });
+        $self->wtfer->trace("schedule loading task: $document->{_id}");
         my $task = $self->load_task($document);
+        $self->wtfer->trace("schedule finding a free thread for $document->{_id}");
         my $thr = $self->get_free_thread();
         $self->{threads_inuse}{$task->{id}} = $thr;
+        $self->wtfer->trace("schedule starting actual task: $document->{_id}");
         $thr->{eb}->start_task($task);
         push @{$self->{tasks_doing}}, $task;
     }
@@ -96,8 +102,12 @@ my $update_tasks_sth = undef;
 sub report_task_done {
     my ($self, $taskid, $status, $stdout, $stderr) = @_;
 
+    $self->wtfer->trace("report_task_done: $taskid");
+
+    # TODO: replace for/if blocks with a grep?
     for (my $x = 0; $x < @{$self->{tasks_doing}}; $x++) {
         if ($self->{tasks_doing}[$x]{_id}->to_string eq $taskid) {
+            $self->wtfer->trace("report_task_done removing from tasks_doing: $taskid");
             my $task = $self->{tasks_doing}[$x];
             splice @{$self->{tasks_doing}}, $x, 1;
             my $thr = $self->{threads_inuse}{$taskid};
@@ -115,6 +125,7 @@ sub report_task_done {
             $self->logger->info("taskid: $taskid;  stderr: $stderr;  status: $status");
             Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { _id => $taskid }, { '$set' => {stdout => $stdout, stderr => $stderr, status => $status} }, { retry => 'redolog' });
             Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$inc' => {count_todo => -1} }, { retry => 'redolog' });
+            $self->wtfer->trace("report_task_done calling schedule again after finishing task: $taskid");
             $self->schedule if $self->{preemptive};
             return;
         }
@@ -211,6 +222,20 @@ sub logger {
     return $self->{loggers}{$logger} if $self->{loggers}{$logger};
     $self->{loggers}{$logger} = Log::Log4perl->get_logger($logger);
     $self->{loggers}{$logger};
+}
+
+sub wtfer {
+    my ($self) = @_;
+
+    my $logger = 'disbatch.wtf';
+
+    if (!$self->{log4perl_initialised}) {
+        Log::Log4perl::init($self->{config}{log4perl_conf});
+        $self->{log4perl_initialised} = 1;
+        $self->{loggers}              = {};
+    }
+
+    return $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
 }
 
 1;
