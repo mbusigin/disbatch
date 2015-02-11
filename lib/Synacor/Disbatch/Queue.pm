@@ -67,15 +67,15 @@ sub create_task {
     };
 
     my $obj = {
-        queue      = $self->{id},
-        status     = -2,
-        stdout     = '',
-        stderr     = '',
-        node       = -1,
-        parameters = $self->{engine}{parameterformat_write}($parameters),
-        ctime      = time,
-        mtime      = time,
-    }
+        queue      => $self->{id},
+        status     => -2,
+        stdout     => '',
+        stderr     => '',
+        node       => -1,
+        parameters => $self->{engine}{parameterformat_write}($parameters),
+        ctime      => time,
+        mtime      => time,
+    };
 
     Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$inc' => {count_total => 1, count_todo => 1} }, { retry => 'redolog' });
     my $id = Synacor::Disbatch::Backend::insert_collection($self->{engine}{config}{tasks_collection}, $obj, { retry => 'synchronous' });

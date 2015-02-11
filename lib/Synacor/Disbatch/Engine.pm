@@ -174,7 +174,7 @@ sub scheduler_report {
 
         for my $ctf (@{$self->{chunkedtaskfactories}}) {
             if ($ctf->{queue} == $queue) {
-                $t{tasks_backfill} += $ctf->{count} - $ctf->{done};
+                $t->{tasks_backfill} += $ctf->{count} - $ctf->{done};
             }
         }
 

@@ -25,7 +25,6 @@ my $AUTOLOAD;
 sub new {
     my ($class, $self_self, $name) = @_;
 
-    my %sockets;
     tie my %sockets, 'IPC::Shareable', $ipckey1, {
         create    => 1,
         exclusive => 0,
@@ -86,7 +85,7 @@ sub AUTOLOAD {
 }
 
 sub call_thread {
-    my ($self, name, @args) = @_;
+    my ($self, $name, @args) = @_;
 
     #print "call_thread(): $self->{name} :: $name:\n" . Dumper(\@args) . "\n\n";
     #warn "$self->{name} :: $name Semaphore down\n";
