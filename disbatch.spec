@@ -74,6 +74,9 @@ fi
 /usr/share/doc/%{name}-%{version}/
 
 %changelog
+* Wed Feb 11 2015 Ashley Willis <awillis@synacor.com> - 3.2.4
+- tidy, clean, restyle, use 5.12 and warnings, minor simplifications
+- add wtfer() logging to lib/Synacor/Disbatch/Queue.pm
 * Thu Jul 18 2014 Ashley Willis <awillis@synacor.com> - 3.2.3
 - fix init script
 * Thu Jul 17 2014 Ashley Willis <awillis@synacor.com> - 3.2.2
