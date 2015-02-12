@@ -20,7 +20,8 @@ our $ipckey1      = 'svmq';
 our $ipckey2      = 'idtq';
 our $threadprefix = "/tmp/thread_";
 
-my $AUTOLOAD;
+# our because otherwise it won't work
+our $AUTOLOAD;
 
 sub new {
     my ($class, $self_self, $name) = @_;
