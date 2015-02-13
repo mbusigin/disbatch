@@ -1,12 +1,23 @@
--b
+# things i don't like about perltidy:
+# - blank line before comments
+# - weird use of { } for the hashes used by tie in lib/Pinscher/Core/EventBus.pm
+# - uncuddled catch
+# - lined up = (yet sometimes breaks this)
+# - tight hashes (otherwise loose use of @{ ... } and $foo->{ ... })
+-b		# backup original to .bak and modify file in-place
 -l=400		# 400 chars per line
 -i=4		# 4 columns per indentation
--dt=4
--it=4
+-dt=4		# default tab size. (default is 8)
+-it=4		# causes perltidy to do n complete iterations
 -bar		# opening brace always on right, even for long clauses
--nsfs
--nolq
---break-at-old-comma-breakpoints	# boc?
+-nsfs		# no add space before semicolon in for( ; ; )
+-nolq		# no outdent long quoted strings
+-boc		# try to break at all old commas (in case the formatting is intentional)
+-pt=2		# paren tightness - very tight			(def 1)
+-sbt=1		# square tightness - very tight			(def 1)
+-bt=2		# curly tightness (no code) - very tight	(def 1)
+-bbt=0		# curly tightness (code) - very tight		(def 0)
+-ce		# cuddled else
 --format-skipping
 --format-skipping-begin='#\s*tidyoff'
 --format-skipping-end='#\s*tidyon'
