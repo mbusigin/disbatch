@@ -13,7 +13,7 @@ sub new {
     my ($class, $id, $queue) = @_;
 
     my $self = {
-        eb        => Pinscher::Core::EventBus->new(bless({}, $class), "worker#$id" ),
+        eb        => Pinscher::Core::EventBus->new(bless({}, $class), "worker#$id"),
         id        => $id,
         queue     => $queue,
         config    => $Synacor::Disbatch::Engine::Engine->{config},
@@ -45,7 +45,8 @@ sub start_task {
 
     try {
         $task->run($self);
-    } catch {
+    }
+    catch {
         $self->logger("Thread has uncaught exception: $_");
         $Synacor::Disbatch::Engine::EventBus->report_task_done($task->{queue_id}, $task->{_id}, 2, 'Unable to complete', "Thread has uncaught exception: $_");
     };

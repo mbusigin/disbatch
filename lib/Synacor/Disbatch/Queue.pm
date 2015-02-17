@@ -31,14 +31,14 @@ sub new {
 sub find_next_task {
     my ($self, $node) = @_;
     die 'No node' unless defined $node;
-    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { node => -1, status => -2, queue => $self->{id} }, { '$set' => {node => $node, status => -1} });
-    Synacor::Disbatch::Backend::query_one($self->{engine}{config}{tasks_collection}, { node => $node, status => -1, queue => $self->{id} });
+    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {node => -1, status => -2, queue => $self->{id}}, {'$set' => {node => $node, status => -1}});
+    Synacor::Disbatch::Backend::query_one($self->{engine}{config}{tasks_collection}, {node => $node, status => -1, queue => $self->{id}});
 }
 
 sub schedule {
     my ($self) = @_;
 
-    my $node = $self->{engine}{config}{node};
+    my $node         = $self->{engine}{config}{node};
     my $free_threads = $self->{maxthreads} - @{$self->{tasks_doing}};
     $self->wtfer->trace("schedule free_threads: $free_threads, maxthreads: $self->{maxthreads}, tasks_doing: " . scalar @{$self->{tasks_doing}});
 
@@ -47,7 +47,7 @@ sub schedule {
         $self->wtfer->trace("schedule found no more free tasks") unless defined $document;
         return unless $document;
         $self->wtfer->trace("schedule found free task: $document->{_id}");
-        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { _id => $document->{_id} }, { '$set' => {status => 0, mtime => time} }, { retry  => 'redolog' });
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {_id => $document->{_id}}, {'$set' => {status => 0, mtime => time}}, {retry => 'redolog'});
         $self->wtfer->trace("schedule loading task: $document->{_id}");
         my $task = $self->load_task($document);
         $self->wtfer->trace("schedule finding a free thread for $document->{_id}");
@@ -67,7 +67,8 @@ sub create_task {
 
     my $task = try {
         $self->create_task_actual($parameters);
-    } catch {
+    }
+    catch {
         $self->logger->error("Error creating task: $_");
         undef;
     };
@@ -83,9 +84,9 @@ sub create_task {
         mtime      => time,
     };
 
-    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$inc' => {count_total => 1, count_todo => 1} }, { retry => 'redolog' });
-    my $id = Synacor::Disbatch::Backend::insert_collection($self->{engine}{config}{tasks_collection}, $obj, { retry => 'synchronous' });
-    $obj->{_id} = $obj->{id} = $id;	# FIXME: i doubt this does anything
+    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$inc' => {count_total => 1, count_todo => 1}}, {retry => 'redolog'});
+    my $id = Synacor::Disbatch::Backend::insert_collection($self->{engine}{config}{tasks_collection}, $obj, {retry => 'synchronous'});
+    $obj->{_id} = $obj->{id} = $id;    # FIXME: i doubt this does anything
     $task;
 }
 
@@ -123,8 +124,8 @@ sub report_task_done {
                 push @{$self->{threads}}, delete $self->{threads_inuse}{$taskid};
             }
             $self->logger->info("taskid: $taskid;  stderr: $stderr;  status: $status");
-            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, { _id => $taskid }, { '$set' => {stdout => $stdout, stderr => $stderr, status => $status} }, { retry => 'redolog' });
-            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$inc' => {count_todo => -1} }, { retry => 'redolog' });
+            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {_id => $taskid}, {'$set' => {stdout => $stdout, stderr => $stderr, status => $status}}, {retry => 'redolog'});
+            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$inc' => {count_todo => -1}}, {retry => 'redolog'});
             $self->wtfer->trace("report_task_done calling schedule again after finishing task: $taskid");
             $self->schedule if $self->{preemptive};
             return;
@@ -161,7 +162,7 @@ sub get_free_thread {
 sub load_tasks {
     my ($self) = @_;
 
-    my @tasks = $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->query({ queue => $self->{id} })->all;
+    my @tasks = $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->query({queue => $self->{id}})->all;
     for my $document (@tasks) {
         my $parameters = $self->{engine}{parameterformat_read}($document->{parameters}) if $document->{parameters};
         $self->create_task_actual($parameters);
@@ -181,13 +182,13 @@ sub load_task {
 sub count_todo {
     my ($self) = @_;
 
-    my $r = Synacor::Disbatch::Backend::query_one($self->{engine}{config}{queues_collection}, { _id => $self->{id} });
+    my $r = Synacor::Disbatch::Backend::query_one($self->{engine}{config}{queues_collection}, {_id => $self->{id}});
     my $v = 0;
     if (defined $r and defined $r->{count_todo}) {
         $v = $r->{count_todo};
     } else {
-        $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, { status => -2, queue => $self->{id} });
-        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$set' => {count_todo => $v} }, { retry => 'redolog' });
+        $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, {status => -2, queue => $self->{id}});
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$set' => {count_todo => $v}}, {retry => 'redolog'});
     }
     $v;
 }
@@ -195,13 +196,13 @@ sub count_todo {
 sub count_total {
     my ($self) = @_;
 
-    my $r = Synacor::Disbatch::Backend::query_one($self->{engine}{config}{queues_collection}, { _id => $self->{id} });
+    my $r = Synacor::Disbatch::Backend::query_one($self->{engine}{config}{queues_collection}, {_id => $self->{id}});
     my $v = 0;
     if (defined $r and defined $r->{count_total}) {
         $v = $r->{count_total};
     } else {
-        $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, { queue => $self->{id} });
-        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, { _id => $self->{id} }, { '$set' => {count_total => $v} }, { retry => 'redolog' });
+        $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, {queue => $self->{id}});
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$set' => {count_total => $v}}, {retry => 'redolog'});
     }
     $v;
 }

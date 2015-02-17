@@ -57,7 +57,7 @@ sub new {
 
     Synacor::Disbatch::Backend::initialise($config->{mongohost}, $config->{mongodb}, $config->{mongouser}, $config->{mongopassword}, $config->{tasks_collection}, $config->{queues_collection});
 
-    $Engine = $self;
+    $Engine   = $self;
     $EventBus = $self->{eb};
 
     $self->orphan_tasks;
@@ -158,18 +158,19 @@ sub scheduler_report {
     my @rpt;
 
     for my $queue (@{$self->{queues}}) {
+
         #warn Dumper $queue;
         my $tasks_todo = $queue->count_todo;
-        my $t = {
-            id			=> $queue->{id}->to_string,
-            tasks_todo		=> $tasks_todo,
-            tasks_done		=> ($queue->count_total - @{$queue->{tasks_doing}} - $tasks_todo),
-            tasks_doing		=> scalar @{$queue->{tasks_doing}},
-            maxthreads		=> $queue->{maxthreads},
-            preemptive		=> $queue->{preemptive},
-            name		=> $queue->{name},
-            constructor		=> $queue->{constructor},
-            tasks_backfill	=> 0,
+        my $t          = {
+            id             => $queue->{id}->to_string,
+            tasks_todo     => $tasks_todo,
+            tasks_done     => ($queue->count_total - @{$queue->{tasks_doing}} - $tasks_todo),
+            tasks_doing    => scalar @{$queue->{tasks_doing}},
+            maxthreads     => $queue->{maxthreads},
+            preemptive     => $queue->{preemptive},
+            name           => $queue->{name},
+            constructor    => $queue->{constructor},
+            tasks_backfill => 0,
         };
 
         for my $ctf (@{$self->{chunkedtaskfactories}}) {
@@ -203,9 +204,11 @@ sub filter_collection {
     my $hr = {};
 
     if (ref $filter eq 'HASH') {
+
         # de-share it
         $hr = $filter;
     } else {
+
         # NOTE: WUT
         eval {
             $hr = eval $filter;
@@ -322,7 +325,8 @@ sub queue_create_tasks_from_query {
         my $ctf = Synacor::Disbatch::ChunkedTaskFactory->new($self, $queueid, $collection, $filter, $columns_arrayref);
         push @{$self->{chunkedtaskfactories}}, $ctf;
         [ 1, $ctf->{count} ];
-    } catch {
+    }
+    catch {
         [ -1, 0, "Error creating chunked task factory from query: $_" ];
     };
 }
@@ -366,7 +370,8 @@ sub load_queues {
 
         my $queue = try {
             &$constructor($row->{constructor}, $self);
-        } catch {
+        }
+        catch {
             $self->logger->error("Unable to construct queue $row->{name}: $_");
         };
         next unless defined $queue;
@@ -437,8 +442,8 @@ sub queue_prototypes {
             next;
         }
 
-        $r->{$type}    = $queue->parameters_definitions;
-        $r->{settings} = $queue->queue_definitions;	# NOTE: this gets reset every time of the loop
+        $r->{$type} = $queue->parameters_definitions;
+        $r->{settings} = $queue->queue_definitions;    # NOTE: this gets reset every time of the loop
     }
 
     $r;
@@ -477,6 +482,7 @@ sub search_tasks {
     if (ref $hr ne 'HASH') {
         $self->logger->error('Filter not a hashref');
         $hr = {};
+
         #return [];
     }
 
@@ -537,11 +543,13 @@ sub storable_read {
 
 sub json_write {
     $_[0];
+
     #JSON->new->encode($_[0]);
 }
 
 sub json_read {
     $_[0];
+
     #JSON->new->decode($_[0]);
 }
 

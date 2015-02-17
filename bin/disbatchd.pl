@@ -12,10 +12,10 @@ use Pod::Usage;
 
 my $ini_file;
 my $ini_dir;
-my $lib      = '';
-my $base     = '';
-my $help     = 0;
-my $man      = 0;
+my $lib  = '';
+my $base = '';
+my $help = 0;
+my $man  = 0;
 
 GetOptions(
     'inifile=s' => \$ini_file,
@@ -67,7 +67,7 @@ map { $_ =~ s/^/$ini_dir\// } @dfiles;
 unshift @dfiles, $ini_file;
 
 no_disbatch_d:
-my $all_configs = Config::Any->load_files({ files => \@dfiles, flatten_to_hash => 1, use_ext => 1 });
+my $all_configs = Config::Any->load_files({files => \@dfiles, flatten_to_hash => 1, use_ext => 1});
 my $config = $all_configs->{$ini_file};
 $config->{log4perl_conf} = "$base/$config->{log4perl_conf}";
 $config->{htdocs_base}   = $path;
@@ -152,7 +152,7 @@ use POSIX ":sys_wait_h";
 
 sub REAPER {
     my $stiff;
-    while ( ($stiff = waitpid(-1, &WNOHANG)) > 0 ) {
+    while (($stiff = waitpid(-1, &WNOHANG)) > 0) {
     }
     $SIG{CHLD} = \&REAPER;    # install *after* calling waitpid
 }

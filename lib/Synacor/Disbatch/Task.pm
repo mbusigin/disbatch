@@ -8,7 +8,7 @@ use Try::Tiny;
 
 sub new { bless {}, shift }
 
-sub run {...}
+sub run { ... }
 
 sub workerthread {
     $_[0]->{workerthread} or confess "No workerthread defined";

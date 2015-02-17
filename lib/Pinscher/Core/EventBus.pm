@@ -28,19 +28,21 @@ sub new {
 
     # tie VAR, 'IPC::Shareable', GLUE, OPTIONS
     # GLUE: an integer number or 4 character string that serves as a common identifier for data across process space
-    tie my %sockets, 'IPC::Shareable', $ipckey1, {
+    tie my %sockets, 'IPC::Shareable', $ipckey1,
+      {
         create    => 1,
         exclusive => 0,
         mode      => 0644,
         destroy   => 0,
-    };
+      };
 
-    tie $ebid, 'IPC::Shareable', $ipckey2, {
+    tie $ebid, 'IPC::Shareable', $ipckey2,
+      {
         create    => 1,
         exclusive => 0,
         mode      => 0644,
         destroy   => 0,
-    };
+      };
 
     (tied $ebid)->shlock();
     my $id = ++$ebid;
@@ -97,6 +99,7 @@ sub call_thread {
     #warn "\t$self->{name} :: $name Enqueue & clone\n";
 
     unless (defined $self->{procedures}{$name}) {
+
         #(tied $ebid)->shlock();
         #$id = ++ $ebid;
         #(tied $ebid)->shunlock();
@@ -108,6 +111,7 @@ sub call_thread {
     my $frozen_payload = nfreeze([ $name, \@args ]);
 
     my $client = connect_udx($self->{socketfn});
+
     #my $client = IO::Socket::UNIX->new(Peer => $self->{socketfn}, Type => SOCK_STREAM, Timeout => 10) or die $@;
     print $client $frozen_payload;
     $client->shutdown(1);
@@ -117,6 +121,7 @@ sub call_thread {
 
     my $ret;
     unless ($self->{procedures}{$name}) {
+
         #warn "\t$self->{name} :: $name Dequeue reply\n";
         my $rcvd;
         while (<$client>) {
@@ -161,7 +166,8 @@ sub oneiteration {
         while (<$socket>) {
             $rcvd .= $_;
         }
-    } catch {
+    }
+    catch {
         warn "Error reading from socket: $_";
     };
 
@@ -184,7 +190,7 @@ sub oneiteration {
     my $procedure = 0;
     my $func      = $self->{methods}{$command};
     unless ($func) {
-        $func = $self->{procedures}{$command};
+        $func      = $self->{procedures}{$command};
         $procedure = 1;
         unless ($func) {
             $socket->shutdown(2);
@@ -228,10 +234,11 @@ sub connect_udx {
     my ($socketfn) = @_;
 
     my $client;
-    while ( !($client = IO::Socket::UNIX->new(Peer => $socketfn, Type => SOCK_STREAM, Timeout => 10)) ) {
+    while (!($client = IO::Socket::UNIX->new(Peer => $socketfn, Type => SOCK_STREAM, Timeout => 10))) {
         if ($@ =~ /Resource temporarily unavailable/) {
             srand time * $$;
             my $sleepfor = rand(2);
+
             #warn "Sleeping for $sleepfor seconds as listen queue is full for $socketfn";
             select(undef, undef, undef, $sleepfor);
         } else {

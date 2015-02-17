@@ -24,7 +24,7 @@ sub connect_mongo {
     say 'Synacor::Disbatch::Backend::connect_mongo extras: ', Dumper $extras;
 
     my $conn = MongoDB::MongoClient->new(
-        host           => $host // 'localhost',
+        host => $host // 'localhost',
         auto_reconnect => 1,
         auto_connect   => 1,
         query_timeout  => 30000,
@@ -37,6 +37,7 @@ sub connect_mongo {
 }
 
 sub initialise {
+
     # FIXME: this looks like it will always overwrite the defaults, even if undef
     my ($host, $db, $username, $password, $xtasks_collection, $xqueues_collection) = @_;
     $tasks_collection  = $xtasks_collection;
@@ -47,9 +48,10 @@ sub initialise {
 
 sub ensureIndices {
     my ($mongo, $tasks_collection) = @_;
+
     # FIXME: these indexes get created in no specific order:
-    $mongo->get_collection($tasks_collection)->ensure_index({ node => 1, status => 1, queue => 1 });
-    $mongo->get_collection($tasks_collection)->ensure_index({ queue => 1, status => 1 });
+    $mongo->get_collection($tasks_collection)->ensure_index({node => 1, status => 1, queue => 1});
+    $mongo->get_collection($tasks_collection)->ensure_index({queue => 1, status => 1});
 
 }
 
@@ -85,7 +87,7 @@ sub update_collection {
 sub update_queue {
     my ($queueid, $attr, $value) = @_;
     print Dumper \@_;
-    update_collection($queues_collection, { _id => MongoDB::OID->new(value => $queueid) }, { '$set' => {$attr => $value} }, {}, { retry => 'synchronous' });
+    update_collection($queues_collection, {_id => MongoDB::OID->new(value => $queueid)}, {'$set' => {$attr => $value}}, {}, {retry => 'synchronous'});
 }
 
 sub query_collection {
@@ -95,7 +97,7 @@ sub query_collection {
     eval {
         my $collection = $mongo->get_collection($cid);
         $query = $collection->query($hr, $attrs);
-        $query->count;	# FIXME: does this do anything here?
+        $query->count;    # FIXME: does this do anything here?
     };
     if ($@) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->warn("Error: $@");

@@ -28,7 +28,7 @@ pod2usage(-verbose => 2, -exitval => 0) if $help;
 pod2usage(1) unless @ARGV;
 
 my $json = JSON->new;
-my $ua = LWP::UserAgent->new;
+my $ua   = LWP::UserAgent->new;
 
 if (defined $username and defined $password) {
     my ($host) = $url =~ qr{^https?://(.+?)(?:/|$)};
@@ -71,7 +71,7 @@ sub parse_enclosure {
     $params->{filter}     = shift @ARGS;
     unshift @ARGS, $perl;
 
-    $params->{columns} = $json->encode( \@ARGS );
+    $params->{columns} = $json->encode(\@ARGS);
 
     return 1, undef;
 }
@@ -115,7 +115,7 @@ sub parse_queue_search {
     my ($params, @ARGS) = @_;
     return 0, "Search takes 2 arguments:  queue & filter." if @ARGS != 2;
     $params->{execute} = \&queue_search;
-    ($params->{queue}, $params->{filter} ) = @ARGS;
+    ($params->{queue}, $params->{filter}) = @ARGS;
     return 1, undef;
 }
 
@@ -200,7 +200,7 @@ sub parse_arguments {
 
     my ($command, @ARGS) = @_;
 
-    my $parameters = { command => $command };
+    my $parameters = {command => $command};
     unless (exists $commands{$parameters->{command}}) {
         say "No such command '$parameters->{command}'.";
         return 0, $parameters;
@@ -218,6 +218,7 @@ sub parse_arguments {
 }
 
 sub status {
+
     #my ($params) = @_;
     my $this_url = "$url/scheduler-json";
 
@@ -227,16 +228,16 @@ sub status {
         my $count = 0;
 
         my $sep = \' | ';
-        my $tl = Text::Table->new(
-            { title => 'ID',         align => 'right' }, $sep,
-            { title => 'Type',       align => 'right' }, $sep,
-            { title => 'Name',       align => 'right' }, $sep,
-            { title => 'Threads',    align => 'right' }, $sep,
-            { title => 'To-Do',      align => 'right' }, $sep,
-            { title => 'Preemptive', align => 'right' }, $sep,
-            { title => 'Done',       align => 'right' }, $sep,
-            { title => 'Processing', align => 'right' }, $sep,
-            { title => 'Backfill',   align => 'right' }
+        my $tl  = Text::Table->new(
+            {title => 'ID',         align => 'right'}, $sep,
+            {title => 'Type',       align => 'right'}, $sep,
+            {title => 'Name',       align => 'right'}, $sep,
+            {title => 'Threads',    align => 'right'}, $sep,
+            {title => 'To-Do',      align => 'right'}, $sep,
+            {title => 'Preemptive', align => 'right'}, $sep,
+            {title => 'Done',       align => 'right'}, $sep,
+            {title => 'Processing', align => 'right'}, $sep,
+            {title => 'Backfill',   align => 'right'}
         );
 
         for my $queue (@$obj) {
@@ -262,6 +263,7 @@ sub status {
 }
 
 sub reloadqueues {
+
     #my ($params) = @_;
     my $this_url = "$url/reload-queues-json";
 
@@ -276,7 +278,7 @@ sub reloadqueues {
 sub queue_set {
     my ($params) = @_;
     my $this_url = "$url/set-queue-attr-json";
-    my $r = $ua->post(
+    my $r        = $ua->post(
         $this_url,
         [
             queueid => $params->{queueid},
@@ -297,7 +299,7 @@ sub queue_set {
 sub queue_start {
     my ($params) = @_;
     my $this_url = "$url/start-queue-json";
-    my $r = $ua->post(
+    my $r        = $ua->post(
         $this_url,
         [
             type => $params->{type},
@@ -321,7 +323,7 @@ sub queue_start {
 sub queue_task {
     my ($params) = @_;
     my $this_url = "$url/queue-create-tasks-json";
-    my $r = $ua->post(
+    my $r        = $ua->post(
         $this_url,
         [
             queueid => $params->{queueid},
@@ -332,6 +334,7 @@ sub queue_task {
     if ($r->is_success) {
         my @ret = @{$json->decode($r->decoded_content)};
         say $r->decoded_content;
+
         #say "New task #$ret[2]";
     } else {
         say "Unable to connect to:  $this_url";
@@ -341,7 +344,7 @@ sub queue_task {
 sub queue_tasks {
     my ($params) = @_;
     my $this_url = "$url/queue-create-tasks-from-query-json";
-    my $r = $ua->post(
+    my $r        = $ua->post(
         $this_url,
         [
             queueid    => $params->{queueid},
@@ -353,6 +356,7 @@ sub queue_tasks {
 
     if ($r->is_success) {
         print $r->decoded_content;
+
         #my @ret = @{$json->decode($r->decoded_content)};
         #say "New task #$ret[2]";
     } else {
@@ -363,9 +367,10 @@ sub queue_tasks {
 sub queue_types {
     my ($params) = @_;
     my $this_url = "$url/queue-prototypes-json";
-    my $r = $ua->post($this_url);
+    my $r        = $ua->post($this_url);
 
     if ($r->is_success) {
+
         #print $r->decoded_content;
         my $obj = $json->decode($r->decoded_content);
         my $text = join("\n", keys %$obj);
@@ -378,7 +383,7 @@ sub queue_types {
 sub queue_search {
     my ($params) = @_;
     my $this_url = "$url/search-tasks-json";
-    my $r = $ua->post(
+    my $r        = $ua->post(
         $this_url,
         [
             queue  => $params->{queue},
@@ -388,6 +393,7 @@ sub queue_search {
 
     if ($r->is_success) {
         print $r->decoded_content;
+
         #my $obj = $json->decode($r->decoded_content);
     } else {
         say "Unable to connect to:  $this_url";

@@ -7,7 +7,7 @@ sub new {
     my ($class, $seconds, $callback) = @_;
 
     my $self = {
-        seconds  => $seconds // 60,
+        seconds => $seconds // 60,
         callback => $callback,
     };
 

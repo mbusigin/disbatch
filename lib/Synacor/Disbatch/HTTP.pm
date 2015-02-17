@@ -31,9 +31,9 @@ my %dispatch = (
 
 sub new {
     my $class = shift;
-    my $self = HTTP::Server::Simple->new(@_);
+    my $self  = HTTP::Server::Simple->new(@_);
     $self->{config} = $Synacor::Disbatch::Engine::Engine->{config};
-    $self->{base} = $self->{config}{htdocs_base};
+    $self->{base}   = $self->{config}{htdocs_base};
     bless $self, $class;
 }
 
@@ -57,7 +57,7 @@ sub do_authenticate {
         return 0;
     }
 
-    my $passwd = new Apache::Htpasswd({ passwdFile => $self->{config}{HTTPAuth}{passwd}, ReadOnly => 1 });
+    my $passwd = new Apache::Htpasswd({passwdFile => $self->{config}{HTTPAuth}{passwd}, ReadOnly => 1});
     unless ($passwd) {
         $self->logger->error("Couldn't create Apache::Htpaswd from $self->{config}{HTTPAuth}{passwd}");
         return 0;
@@ -90,6 +90,7 @@ sub handle_request {
     my $handler = $dispatch{$path};
     if (ref $handler eq 'CODE') {
         if ($path =~ /-json$/) {
+
             #print "HTTP/1.0 200 OK\r\n";
             if ($cgi->param('POSTDATA')) {
                 my $postdata = $cgi->param('POSTDATA');
@@ -105,15 +106,18 @@ sub handle_request {
                 my $converted = $json->allow_blessed->convert_blessed->encode($result);
                 print $cgi->header(
                     -type => 'application/json',
+
                     #-cookie => $cookie,
                 );
                 print $converted;
                 $self->logger->trace("Served '$path'");
-            } catch {
+            }
+            catch {
                 print "HTTP/1.0 500 Perl Module Failure\r\n";
                 $self->logger->error("Error processing '$path': $_");
                 print $cgi->header(
                     -type => 'application/json',
+
                     #-cookie => $cookie,
                 );
                 print $json->encode([ 0, "Error executing JSON handler: $_" ]);
@@ -134,6 +138,7 @@ sub handle_request {
     } else {
         print "HTTP/1.0 404 Not found\r\n";
         print $cgi->header(
+
             #-cookie => $cookie,
         );
         print $cgi->start_html('Not found'), $cgi->h1("Not found: $path"), $cgi->end_html;
@@ -150,7 +155,6 @@ sub start {
     $self->{pid} = $pid;
 }
 
-
 sub kill {
     my ($self) = @_;
     if (kill 'KILL', $self->{pid}) {
@@ -161,6 +165,7 @@ sub kill {
 }
 
 sub scheduler_json {
+
     #my ($cgi) = @_;
     $Synacor::Disbatch::Engine::EventBus->scheduler_report;
 }
@@ -171,15 +176,15 @@ sub set_queue_attr_json {
     my @validattrs = qw/ maxthreads preemptive /;
 
     my $attr = $cgi->param('attr');
-    return { success => 0, error => 'Invalid attr' } unless grep $attr, @validattrs;
+    return {success => 0, error => 'Invalid attr'} unless grep $attr, @validattrs;
 
     my $value = $cgi->param('value');
-    return { success => 0, error => 'You must supply a value' } unless defined $value;
+    return {success => 0, error => 'You must supply a value'} unless defined $value;
 
     my $queueid = $cgi->param('queueid');
-    return { success => 0, error => 'You must supply a queueid' } unless $queueid;
+    return {success => 0, error => 'You must supply a queueid'} unless $queueid;
 
-    my ($r, $e) = @{ $Synacor::Disbatch::Engine::EventBus->set_queue_attr($queueid, $attr, $value) };
+    my ($r, $e) = @{$Synacor::Disbatch::Engine::EventBus->set_queue_attr($queueid, $attr, $value)};
     my $ret = {success => $r};
     $ret->{error} = $e if defined $e;
     $ret;
@@ -198,8 +203,8 @@ sub start_queue_json {
 sub queue_create_tasks_json {
     my ($cgi) = @_;
 
-    my $jsobj   = $cgi->param('object');
-    my $obj     = $json->decode($jsobj);
+    my $jsobj = $cgi->param('object');
+    my $obj   = $json->decode($jsobj);
     $Synacor::Disbatch::Engine::EventBus->queue_create_tasks($cgi->param('queueid'), $obj);
 }
 
@@ -210,6 +215,7 @@ sub queue_create_tasks_from_query_json {
 }
 
 sub queue_prototypes_json {
+
     #my ($cgi) = @_;
     $Synacor::Disbatch::Engine::EventBus->queue_prototypes;
 }
@@ -226,7 +232,7 @@ sub search_tasks_json {
 
 sub delete_queue_json {
     my ($cgi) = @_;
-    { success => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id')) };
+    {success => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id'))};
 }
 
 sub logger {

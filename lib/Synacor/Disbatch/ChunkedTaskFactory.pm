@@ -34,7 +34,7 @@ sub init {
 
     $self->{cursor}->immortal(1);
     $self->{count} = $self->{cursor}->count;
-    $self->{done} = 0;
+    $self->{done}  = 0;
     return 1;
 }
 
@@ -44,7 +44,7 @@ sub slice {
     return unless $self->{cursor}->has_next;
 
     my $start = [ Time::HiRes::gettimeofday() ];
-    my $x = 0;
+    my $x     = 0;
     while (Time::HiRes::tv_interval($start) <= $maxs and (my $document = $self->{cursor}->next)) {
         $x++;
         my $params;
