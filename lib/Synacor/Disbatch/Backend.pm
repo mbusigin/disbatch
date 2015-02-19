@@ -27,7 +27,7 @@ sub connect_mongo {
         host => $host // 'localhost',
         auto_reconnect => 1,
         auto_connect   => 1,
-        query_timeout  => 30000,
+        query_timeout  => 60000,
         find_master    => 1,
         %$extras,
     );
