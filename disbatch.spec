@@ -74,6 +74,8 @@ fi
 /usr/share/doc/%{name}-%{version}/
 
 %changelog
+* Fri Mar  6 2015 Ashley Willis <awillis@synacor.com> - 3.2.3.1
+- pull in prod changes: query_timeout => 60000
 * Thu Jul 18 2014 Ashley Willis <awillis@synacor.com> - 3.2.3
 - fix init script
 * Thu Jul 17 2014 Ashley Willis <awillis@synacor.com> - 3.2.2

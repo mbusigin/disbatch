@@ -37,7 +37,7 @@ sub connect_mongo
                                             host => $host,
                                             auto_reconnect => 1,
                                             auto_connect => 1,
-                                            query_timeout => 30000,
+                                            query_timeout => 60000,
                                             find_master => 1,
                                             %extras,
                                         );
@@ -45,6 +45,7 @@ sub connect_mongo
     }
     else
     {
+        $extras{ query_timeout } = 60000;
         $conn = MongoDB::MongoClient->new( %extras );
     }
     my $db = $conn->get_database( $dbname );
