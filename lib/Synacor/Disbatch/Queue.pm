@@ -76,6 +76,23 @@ sub find_next_task
     my $self = shift or die "No self";
     my $node = shift or die "No node";
 
+    $self->{'sort'} = $self->{'sort'} || '';
+    $self->logger->trace( "Synacor::Disbatch::Queue->find_next_task() $self->{'id'} current sort order $self->{'sort'}" );
+
+    # New ordering schemes
+    if ($self->{'sort'} eq 'lifo' || $self->{'sort'} eq 'fifo') {
+        my $sort = ($self->{'sort'} eq 'fifo') ? 1 : -1; # 1: ascending, -1: descending
+        my $db = $Synacor::Disbatch::Backend::mongo;
+        my $row = $db->run_command({
+           findAndModify => $self->{ 'engine' }->{'config'}->{'tasks_collection'},
+           query => { 'node' => -1, 'status' => -2, 'queue' => $self->{'id'} },
+           sort => { _id => $sort },
+           update => { '$set' => {'node' => $node, 'status' => -1 } }
+        });
+        return $row->{value};
+    }
+
+    # Old ordering schemes
     Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}},
                                                             { '$set' => {'node' => $node, 'status' => -1} } );
     my $row = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
