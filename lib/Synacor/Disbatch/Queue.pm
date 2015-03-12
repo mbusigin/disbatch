@@ -31,8 +31,24 @@ sub new {
 sub find_next_task {
     my ($self, $node) = @_;
     die 'No node' unless defined $node;
-    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {node => -1, status => -2, queue => $self->{id}}, {'$set' => {node => $node, status => -1}});
-    Synacor::Disbatch::Backend::query_one($self->{engine}{config}{tasks_collection}, {node => $node, status => -1, queue => $self->{id}});
+
+    $self->{sort} //= 'default';
+    $self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} current sort order: $self->{sort}");
+
+    my $command = {
+        query  => { node => -1, status => -2, queue => $self->{id} },
+        update => { '$set' => {node => $node, status => -1} }
+    };
+
+    if ($self->{sort} eq 'fifo') {
+        $command->{sort} = { _id => 1 };
+    } elsif ($self->{sort} eq 'lifo') {
+        $command->{sort} = { _id => -1 };
+    } elsif ($self->{sort} ne 'default') {
+        $self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} unknown sort order '$self->{sort}' -- using default");
+    }
+
+    $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->find_and_modify($command)->{value};
 }
 
 sub schedule {
