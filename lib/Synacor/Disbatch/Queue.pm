@@ -37,7 +37,7 @@ sub find_next_task {
 
     my $command = {
         query  => { node => -1, status => -2, queue => $self->{id} },
-        update => { '$set' => {node => $node, status => -1} }
+        update => { '$set' => {node => $node, status => 0, mtime => time} }
     };
 
     if ($self->{sort} eq 'fifo') {
@@ -62,8 +62,6 @@ sub schedule {
         my $document = $self->find_next_task($node);
         $self->wtfer->trace("schedule found no more free tasks") unless defined $document;
         return unless $document;
-        $self->wtfer->trace("schedule found free task: $document->{_id}");
-        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {_id => $document->{_id}}, {'$set' => {status => 0, mtime => time}}, {retry => 'redolog'});
         $self->wtfer->trace("schedule loading task: $document->{_id}");
         my $task = $self->load_task($document);
         $self->wtfer->trace("schedule finding a free thread for $document->{_id}");
