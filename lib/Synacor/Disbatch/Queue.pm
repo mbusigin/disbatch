@@ -48,7 +48,7 @@ sub find_next_task {
         $self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} unknown sort order '$self->{sort}' -- using default");
     }
 
-    $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->find_and_modify($command)->{value};
+    $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->find_and_modify($command);
 }
 
 sub schedule {
