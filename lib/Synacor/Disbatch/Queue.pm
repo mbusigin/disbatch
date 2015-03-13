@@ -33,7 +33,7 @@ sub find_next_task {
     die 'No node' unless defined $node;
 
     $self->{sort} //= 'default';
-    $self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} current sort order: $self->{sort}");
+    #$self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} current sort order: $self->{sort}");
 
     my $command = {
         query  => { node => -1, status => -2, queue => $self->{id} },
@@ -56,11 +56,11 @@ sub schedule {
 
     my $node         = $self->{engine}{config}{node};
     my $free_threads = $self->{maxthreads} - @{$self->{tasks_doing}};
-    $self->wtfer->trace("schedule free_threads: $free_threads, maxthreads: $self->{maxthreads}, tasks_doing: " . scalar @{$self->{tasks_doing}});
+    #$self->wtfer->trace("schedule free_threads: $free_threads, maxthreads: $self->{maxthreads}, tasks_doing: " . scalar @{$self->{tasks_doing}});
 
     for (my $x = 0; $x < $free_threads; $x++) {
         my $document = $self->find_next_task($node);
-        $self->wtfer->trace("schedule found no more free tasks") unless defined $document;
+        #$self->wtfer->trace("schedule found no more free tasks") unless defined $document;
         return unless $document;
         $self->wtfer->trace("schedule loading task: $document->{_id}");
         my $task = $self->load_task($document);
