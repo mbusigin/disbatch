@@ -13,7 +13,6 @@ sub new {
     my ($class, $id, $queue) = @_;
 
     my $self = {
-        eb        => Pinscher::Core::EventBus->new(bless({}, $class), "worker#$id"),
         id        => $id,
         queue     => $queue,
         config    => $Synacor::Disbatch::Engine::Engine->{config},
@@ -21,6 +20,7 @@ sub new {
         tasks_run => 0,
     };
 
+    $self->{eb} = Pinscher::Core::EventBus->new($self, "worker#$id");
     $self->{eb}{procedures}{start_task} = \&start_task;
     $self->{eb}{methods}{retire}        = \&retire;
 
