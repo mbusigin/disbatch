@@ -4,7 +4,7 @@ use 5.12.0;
 use warnings;
 
 use Config::Any;
-use Cwd 'abs_path';
+use Cwd qw/abs_path getcwd/;
 use Data::Dumper;
 use Getopt::Long;
 use Module::Load;
@@ -16,6 +16,7 @@ my $lib  = '';
 my $base = '';
 my $help = 0;
 my $man  = 0;
+my $dev  = 0;
 
 GetOptions(
     'inifile=s' => \$ini_file,
@@ -24,6 +25,7 @@ GetOptions(
     'base=s'    => \$base,
     'help|?'    => \$help,
     'man'       => \$man,
+    'dev'       => \$dev,
 );
 
 pod2usage(1) if $help;
@@ -34,11 +36,15 @@ $ini_dir  //= '/etc/disbatch/disbatch.d';
 
 my @lib = split /,/, $lib;
 
+die "Cannot use --dev and --base together\n" if $dev and $base;
+
+$base = getcwd if $dev;
+
 my $path = '';
 if ($base) {
     $ini_file = "$base/$ini_file";
     $ini_dir  = "$base/$ini_dir";
-    push @lib, "$base/lib";
+    push @lib, "$base/lib" unless $dev;
     $path = abs_path __FILE__;
     if ($path !~ m%^/usr/bin/%) {
         $path =~ s|/[^/]+/[^/]+$||;
@@ -236,6 +242,12 @@ Additional perl lib directories to load. If more than one, separate with a comma
 Takes a value that is the base directory for ini file and directory, as well as adds C<$base/lib> to included lib directories.
 Also includes C<$path/lib> where C<$path> is the directory below the directory of this file, if this file is not in C</usr/bin>,
 and passes C<$path> to the HTTP server to prepend the document root. This allows running C<disbatchd.pl> uninstalled.
+
+=item --dev
+
+Basically does what C<--base does>, but is a boolean, using the cwd. However, it does not add C<$base/lib>; instead you should do
+
+  export PERL5LIB="$PWD/lib"
 
 =item --help
 
