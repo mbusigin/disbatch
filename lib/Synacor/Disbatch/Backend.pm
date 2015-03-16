@@ -211,6 +211,14 @@ sub process_redolog {
 
 __END__
 
+=head1 NAME
+
+Synacor::Disbatch::Backend
+
+=head1 SUBS
+
+=over2
+
 =item connect_mongo()
 
 Establish a new connection to a MongoDB.
@@ -259,3 +267,4 @@ Delete from a Mongo collection
 
 Process redo log
 
+=back

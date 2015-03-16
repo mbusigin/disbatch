@@ -2,3 +2,6 @@
 *.bak
 *.ini
 disbatchd.log
+ignore/
+disbatch-*.tar.gz
+disbatch-*/

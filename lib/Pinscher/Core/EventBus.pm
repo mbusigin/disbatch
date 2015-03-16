@@ -252,3 +252,9 @@ sub connect_udx {
 1;
 
 __END__
+
+=head1 NAME
+
+Pinscher::Core::EventBus
+
+=head1 FOO
