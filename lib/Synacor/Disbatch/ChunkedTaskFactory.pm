@@ -66,3 +66,11 @@ sub slice {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Synacor::Disbatch::ChunkedTaskFactory
+
+=head1 FOO
