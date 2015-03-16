@@ -2,7 +2,7 @@ PROJECT=disbatch
 VERSION=3.2.4
 
 all:	
-	@echo "Targets: clean, dist, rpm, bump_rpm, bump, bump_minor"
+	@echo "Targets: clean, dist, rpm, bump_rpm, bump, bump_minor, test"
 
 bump_rpm: disbatch.spec
 	perl -ni -e 'if (/^Release: (\d+)$$/) { $$d = $$1+1; s/\d+/$$d/; } print' disbatch.spec
@@ -18,6 +18,7 @@ bump_minor: Makefile disbatch.spec
 clean:	
 	find . -name '*~' -delete
 	find . -name 'DEADJOE' -delete
+	find . -name '*.bak' -delete
 	rm -f disbatchd.log $(PROJECT)-$(VERSION).tar.gz
 
 dist:	clean
@@ -30,3 +31,6 @@ rpm:	dist
 	perl -pi -e 's/Version: !!VERSION!!/Version: $(VERSION)/' $(PROJECT).spec
 	rpmbuild -bb $(PROJECT).spec
 	perl -pi -e 's/Version: $(VERSION)/Version: !!VERSION!!/' $(PROJECT).spec
+
+test:
+	perl -Ilib -t t/001_base.t

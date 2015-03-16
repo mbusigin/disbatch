@@ -5,6 +5,7 @@
 # - lined up = (yet sometimes breaks this)
 # - tight hashes (otherwise loose use of @{ ... } and $foo->{ ... })
 -b		# backup original to .bak and modify file in-place
+-bext='/'	# the backup files will be deleted if there are no errors
 -l=400		# 400 chars per line
 -i=4		# 4 columns per indentation
 -dt=4		# default tab size. (default is 8)
