@@ -48,6 +48,10 @@ install -d -m0755 %{buildroot}/etc/disbatch
 cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
 
 install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
+install -D -m0644 etc/logrotate.d/disbatch %{buildroot}etc/logrotate.d/disbatch
+
+#install -d -m0755 %{buildroot}/etc/disbatch/htdocs
+cp -Lr frontend/build etc/disbatch/htdocs
 
 %post
 /sbin/chkconfig --add disbatchd
@@ -68,6 +72,7 @@ fi
 %files -f %{name}-%{version}-filelist
 /etc/init.d/disbatchd
 /etc/disbatch/
+/etc/logrotate.d/disbatch
 
 %defattr(-,root,root)
 
