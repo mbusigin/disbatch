@@ -4,8 +4,7 @@ Release: 1%{?_dist}
 
 Summary: <% $zilla->abstract %>
 License: distributable
-Group: Development/Libraries
-BuildArch: noarch
+Group: System/Cluster
 Vendor: <% $zilla->license->holder %>
 Source: <% $archive %>
 
@@ -45,7 +44,21 @@ if [ "$(cat %{name}-%{version}-filelist)X" = "X" ] ; then
     exit -1
 fi
 
-install -D -m0644 etc/disbatch/disbatch.d/dummy.ini %{buildroot}/etc/disbatch/disbatch.d/dummy.ini
+install -d -m0755 %{buildroot}/etc/disbatch
+cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
+
+install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
+
+%post
+/sbin/chkconfig --add disbatchd
+/sbin/chkconfig disbatchd on
+
+%preun
+if [ $1 -lt 1 ]; then
+	/sbin/service disbatchd stop > /dev/null 2>&1
+
+	/sbin/chkconfig --del disbatchd
+fi
 
 %clean
 if [ "%{buildroot}" != "/" ] ; then
@@ -53,8 +66,8 @@ if [ "%{buildroot}" != "/" ] ; then
 fi
 
 %files -f %{name}-%{version}-filelist
-/etc/disbatch/disbatch.d/dummy.ini
-
+/etc/init.d/disbatchd
+/etc/disbatch/
 
 %defattr(-,root,root)
 
