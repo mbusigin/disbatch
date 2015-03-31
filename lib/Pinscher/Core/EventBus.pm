@@ -157,12 +157,16 @@ sub run {
 sub oneiteration {
     my ($self) = @_;
 
-    my $socket;
+    my $socket = try { $self->{socket}->accept() };
+
+    unless (defined $socket) {
+        warn "\$socket for $self->{name} undefined - returning";
+        return;
+    }
+
+
     my $rcvd;
     try {
-        $socket = $self->{socket}->accept();
-
-        #warn "Accepted $socket";
         while (<$socket>) {
             $rcvd .= $_;
         }
