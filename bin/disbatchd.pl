@@ -174,11 +174,18 @@ $SIG{HUP}  = sub { exit 129 };
 
 END {
     say "END block";
-    $http->kill;
-    $timer->kill;
-    $timer2->kill;
-    for my $queue (@{$engine->{queues}}) {
-        $_->kill for @{$queue->{threads}};
+    if ($?) {
+        say "*** we got a non-zero exit status, killing everything.";
+        $http->kill;
+        $timer->kill;
+        $timer2->kill;
+        for my $queue (@{$engine->{queues}}) {
+            $_->kill for @{$queue->{threads}};
+        }
+    } else {
+        # only Synacor::Disbatch::WorkerThread exits with 0
+        # this only happens if tasks_before_workerthread_retirement != 0
+        say "*** Synacor::Disbatch::WorkerThread exited.";
     }
 }
 
