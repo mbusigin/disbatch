@@ -133,15 +133,21 @@ sub schedule
     {
         my $row = $self->find_next_task( $node );
         return if !$row;
+
+        $self->logger->trace( "*** found task $row->{_id}" );
         Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'_id' => $row->{'_id'}},
                                                                 { '$set' => {'status' => 0, 'mtime' => time() } },
                                                                 {retry => 'redolog'} );
+        $self->logger->trace( "*** updated task $row->{_id}" );
         my $task = $self->load_task( $row );
+        $self->logger->trace( "*** loaded task $row->{_id}" );
 
         my $thr = $self->get_free_thread();
+        $self->logger->trace( "*** got free thread $row->{_id}" );
 #        print " ** Firing off $task->{id} to $thr->{id}\n";
         $self->{ 'threads_inuse' }->{ $task->{'id'} } = $thr;
         $thr->{'eb'}->start_task( $task );
+        $self->logger->trace( "*** finished task $row->{_id}" );
 
 #        print " ** Returned from $task\n\n";
         push @{ $self->{'tasks_doing'} }, $task;
