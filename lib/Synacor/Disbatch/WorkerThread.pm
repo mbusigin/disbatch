@@ -80,6 +80,7 @@ sub start_task
     my $self = shift or confess "No self!";
     my $task = shift or confess "No task!";
 
+    $self->logger->trace( "*** start task $self->{id}" );
     if ( !$self->{id} )
     {
         confess "No 'id'!";
@@ -88,6 +89,7 @@ sub start_task
 #     print $self->{ 'id' } . ': ' . ref($task) . "\n";
     $task->{ 'workerthread' } = $self;
 
+    $self->logger->trace( "*** run task $self->{id}" );
     try
     {
         $task->run( $self );
@@ -97,6 +99,7 @@ sub start_task
         $self->logger( "Thread has uncaught exception: $_" );
         $Synacor::Disbatch::Engine::EventBus->report_task_done( $task->{'queue_id'}, $task->{'_id'}, 2, 'Unable to complete', "Thread has uncaught exception: $_" );
     };
+    $self->logger->trace( "*** done task $self->{id}" );
 
 
     return 1;
