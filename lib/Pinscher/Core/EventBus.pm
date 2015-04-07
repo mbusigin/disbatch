@@ -24,31 +24,8 @@ our $threadprefix = "/tmp/thread_";
 our $AUTOLOAD;
 
 sub new {
-    my ($class, $self_self, $name) = @_;
+    my ($class, $self_self, $id) = @_;
 
-    # tie VAR, 'IPC::Shareable', GLUE, OPTIONS
-    # GLUE: an integer number or 4 character string that serves as a common identifier for data across process space
-    tie my %sockets, 'IPC::Shareable', $ipckey1,
-      {
-        create    => 1,
-        exclusive => 0,
-        mode      => 0644,
-        destroy   => 0,
-      };
-
-    tie $ebid, 'IPC::Shareable', $ipckey2,
-      {
-        create    => 1,
-        exclusive => 0,
-        mode      => 0644,
-        destroy   => 0,
-      };
-
-    (tied $ebid)->shlock();
-    my $id = ++$ebid;
-    (tied $ebid)->shunlock();
-
-    $id = $name;
     my $fn = $threadprefix . $id;
     unlink $fn;
     my $server = IO::Socket::UNIX->new(
@@ -57,13 +34,11 @@ sub new {
         Listen => 2000
     ) or die "Couldn't create $fn: $!";
 
-    $sockets{name} = $fn;
-
     my $self = {
         id       => $id,
         socketfn => $fn,
         socket   => $server,
-        name     => $name,
+        name     => $id,	# FIXME: is this needed?
         retire   => 0,
         methods  => {
             test => \&footest,
