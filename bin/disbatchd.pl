@@ -90,8 +90,6 @@ $config->{pluginclasses} = \@pluginclasses;
 
 if (exists $config->{EventBus}) {
     no warnings 'once';
-    $Pinscher::Core::EventBus::ipckey1      = $config->{EventBus}{ipckey1}      if exists $config->{EventBus}{ipckey1};
-    $Pinscher::Core::EventBus::ipckey2      = $config->{EventBus}{ipckey2}      if exists $config->{EventBus}{ipckey2};
     $Pinscher::Core::EventBus::threadprefix = $config->{EventBus}{threadprefix} if exists $config->{EventBus}{threadprefix};
 }
 

@@ -15,8 +15,6 @@ use Storable qw(nfreeze thaw);
 use Try::Tiny;
 
 # our because disbatchd.pl will set these if defined in disbatch.ini
-our $ipckey1      = 'svmq';
-our $ipckey2      = 'idtq';
 our $threadprefix = "/tmp/thread_";
 
 # our because otherwise it won't work
