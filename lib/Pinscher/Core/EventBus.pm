@@ -93,31 +93,12 @@ sub AUTOLOAD {
 sub call_thread {
     my ($self, $name, @args) = @_;
 
-    #print "call_thread(): $self->{name} :: $name:\n" . Dumper(\@args) . "\n\n";
-    #warn "$self->{name} :: $name Semaphore down\n";
-    #$self->{semaphore}->down();
-    #warn "\t$self->{name} :: $name Enqueue & clone\n";
-
-    unless (defined $self->{procedures}{$name}) {
-
-        #(tied $ebid)->shlock();
-        #$id = ++ $ebid;
-        #(tied $ebid)->shunlock();
-        #$recvqueue = msgget($id, IPC_CREAT | S_IRWXU);
-        #die "Can't create receiving SysV message queue: $!" unless $recvqueue;
-    }
-
-    #(tied $ebid)->shlock();
     my $frozen_payload = nfreeze([ $name, \@args ]);
 
     my $client = connect_udx($self->{socketfn});
 
-    #my $client = IO::Socket::UNIX->new(Peer => $self->{socketfn}, Type => SOCK_STREAM, Timeout => 10) or die $@;
     print $client $frozen_payload;
     $client->shutdown(1);
-
-    #warn "Sent " . length($frozen_payload) . "b\n";
-    #(tied $ebid)->shunlock();
 
     my $ret;
     unless ($self->{procedures}{$name}) {
@@ -163,7 +144,6 @@ sub oneiteration {
         warn "\$socket for $self->{name} undefined - returning";
         return;
     }
-
 
     my $rcvd;
     try {
