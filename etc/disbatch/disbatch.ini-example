@@ -47,7 +47,6 @@ method=none
 ;
 ; You will also need to change the httpport to something unique above!
 [EventBus]
-;ebid=1234
 ;ipckey1=svmq
 ;ipckey2=idtq
 ;threadprefix=/tmp/thread_
