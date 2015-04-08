@@ -16,6 +16,12 @@ our $threadprefix = "/tmp/thread_";
 sub new {
     my ($class, $self_self, $id) = @_;
 
+    if (ref $self_self eq 'Synacor::Disbatch::Engine') {
+        $self_self->logger->trace("*** $$ new $class $id");					# *** new Pinscher::Core::EventBus Synacor::Engine
+    } else {
+        logger({ self => $self_self })->trace("*** $$ new $class $id");				# *** new Pinscher::Core::EventBus worker#1
+    }
+
     my $fn = $threadprefix . $id;
     unlink $fn;
     my $server = IO::Socket::UNIX->new(
@@ -42,9 +48,10 @@ sub new {
 # used to be used once in AUTOLOAD(), now called directly by what needs it
 sub call_thread {
     my ($self, $name, @args) = @_;
+    $self->logger->trace(join ' ', "*** $$ call_thread $name", @args);
 
     my $frozen_payload = nfreeze([ $name, \@args ]);
-    my $client = connect_udx($self->{socketfn});
+    my $client = $self->connect_udx($self->{socketfn});
     print $client $frozen_payload;
     $client->shutdown(1);
 
@@ -75,6 +82,7 @@ sub call_thread {
 # called by Synacor::Disbatch::WorkerThread::thread_start()
 sub run {
     my ($self) = @_;
+    $self->logger->trace("*** $$ run");
 
     while (1) {
         my $retire = $self->oneiteration // 0;
@@ -85,6 +93,7 @@ sub run {
 # used once in run()
 sub oneiteration {
     my ($self) = @_;
+    $self->logger->trace("*** $$ oneiteration");
 
     my $socket = try { $self->{socket}->accept() };
 
@@ -118,6 +127,7 @@ sub oneiteration {
     }
     my $command = $message->[0];
     my $args    = $message->[1];
+    $self->logger->trace("*** $$ oneiteration $command: ", ref $args eq 'ARRAY' ? join(', ', @$args) : $args );
 
     my $procedure = 0;
     my $func      = $self->{methods}{$command};
@@ -157,7 +167,8 @@ sub oneiteration {
 
 # used once in call_thread()
 sub connect_udx {
-    my ($socketfn) = @_;
+    my ($self, $socketfn) = @_;
+    $self->logger->trace("*** $$ connect_udx $socketfn");
 
     my $client;
     while (!($client = IO::Socket::UNIX->new(Peer => $socketfn, Type => SOCK_STREAM, Timeout => 10))) {
@@ -173,6 +184,10 @@ sub connect_udx {
     }
 
     $client;
+}
+
+sub logger {
+    $_[0]->{self}{loggers}{'disbatch.engine'} // $_[0]->{self}{queue}{engine}{loggers}{'disbatch.engine'};
 }
 
 1;
