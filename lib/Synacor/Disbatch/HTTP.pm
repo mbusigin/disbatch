@@ -184,7 +184,7 @@ sub set_queue_attr_json {
     my $queueid = $cgi->param('queueid');
     return {success => 0, error => 'You must supply a queueid'} unless $queueid;
 
-    my ($r, $e) = @{$Synacor::Disbatch::Engine::EventBus->set_queue_attr($queueid, $attr, $value)};
+    my ($r, $e) = @{$Synacor::Disbatch::Engine::EventBus->call_thread('set_queue_attr', $queueid, $attr, $value)};
     my $ret = {success => $r};
     $ret->{error} = $e if defined $e;
     $ret;

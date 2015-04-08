@@ -3,7 +3,6 @@ package Pinscher::Core::EventBus;
 use 5.12.0;
 use warnings;
 
-use AutoLoader;
 use Data::Dumper;
 use File::Temp qw/ tempfile tempdir /;
 use IO::Socket qw(SOCK_STREAM);
@@ -16,9 +15,6 @@ use Try::Tiny;
 
 # our because disbatchd.pl will set these if defined in disbatch.ini
 our $threadprefix = "/tmp/thread_";
-
-# our because otherwise it won't work
-our $AUTOLOAD;
 
 sub new {
     my ($class, $self_self, $id) = @_;
@@ -50,25 +46,12 @@ sub new {
     bless $self, $class;
 }
 
-sub AUTOLOAD {
-    my $self = shift;
-    my $type = ref $self or die "$self is not an object";
-
-    my $name = $AUTOLOAD;
-    $name =~ s/.*://;    # strip fully-qualified portion
-
-    return if $name eq 'DESTROY';    # We do not AUTOLOAD destroys
-    return $self->call_thread($name, @_);
-}
-
-# used once in AUTOLOAD()
+# used to be used once in AUTOLOAD(), now called directly by what needs it
 sub call_thread {
     my ($self, $name, @args) = @_;
 
     my $frozen_payload = nfreeze([ $name, \@args ]);
-
     my $client = connect_udx($self->{socketfn});
-
     print $client $frozen_payload;
     $client->shutdown(1);
 

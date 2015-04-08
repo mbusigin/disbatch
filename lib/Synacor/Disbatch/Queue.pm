@@ -68,7 +68,7 @@ sub schedule {
         my $thr = $self->get_free_thread();
         $self->{threads_inuse}{$task->{id}} = $thr;
         $self->wtfer->trace("schedule starting actual task: $document->{_id}");
-        $thr->{eb}->start_task($task);
+        $thr->{eb}->call_thread('start_task', $task);
         push @{$self->{tasks_doing}}, $task;
     }
     1;
@@ -130,7 +130,7 @@ sub report_task_done {
             $thr->{tasks_run}++;
             if ($self->{config}{tasks_before_workerthread_retirement} != 0 and $thr->{tasks_run} >= $self->{config}{tasks_before_workerthread_retirement}) {
                 $self->logger->info("Worker thread is retiring after $thr->{tasks_run} tasks");
-                $self->{threads_inuse}{$taskid}{eb}->retire;
+                $self->{threads_inuse}{$taskid}{eb}->call_thread('retire');
                 POSIX::close($self->{threads_inuse}{$taskid}{eb}{socket}->fileno);
                 delete $self->{threads_inuse}{$taskid};
                 $self->start_thread_pool;

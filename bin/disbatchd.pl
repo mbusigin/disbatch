@@ -132,9 +132,9 @@ $engine->logger->trace('Loading queues');
 $engine->load_queues;
 $engine->logger->trace('Loaded queues, starting schedulers');
 
-my $timer = Synacor::Disbatch::Timer->new($config->{schedulertimerinterval}, sub { $engine->{eb}->awaken });
+my $timer = Synacor::Disbatch::Timer->new($config->{schedulertimerinterval}, sub { $engine->{eb}->call_thread('awaken') });
 
-my $timer2 = Synacor::Disbatch::Timer->new($config->{updatetimerinterval}, sub { $engine->{eb}->update_node_status });
+my $timer2 = Synacor::Disbatch::Timer->new($config->{updatetimerinterval}, sub { $engine->{eb}->call_thread('update_node_status') });
 
 $engine->logger->trace('Spinning up HTTP service');
 my $http = Synacor::Disbatch::HTTP->new($config->{httpport});

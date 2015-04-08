@@ -48,7 +48,7 @@ sub start_task {
     }
     catch {
         $self->logger("Thread has uncaught exception: $_");
-        $Synacor::Disbatch::Engine::EventBus->report_task_done($task->{queue_id}, $task->{_id}, 2, 'Unable to complete', "Thread has uncaught exception: $_");
+        $Synacor::Disbatch::Engine::EventBus->call_thread('report_task_done', $task->{queue_id}, $task->{_id}, 2, 'Unable to complete', "Thread has uncaught exception: $_");
     };
 
     1;
