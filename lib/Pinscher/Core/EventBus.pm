@@ -7,9 +7,6 @@ use Data::Dumper;
 use File::Temp qw/ tempfile tempdir /;
 use IO::Socket qw(SOCK_STREAM);
 use IO::Socket::UNIX;
-use IPC::Shareable (':lock');
-use IPC::SysV qw(IPC_PRIVATE IPC_RMID IPC_CREAT S_IRWXU);
-use POSIX qw(ceil);
 use Storable qw(nfreeze thaw);
 use Try::Tiny;
 
@@ -33,12 +30,8 @@ sub new {
         socket   => $server,
         name     => $id,	# FIXME: is this needed?
         retire   => 0,
-        methods  => {
-            test => \&footest,
-        },
-        procedures => {
-            test => \&footest,
-        },
+        methods  => { },
+        procedures => { },
         self           => $self_self,
         pre_call_trap  => undef,
         post_call_trap => undef,
@@ -160,12 +153,6 @@ sub oneiteration {
         $self->{socket}->close;
         return 1;
     }
-}
-
-# used in new() as $self->{methods}{test} and $self->{procedures}{test}
-sub footest {
-    my ($self, $a, $b, $c) = @_;
-    $a + $b + $c;
 }
 
 # used once in call_thread()
