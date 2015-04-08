@@ -35,6 +35,7 @@ sub start_task {
     my ($self, $task) = @_;
     confess "No task!" unless $task;
 
+    $self->logger->trace( "*** start task $task->{_id}" );
     if (!$self->{id}) {
         confess "No 'id'!";
         return 1;
@@ -43,6 +44,7 @@ sub start_task {
     #print $self->{ 'id' } . ': ' . ref($task) . "\n";
     $task->{workerthread} = $self;
 
+    $self->logger->trace( "*** run task $task->{_id}" );
     try {
         $task->run($self);
     }
@@ -50,6 +52,7 @@ sub start_task {
         $self->logger("Thread has uncaught exception: $_");
         $Synacor::Disbatch::Engine::EventBus->call_thread('report_task_done', $task->{queue_id}, $task->{_id}, 2, 'Unable to complete', "Thread has uncaught exception: $_");
     };
+    $self->logger->trace( "*** done task $task->{_id}" );
 
     1;
 }
