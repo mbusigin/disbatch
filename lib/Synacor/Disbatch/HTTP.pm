@@ -167,7 +167,7 @@ sub kill {
 sub scheduler_json {
 
     #my ($cgi) = @_;
-    $Synacor::Disbatch::Engine::EventBus->scheduler_report;
+    $Synacor::Disbatch::Engine::EventBus->call_thread('scheduler_report');
 }
 
 sub set_queue_attr_json {
@@ -192,12 +192,12 @@ sub set_queue_attr_json {
 
 sub list_users_json {
     my ($cgi) = @_;
-    $Synacor::Disbatch::Engine::EventBus->list_users($cgi->param('group'), $cgi->param('filter'));
+    $Synacor::Disbatch::Engine::EventBus->call_thread('list_users', $cgi->param('group'), $cgi->param('filter'));
 }
 
 sub start_queue_json {
     my ($cgi) = @_;
-    $Synacor::Disbatch::Engine::EventBus->construct_queue($cgi->param('type'), $cgi->param('name'));
+    $Synacor::Disbatch::Engine::EventBus->call_thread('construct_queue', $cgi->param('type'), $cgi->param('name'));
 }
 
 sub queue_create_tasks_json {
@@ -205,34 +205,33 @@ sub queue_create_tasks_json {
 
     my $jsobj = $cgi->param('object');
     my $obj   = $json->decode($jsobj);
-    $Synacor::Disbatch::Engine::EventBus->queue_create_tasks($cgi->param('queueid'), $obj);
+    $Synacor::Disbatch::Engine::EventBus->call_thread('queue_create_tasks', $cgi->param('queueid'), $obj);
 }
 
 sub queue_create_tasks_from_query_json {
     my ($cgi) = @_;
     my $filter = ($cgi->param('jsonfilter')) ? $json->decode($cgi->param('jsonfilter')) : $cgi->param('filter');
-    $Synacor::Disbatch::Engine::EventBus->queue_create_tasks_from_query($cgi->param('queueid'), $cgi->param('collection'), $filter, $json->decode($cgi->param('parameters')));
+    $Synacor::Disbatch::Engine::EventBus->call_thread('queue_create_tasks_from_query', $cgi->param('queueid'), $cgi->param('collection'), $filter, $json->decode($cgi->param('parameters')));
 }
 
 sub queue_prototypes_json {
-
     #my ($cgi) = @_;
-    $Synacor::Disbatch::Engine::EventBus->queue_prototypes;
+    $Synacor::Disbatch::Engine::EventBus->call_thread('queue_prototypes');
 }
 
 sub reload_queues_json {
-    $Synacor::Disbatch::Engine::EventBus->reload_queues;
+    $Synacor::Disbatch::Engine::EventBus->call_thread('reload_queues');
     [1];
 }
 
 sub search_tasks_json {
     my ($cgi) = @_;
-    $Synacor::Disbatch::Engine::EventBus->search_tasks($cgi->param('queue'), $cgi->param('filter'), $cgi->param('json') || 0, $cgi->param('limit') || 0, $cgi->param('skip') || 0, $cgi->param('count') || 0, $cgi->param('terse') || 0);
+    $Synacor::Disbatch::Engine::EventBus->call_thread('search_tasks', $cgi->param('queue'), $cgi->param('filter'), $cgi->param('json') || 0, $cgi->param('limit') || 0, $cgi->param('skip') || 0, $cgi->param('count') || 0, $cgi->param('terse') || 0);
 }
 
 sub delete_queue_json {
     my ($cgi) = @_;
-    {success => $Synacor::Disbatch::Engine::EventBus->delete_queue($cgi->param('id'))};
+    {success => $Synacor::Disbatch::Engine::EventBus->call_thread('delete_queue', $cgi->param('id'))};
 }
 
 sub logger {
