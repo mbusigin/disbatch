@@ -235,7 +235,7 @@ sub filter_collection {
         }
     }
 
-    my $query = Synacor::Disbatch::Backend::query_collection($collection, $hr, {retry => 'synchronous'});
+    my $query = Synacor::Disbatch::Backend::query_collection($collection, $hr, {}, {retry => 'synchronous'});
     return $query if $type eq 'query';
 
     my @all = $query->all;
@@ -355,7 +355,7 @@ sub load_queues {
     my ($self) = @_;
 
     # NOTE: fuck you, matt
-    my @queues = Synacor::Disbatch::Backend::query_collection($self->{config}{queues_collection}, {}, {retry => 'synchronous'})->all;
+    my @queues = Synacor::Disbatch::Backend::query_collection($self->{config}{queues_collection}, {}, {}, {retry => 'synchronous'})->all;
     my %queues = map { $_->{id} => $_ } @{$self->{queues}};
 
     for my $row (@queues) {
