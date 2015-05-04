@@ -9,8 +9,6 @@ use MongoDB;
 # used in Synacor::Disbatch::Queue and Synacor::Disbatch::Engine as $Synacor::Disbatch::Engine::mongo
 our $mongo;
 
-my @redolog;
-
 my $tasks_collection  = 'tasks';
 my $queues_collection = 'queues';
 
@@ -74,11 +72,6 @@ sub update_collection {
         if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return update_collection(@_);
-        }
-        if ($extra->{retry} eq 'redolog') {
-            unshift @redolog, 'update';
-            push @redolog, \@_;
-            return;
         }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in update_collection on mongo timeout '$extra->{retry}'!!");
     }
@@ -168,11 +161,6 @@ sub insert_collection {
             random_pause();
             return insert_collection(@_);
         }
-        if ($extra->{retry} eq 'redolog') {
-            unshift @redolog, 'insert';
-            push @redolog, \@_;
-            return;
-        }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in insert_collection on mongo timeout '$extra->{retry}'!!");
         return undef;
     }
@@ -192,18 +180,7 @@ sub delete_collection {
             random_pause();
             return delete_collection(@_);
         }
-        if ($extra->{retry} eq 'redolog') {
-            unshift @redolog, 'delete';
-            push @redolog, \@_;
-            return;
-        }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in delete_collection on mongo timeout '$extra->{retry}'!!");
-    }
-}
-
-sub process_redolog {
-    while (my $tx = pop @redolog) {
-        $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Re-do log entry is being ignored");
     }
 }
 
@@ -262,9 +239,5 @@ Insert into a Mongo collection
 =item delete_collection()
 
 Delete from a Mongo collection
-
-=item process_redolog()
-
-Process redo log
 
 =back

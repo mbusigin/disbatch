@@ -126,7 +126,6 @@ sub awaken {
         }
     }
 
-    Synacor::Disbatch::Backend::process_redolog;
     return;
 }
 
@@ -271,7 +270,7 @@ sub construct_queue {
 sub delete_queue {
     my ($self, $id) = @_;
 
-    Synacor::Disbatch::Backend::delete_collection($self->{config}{queues_collection}, {_id => $id}, {retry => 'redolog'});
+    Synacor::Disbatch::Backend::delete_collection($self->{config}{queues_collection}, {_id => $id});
 
     my $index = 0;
     for my $q (@{$self->{queues}}) {

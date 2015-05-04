@@ -98,7 +98,7 @@ sub create_task {
         mtime      => time,
     };
 
-    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$inc' => {count_total => 1, count_todo => 1}}, {retry => 'redolog'});
+    Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$inc' => {count_total => 1, count_todo => 1}});
     my $id = Synacor::Disbatch::Backend::insert_collection($self->{engine}{config}{tasks_collection}, $obj, {retry => 'synchronous'});
     $obj->{_id} = $obj->{id} = $id;    # FIXME: i doubt this does anything
     $task;
@@ -138,8 +138,8 @@ sub report_task_done {
                 push @{$self->{threads}}, delete $self->{threads_inuse}{$taskid};
             }
             $self->logger->info("taskid: $taskid;  stderr: $stderr;  status: $status");
-            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {_id => $taskid}, {'$set' => {stdout => $stdout, stderr => $stderr, status => $status}}, {retry => 'redolog'});
-            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$inc' => {count_todo => -1}}, {retry => 'redolog'});
+            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{tasks_collection}, {_id => $taskid}, {'$set' => {stdout => $stdout, stderr => $stderr, status => $status}});
+            Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$inc' => {count_todo => -1}});
             $self->wtfer->trace("report_task_done calling schedule again after finishing task: $taskid");
             $self->schedule if $self->{preemptive};
             return;
@@ -202,7 +202,7 @@ sub count_todo {
         $v = $r->{count_todo};
     } else {
         $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, {status => -2, queue => $self->{id}});
-        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$set' => {count_todo => $v}}, {retry => 'redolog'});
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$set' => {count_todo => $v}});
     }
     $v;
 }
@@ -216,7 +216,7 @@ sub count_total {
         $v = $r->{count_total};
     } else {
         $v = Synacor::Disbatch::Backend::count($self->{engine}{config}{tasks_collection}, {queue => $self->{id}});
-        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$set' => {count_total => $v}}, {retry => 'redolog'});
+        Synacor::Disbatch::Backend::update_collection($self->{engine}{config}{queues_collection}, {_id => $self->{id}}, {'$set' => {count_total => $v}});
     }
     $v;
 }
