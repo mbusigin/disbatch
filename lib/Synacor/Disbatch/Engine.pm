@@ -132,6 +132,8 @@ sub awaken {
 sub report_task_done {
     my ($self, $queueid, $task, $status, $stdout, $stderr) = @_;
 
+    $status += 0;	# status gets turned into a string somewhere, this fixes it
+
     $self->logger->trace("Worker PID $$ reporting done: queue #$queueid/$task");
 
     if ($self->{task_observers}{$task}) {
