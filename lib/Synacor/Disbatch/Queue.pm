@@ -296,7 +296,13 @@ sub report_task_done
             }
 
             $self->logger->info( "taskid: $taskid;  stderr: $stderr;  status: $status" );
-            Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr, 'status' => $status }}, {retry => 'redolog'} );
+            # this is really important to be set, in case there's a problem with setting stdout or stderrr:
+            Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'status' => $status }}, {retry => 'redolog'} );
+
+            if (! Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'stdout' => $stdout, 'stderr' => $stderr }}, {retry => 'redolog'} ) ) {
+                Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {_id => $taskid}, {'$set' => { 'stdout' => 'STDOUT too large for MongoDB', 'stderr' => $stderr }}, {retry => 'redolog'} );
+            }
+
             Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$inc' => { 'count_todo' => -1 }}, {retry => 'redolog'} );
 
             $self->schedule if $self->{ 'preemptive' };
