@@ -5,6 +5,7 @@ use warnings;
 
 use Data::Dumper;
 use MongoDB;
+use Try::Tiny;
 
 # used in Synacor::Disbatch::Queue and Synacor::Disbatch::Engine as $Synacor::Disbatch::Engine::mongo
 our $mongo;
@@ -60,21 +61,22 @@ sub random_pause {
 sub update_collection {
     my ($cid, $where, $update, $options, $extra) = @_;
 
-    eval {
+    try {
         my $ret = $mongo->get_collection($cid)->update($where, $update, $options);
         if (!$ret) {
             $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Couldn't update collection '$cid'!");
             die "Couldn't update collection '$cid'!";
         }
-    };
-    if ($@) {
-        return if (!$extra or $extra->{retry} eq 'no');
+        1;
+    } catch {
+        return 0 if (!$extra or $extra->{retry} eq 'no');
         if ($extra->{retry} eq 'synchronous') {
             random_pause();
             return update_collection(@_);
         }
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in update_collection on mongo timeout '$extra->{retry}'!!");
-    }
+        0;
+    };
 }
 
 sub update_queue {
