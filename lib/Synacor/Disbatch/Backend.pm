@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use MongoDB;
+use Tie::IxHash;
 
 our $mongo;
 my @redolog;
@@ -82,20 +83,14 @@ sub ensureIndices
     my $tasks_collection = shift;
     my $queues_collection = shift;
 
-    $mongo->get_collection( $tasks_collection )->ensure_index(
-            {
-                node        =>  1,
-                status      =>  1,
-                queue       =>  1,
-            }
-        );
-    $mongo->get_collection( $tasks_collection )->ensure_index(
-            {
-                queue       =>  1,
-                status      =>  1,
-            }
-        );
+    my @task_indexes = (
+        Tie::IxHash->new(node => 1, status => 1, queue => 1),
+        Tie::IxHash->new(node => 1, status => 1, queue => 1, _id => 1),
+        Tie::IxHash->new(node => 1, status => 1, queue => 1, _id => -1),
+        Tie::IxHash->new(queue => 1, status => 1),
+    );
 
+    $mongo->get_collection( $tasks_collection )->ensure_index($_) for @task_indexes;
 }
 
 
@@ -183,7 +178,7 @@ sub query_collection
     {
         my $collection = $mongo->get_collection( $cid );
         $query = $collection->query( $hr, $attrs );
-        $query->count;
+        $query->count;	# FIXME: why is this even here? this seems like it would cause extra delays and load
     };
     if ( $@ )
     {

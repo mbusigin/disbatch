@@ -116,7 +116,7 @@ Find any tasks that were not completed in the past iteration, and set their stat
 sub orphan_tasks
 {
     my $self = shift or die "No self";
-    Synacor::Disbatch::Backend::update_collection( $self->{'config'}->{'tasks_collection'}, {'node' => $self->{config}->{node}, 'status' => 0},
+    Synacor::Disbatch::Backend::update_collection( $self->{'config'}->{'tasks_collection'}, {'node' => $self->{config}->{node}, 'status' => 0},	# FIXME: can this be an ARRAY or a Tie::IxHash?
                                                             { '$set' => {'status' => -6} }, {multiple => 1} );
 }
 

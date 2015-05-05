@@ -83,19 +83,19 @@ sub find_next_task
     if ($self->{'sort'} eq 'lifo' || $self->{'sort'} eq 'fifo') {
         my $sort = ($self->{'sort'} eq 'fifo') ? 1 : -1; # 1: ascending, -1: descending
         my $db = $Synacor::Disbatch::Backend::mongo;
-        my $row = $db->run_command({
+        my $row = $db->run_command([
            findAndModify => $self->{ 'engine' }->{'config'}->{'tasks_collection'},
-           query => { 'node' => -1, 'status' => -2, 'queue' => $self->{'id'} },
+           query => { 'node' => -1, 'status' => -2, 'queue' => $self->{'id'} },		# FIXME: can this be an ARRAY or a Tie::IxHash?
            sort => { _id => $sort },
            update => { '$set' => {'node' => $node, 'status' => -1 } }
-        });
+        ]);
         return $row->{value};
     }
 
     # Old ordering schemes
-    Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}},
+    Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => -1, 'status' => -2, 'queue' => $self->{'id'}},	# FIXME: can this be an ARRAY or a Tie::IxHash?
                                                             { '$set' => {'node' => $node, 'status' => -1} } );
-    my $row = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'node' => $node, 'status' => -1, 'queue' => $self->{'id'}} );
+    my $row = Synacor::Disbatch::Backend::query_one( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, ['node' => $node, 'status' => -1, 'queue' => $self->{'id'}] );
     return( $row );
 }
 
@@ -392,7 +392,7 @@ sub count_todo
     }
     else
     {
-        $v = Synacor::Disbatch::Backend::count( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, {'status' => -2, 'queue' => $self->{'id'}} );
+        $v = Synacor::Disbatch::Backend::count( $self->{ 'engine' }->{'config'}->{'tasks_collection'}, ['queue' => $self->{'id'}, 'status' => -2] );
         Synacor::Disbatch::Backend::update_collection( $self->{ 'engine' }->{'config'}->{'queues_collection'}, {_id => $self->{id}}, {'$set' => { 'count_todo' => $v }}, {retry => 'redolog'} );
     }
 
