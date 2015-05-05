@@ -5,6 +5,7 @@ use warnings;
 
 use Data::Dumper;
 use MongoDB;
+use Tie::IxHash;
 use Try::Tiny;
 
 # used in Synacor::Disbatch::Queue and Synacor::Disbatch::Engine as $Synacor::Disbatch::Engine::mongo
@@ -48,9 +49,14 @@ sub initialise {
 sub ensureIndices {
     my ($mongo, $tasks_collection) = @_;
 
-    # FIXME: these indexes get created in no specific order:
-    $mongo->get_collection($tasks_collection)->ensure_index({node => 1, status => 1, queue => 1});
-    $mongo->get_collection($tasks_collection)->ensure_index({queue => 1, status => 1});
+    my @task_indexes = (
+        Tie::IxHash->new(node => 1, status => 1, queue => 1),
+        Tie::IxHash->new(node => 1, status => 1, queue => 1, _id => 1),
+        Tie::IxHash->new(node => 1, status => 1, queue => 1, _id => -1),
+        Tie::IxHash->new(queue => 1, status => 1),
+    );
+
+    $mongo->get_collection( $tasks_collection )->ensure_index($_) for @task_indexes;
 
 }
 
@@ -92,7 +98,7 @@ sub query_collection {
     eval {
         my $collection = $mongo->get_collection($cid);
         $query = $collection->query($hr, $attrs);
-        $query->count;    # FIXME: does this do anything here?
+        $query->count;		# FIXME: why is this even here? this seems like it would cause extra delays and load
     };
     if ($@) {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->warn("Error: $@");

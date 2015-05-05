@@ -69,7 +69,7 @@ sub orphan_tasks {
     my $self = shift or die "No self";
     Synacor::Disbatch::Backend::update_collection(
         $self->{config}{tasks_collection},
-        {node => $self->{config}{node}, status => 0},
+        {node => $self->{config}{node}, status => 0},	# FIXME: can this be an ARRAY or a Tie::IxHash?
         {'$set' => {status => -6}}, {multiple => 1}
     );
 }
