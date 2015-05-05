@@ -5,6 +5,7 @@ use warnings;
 use Data::Dumper;
 use MongoDB;
 use Tie::IxHash;
+use Try::Tiny;
 
 our $mongo;
 my @redolog;
@@ -118,8 +119,7 @@ sub update_collection
 {
     my ( $cid, $where, $update, $options, $extra ) = @_;
 
-    eval
-    {
+    try {
         my $collection = $mongo->get_collection( $cid );
         my $ret = $collection->update( $where, $update, $options );
         if ( !$ret )
@@ -127,11 +127,9 @@ sub update_collection
             $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "Couldn't update collection '$cid'!" );
             die "Couldn't update collection '$cid'!";
         }
-    };
-
-    if ( $@ )
-    {
-        return if ( !$extra or $extra->{'retry'} eq 'no' );
+        1;
+    } catch {
+        return 0 if ( !$extra or $extra->{'retry'} eq 'no' );
         if ( $extra->{'retry'} eq 'synchronous' )
         {
             random_pause();
@@ -144,7 +142,8 @@ sub update_collection
             return;
         }
         $Synacor::Disbatch::Engine::Engine->logger( 'mongo' )->error( "No such retry method in update_collection on mongo timeout '$extra->{retry}'!!" );
-    }
+        0;
+    };
 }
 
 
