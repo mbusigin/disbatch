@@ -35,15 +35,15 @@ sub find_next_task {
     $self->{sort} //= 'default';
     #$self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} current sort order: $self->{sort}");
 
-    my $command = [
+    my $command = {
         query  => { node => -1, status => -2, queue => $self->{id} },		# FIXME: can this be an ARRAY or a Tie::IxHash?
         update => { '$set' => {node => $node, status => 0, mtime => time} }
-    ];
+    };
 
     if ($self->{sort} eq 'fifo') {
-        push @$command, 'sort', { _id => 1 };
+        $command->{sort} = { _id => 1 };
     } elsif ($self->{sort} eq 'lifo') {
-        push @$command, 'sort', { _id => -1 };
+        $command->{sort} = { _id => -1 };
     } elsif ($self->{sort} ne 'default') {
         $self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} unknown sort order '$self->{sort}' -- using default");
     }
