@@ -51,6 +51,15 @@ sub find_next_task {
     $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->find_and_modify($command);
 }
 
+sub unclaim_task {
+    my ($self, $document) = @_;
+
+    $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->update(
+            {_id => $document->{_id}},
+            { '$set' => {node => -1, status => -2, mtime => undef} }
+    );
+}
+
 sub schedule {
     my ($self) = @_;
 
@@ -59,23 +68,28 @@ sub schedule {
     #$self->wtfer->trace("schedule free_threads: $free_threads, maxthreads: $self->{maxthreads}, tasks_doing: " . scalar @{$self->{tasks_doing}});
 
     for (my $x = 0; $x < $free_threads; $x++) {
-        $self->wtfer->trace("schedule finding a free thread");
+        my $document = $self->find_next_task($node);
+        #$self->wtfer->trace("schedule found no more free tasks") unless defined $document;
+        return unless $document;
+
+        $self->wtfer->trace("schedule loading task: $document->{_id}");
+        my $task = $self->load_task($document);
+
+        $self->wtfer->trace("schedule finding a free thread for $document->{_id}");
         my $thr = $self->get_free_thread();
         if (!defined $thr) {
             $self->wtfer->trace("schedule no free thread found!");
+            $self->unclaim_task($document);
             return;
         } elsif (!defined $thr->{eb}) {
             # FIXME: what happens to the overall threads if we end up dropping this thread with the missing 'eb' key?
             $self->wtfer->trace("schedule free thread does not have key 'eb' defined!");
+            $self->unclaim_task($document);
             return;
         }
-        my $document = $self->find_next_task($node);
-        #$self->wtfer->trace("schedule found no more free tasks") unless defined $document;
-        return unless $document;
-        $self->wtfer->trace("schedule loading task: $document->{_id}");
-        my $task = $self->load_task($document);
-        $self->{threads_inuse}{$task->{id}} = $thr;
+
         $self->wtfer->trace("schedule starting actual task: $document->{_id}");
+        $self->{threads_inuse}{$task->{id}} = $thr;
         $thr->{eb}->call_thread('start_task', $task);
         push @{$self->{tasks_doing}}, $task;
     }
