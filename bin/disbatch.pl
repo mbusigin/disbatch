@@ -162,8 +162,8 @@ sub parse_queue_tasks {
     my %filter;
     my $key;
     my $state = 0;
-    while ((my $filter_term = shift @ARGS) ne '--') {
-        return 0, "Filter clause terminator '--' is required" unless $filter_term;
+    while ((my $filter_term = shift @ARGS // '') ne '--') {
+        return 0, "Filter clause terminator '--' is required (needed twice now as Getopt::Long consumes the first one)" unless $filter_term;
         if ($state == 0) {
             $key   = $filter_term;
             $state = 1;
@@ -440,7 +440,7 @@ alter the parameters of the disbatch engine while in operation.
     queue set <queue> <key> <value>
     queue start <type> <name>
     queue task <queue> [<key> <value>, ...]
-    queue tasks <queue> <collection> [<filter key> <value>, ...] -- [<parameter key> <value>, ...]
+    queue tasks <queue> <collection> [<filter key> <value>, ...] -- -- [<parameter key> <value>, ...]
 
     enclosure <queue> <collection> <filter> [<col1>, ...]
 
