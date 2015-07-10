@@ -76,6 +76,7 @@ no_disbatch_d:
 my $all_configs = Config::Any->load_files({files => \@dfiles, flatten_to_hash => 1, use_ext => 1});
 my $config = $all_configs->{$ini_file};
 $config->{log4perl_conf} = "$base/$config->{log4perl_conf}";
+$config->{log4perl_reload} = 0 + ($config->{log4perl_reload} // 300);
 $config->{htdocs_base}   = $path;
 
 my @pluginclasses;

@@ -95,7 +95,7 @@ sub logger {
     my $logger = defined $type ? "disbatch.plugins.$classname.$type" : "disbatch.engine.$classname";
 
     if (!$self->{log4perl_initialised}) {
-        Log::Log4perl::init_and_watch($self->{config}{log4perl_conf}, 300);
+        Log::Log4perl::init_and_watch($self->{config}{log4perl_conf}, $self->{config}{log4perl_reload});
         $self->{log4perl_initialised} = 1;
         $self->{loggers}              = {};
     }
