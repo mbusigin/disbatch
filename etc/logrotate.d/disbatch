@@ -2,7 +2,7 @@
 	missingok
 	copytruncate
 	notifempty
-	rotate 2
+	rotate 7
 	compress
 }
 
@@ -10,6 +10,6 @@
 	missingok
 	copytruncate
 	notifempty
-	rotate 7
+	rotate 14
 	compress
 }
