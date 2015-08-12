@@ -85,6 +85,17 @@ sub handle_request {
         return;
     }
 
+    # log all requests
+    my $logstring = $cgi->server_protocol . ' ' . $cgi->request_method . ' ' . $cgi->server_name . ':' . $cgi->server_port . $cgi->request_uri;
+    $logstring .= '?' . $cgi->query_string if $cgi->query_string;
+    $logstring .= ' from ' . $cgi->remote_host . ' with agent \'' . $cgi->user_agent . '\'';
+    $logstring .= ', content type: ' . $cgi->content_type if $cgi->content_type;
+    $logstring .= ', referer: ' . $cgi->referer if $cgi->referer;
+    my @vars = $cgi->Vars;
+    $logstring .= ', params: ' . JSON::XS->new->encode({@vars}) if @vars;
+    $logstring .= '.';
+    $self->logger->info($logstring);
+
     my $path = $cgi->path_info();
     $path = '/index.html' if $path eq '/';
     my $handler = $dispatch{$path};
