@@ -201,11 +201,6 @@ sub set_queue_attr_json {
     $ret;
 }
 
-sub list_users_json {
-    my ($cgi) = @_;
-    $Synacor::Disbatch::Engine::EventBus->call_thread('list_users', $cgi->param('group'), $cgi->param('filter'));
-}
-
 sub start_queue_json {
     my ($cgi) = @_;
     $Synacor::Disbatch::Engine::EventBus->call_thread('construct_queue', $cgi->param('type'), $cgi->param('name'));
