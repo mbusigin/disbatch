@@ -65,7 +65,10 @@ sub retire {
 sub thread_start {
     my ($self) = @_;
 
-    defined(my $pid = fork) or die "fork failed: $!";
+    defined(my $pid = fork) or die "fork failed: $!";	# FATAL: new -> Queue::start_thread_pool -> disbatchd.pl
+							# FATAL for plugin: new -> Queue::start_thread_pool -> Queue::report_task_done -> Engine::report_task_done -> plugin
+							# FATAL for plugin: Queue::report_task_done -> Engine::report_task_done -> plugin
+
     if (!$pid) {
         $self->{eb}->run;
         $self->logger->info("This thread $$ has outlived its usefulness");

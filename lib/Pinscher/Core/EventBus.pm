@@ -28,7 +28,9 @@ sub new {
         Local  => $fn,
         Type   => SOCK_STREAM,
         Listen => 2000
-    ) or die "Couldn't create $fn: $!";
+    ) or die "Couldn't create $fn: $!";	# FATAL: Engine::new -> disbatchd.pl
+					# FATAL: WorkerThread::new -> Queue::start_thread_pool -> disbatchd.pl
+					# FATAL for plugin: WorkerThread::new -> Queue::start_thread_pool -> Queue::report_task_done -> Engine::report_task_done -> plugin
 
     my $self = {
         id       => $id,
@@ -137,7 +139,7 @@ sub oneiteration {
         unless ($func) {
             $socket->shutdown(2);
             $socket->close;
-            die "No such function or procedure '$command'\n", Dumper $self->{methods};
+            die "No such function or procedure '$command'\n", Dumper $self->{methods};	# FATAL (for either disbatchd.pl or plugin)
         }
     }
 
@@ -179,7 +181,7 @@ sub connect_udx {
             #warn "Sleeping for $sleepfor seconds as listen queue is full for $socketfn";
             select(undef, undef, undef, $sleepfor);
         } else {
-            die "Couldn't connect to '$socketfn': $@";
+            die "Couldn't connect to '$socketfn': $@";	# FATAL (for either disbatchd.pl or plugin)
         }
     }
 

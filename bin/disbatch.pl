@@ -35,7 +35,7 @@ if (defined $username and defined $password) {
     $ua->credentials($host, 'disbatch', $username, $password);
     say "$host\t$username\t$password";
 } elsif (defined $username or defined $password) {
-    die "--username and --password must be used together\n";
+    die "--username and --password must be used together\n";	# FATAL
 }
 
 my %commands = (

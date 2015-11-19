@@ -71,7 +71,7 @@ sub update_collection {
         my $ret = $mongo->get_collection($cid)->update($where, $update, $options);
         if (!$ret) {
             $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Couldn't update collection '$cid'!");
-            die "Couldn't update collection '$cid'!";
+            die "Couldn't update collection '$cid'!";	# CAUGHT
         }
         1;
     } catch {

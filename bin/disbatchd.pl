@@ -36,7 +36,7 @@ $ini_dir  //= '/etc/disbatch/disbatch.d';
 
 my @lib = split /,/, $lib;
 
-die "Cannot use --dev and --base together\n" if $dev and $base;
+die "Cannot use --dev and --base together\n" if $dev and $base;	# FATAL
 
 $base = getcwd if $dev;
 
@@ -54,7 +54,7 @@ if ($base) {
     }
 }
 
-die "\nIni file '$ini_file' not found.\n" unless -e $ini_file;
+die "\nIni file '$ini_file' not found.\n" unless -e $ini_file;	# FATAL
 
 if (@lib) {
     load lib, @lib;
@@ -120,7 +120,7 @@ if (exists $config->{parameterformat}) {
         $engine->{parameterformat_read}  = \&Synacor::Disbatch::Engine::storable_read;
     }
 } else {
-    die "No parameterformat specified!  Valid: json, storable";
+    die "No parameterformat specified!  Valid: json, storable";	# FATAL
 }
 
 if (exists $config->{ctfquantum}) {

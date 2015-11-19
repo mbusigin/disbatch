@@ -159,7 +159,7 @@ sub handle_request {
 sub start {
     my ($self) = @_;
 
-    defined(my $pid = fork) or die "fork failed: $!";
+    defined(my $pid = fork) or die "fork failed: $!";	# FATAL
     if (!$pid) {
         $self->run;
     }

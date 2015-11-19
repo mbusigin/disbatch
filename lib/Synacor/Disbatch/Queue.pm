@@ -30,8 +30,8 @@ sub new {
 
 sub find_next_task {
     my ($self, $node) = @_;
-    die 'No node' unless defined $node;
-
+    die 'No node' unless defined $node;	# FATAL for plugin: schedule -> report_task_done -> Engine::report_task_done -> plugin
+					# FATAL: schedule -> Engine::awaken -> timers
     $self->{sort} //= 'default';
     #$self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} current sort order: $self->{sort}");
 

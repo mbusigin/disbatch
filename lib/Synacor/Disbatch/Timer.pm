@@ -17,7 +17,7 @@ sub new {
 sub start {
     my ($self) = @_;
 
-    defined(my $pid = fork) or die "fork failed: $!";
+    defined(my $pid = fork) or die "fork failed: $!";	# FATAL
     while (!$pid) {
         sleep $self->{seconds};
         $self->{callback}->();
