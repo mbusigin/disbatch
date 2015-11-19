@@ -41,7 +41,7 @@ __END__
 
 =head1 NAME
 
-Synacor::Timer - thread which acts as an alerting timer for Synacor::Engine.
+Synacor::Timer - thread which acts as an alerting timer for Synacor::Disbatch::Engine.
 
 =head1 SYNOPSIS
 

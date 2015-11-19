@@ -40,7 +40,7 @@ sub new {
     bless $self, $class;
 
     # Configure event bus
-    $self->{eb} = Pinscher::Core::EventBus->new($self, 'Synacor::Engine');
+    $self->{eb} = Pinscher::Core::EventBus->new($self, 'Synacor::Disbatch::Engine');
     $self->{eb}{methods}{awaken}                           = \&awaken;
     $self->{eb}{methods}{scheduler_report}                 = \&scheduler_report;
     $self->{eb}{methods}{set_queue_attr}                   = \&set_queue_attr;
@@ -560,7 +560,7 @@ __END__
 
 =head1 NAME
 
-Synacor::Engine - the core execution engine.
+Synacor::Disbatch::Engine - the core execution engine.
 
 =head1 DESCRIPTION
 
@@ -572,8 +572,8 @@ of all of its queues (and their tasks).
 
 =head1 SYNOPSIS
 
-  use Synacor::Engine;
-  my $engine = Synacor::Engine->new;
+  use Synacor::Disbatch::Engine;
+  my $engine = Synacor::Disbatch::Engine->new;
   $engine->start;
 
 =head1 METHODS
@@ -582,7 +582,7 @@ of all of its queues (and their tasks).
 
 =item new()
 
-Creates a new instance of the Synacor::Engine.  You really should only use one of these at one time.
+Creates a new instance of the Synacor::Disbatch::Engine.  You really should only use one of these at one time.
 
 Parameters:
 
@@ -604,7 +604,7 @@ periodically and strategically call $queue->schedule().
 =item start()
 
 Blocking function call which begins the event bus loop.  This will cause the
-Synacor::Engine object to listen and react to events.
+Synacor::Disbatch::Engine object to listen and react to events.
 
 =item awaken()
 

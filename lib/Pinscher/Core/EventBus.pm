@@ -17,7 +17,7 @@ sub new {
     my ($class, $self_self, $id) = @_;
 
     if (ref $self_self eq 'Synacor::Disbatch::Engine') {
-        $self_self->logger->trace("*** $$ new $class $id");					# *** new Pinscher::Core::EventBus Synacor::Engine
+        $self_self->logger->trace("*** $$ new $class $id");					# *** new Pinscher::Core::EventBus Synacor::Disbatch::Engine
     } else {
         logger({ self => $self_self })->trace("*** $$ new $class $id");				# *** new Pinscher::Core::EventBus worker#1
     }
