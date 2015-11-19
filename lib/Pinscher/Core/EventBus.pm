@@ -50,7 +50,7 @@ sub new {
 # used to be used once in AUTOLOAD(), now called directly by what needs it
 sub call_thread {
     my ($self, $name, @args) = @_;
-    $self->logger->trace(join ' ', "*** $$ call_thread $name", @args);
+    $self->logger->trace(join ' ', "*** $$ call_thread $self->{socketfn} $name", @args);
 
     my $frozen_payload = nfreeze([ $name, \@args ]);
     my $client = $self->connect_udx($self->{socketfn});
@@ -170,7 +170,8 @@ sub oneiteration {
 # used once in call_thread()
 sub connect_udx {
     my ($self, $socketfn) = @_;
-    $self->logger->trace("*** $$ connect_udx $socketfn");
+    $self->logger->trace("*** $$ connect_udx $socketfn");	# called by timers, maybe other things
+    $self->logger->debug("*** $$ connect_udx $socketfn") unless $socketfn eq '/tmp/thread_Synacor::Disbatch::Engine';
 
     my $client;
     while (!($client = IO::Socket::UNIX->new(Peer => $socketfn, Type => SOCK_STREAM, Timeout => 10))) {
@@ -178,7 +179,7 @@ sub connect_udx {
             srand time * $$;
             my $sleepfor = rand(2);
 
-            #$self->logger->warn("Sleeping for $sleepfor seconds as listen queue is full for $socketfn");
+            $self->logger->debug("Sleeping for $sleepfor seconds as listen queue is full for $socketfn");
             select(undef, undef, undef, $sleepfor);
         } else {
             die "Couldn't connect to '$socketfn': $@";	# FATAL (for either disbatchd.pl or plugin)
