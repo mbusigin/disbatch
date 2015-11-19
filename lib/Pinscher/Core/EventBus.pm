@@ -60,7 +60,7 @@ sub call_thread {
     my $ret;
     unless ($self->{procedures}{$name}) {
 
-        #warn "\t$self->{name} :: $name Dequeue reply\n";
+        #$self->logger->warn("\t$self->{name} :: $name Dequeue reply\n");
         my $rcvd;
         while (<$client>) {
             $rcvd .= $_;
@@ -70,14 +70,14 @@ sub call_thread {
 
         #warn Dumper $ret;
 
-        #warn "\t$self->{name} :: $name Semaphore up\n";
+        #$self->logger->warn("\t$self->{name} :: $name Semaphore up\n");
         #$self->{semaphore}->up();
     }
 
     $client->shutdown(2);
     $client->close;
 
-    #warn "$self->{name} :: $name Done\n";
+    #$self->logger->warn("$self->{name} :: $name Done\n");
     return $ret->[0] if defined $ret;
 }
 
@@ -100,7 +100,7 @@ sub oneiteration {
     my $socket = try { $self->{socket}->accept() };
 
     unless (defined $socket) {
-        warn "\$socket for $self->{name} undefined - returning";
+        $self->logger->warn("\$socket for $self->{name} undefined - returning");
         return;
     }
 
@@ -111,11 +111,11 @@ sub oneiteration {
         }
     }
     catch {
-        warn "Error reading from socket: $_";
+        $self->logger->warn("Error reading from socket: $_");
     };
 
     unless (defined $rcvd) {
-        warn "Error reading from socket - returning";
+        $self->logger->warn("Error reading from socket - returning");
         return;
     }
 
@@ -149,7 +149,7 @@ sub oneiteration {
 
     my $ret = $func->(@arguments);
 
-    #warn "      Return for $command : ", Dumper $ret;
+    #$self->logger->warn("      Return for $command : ", Dumper $ret);
     $self->{post_call_trap}->($self, \@arguments, $ret) if $self->{post_call_trap};
     if ($procedure != 1) {
         $ret = 0 unless defined $ret;
@@ -178,7 +178,7 @@ sub connect_udx {
             srand time * $$;
             my $sleepfor = rand(2);
 
-            #warn "Sleeping for $sleepfor seconds as listen queue is full for $socketfn";
+            #$self->logger->warn("Sleeping for $sleepfor seconds as listen queue is full for $socketfn");
             select(undef, undef, undef, $sleepfor);
         } else {
             die "Couldn't connect to '$socketfn': $@";	# FATAL (for either disbatchd.pl or plugin)
