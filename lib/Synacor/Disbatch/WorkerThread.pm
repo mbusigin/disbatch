@@ -71,9 +71,10 @@ sub thread_start {
 
     if (!$pid) {
         $self->{eb}->run;
-        $self->logger->info("This thread $$ has outlived its usefulness");
+        $self->logger->info("This thread (id: $self->{id}, pid: $$) has outlived its usefulness");
         exit 0;
     }
+    $self->logger->info("Started thread (id: $self->{id}, pid: $pid)");
 
     $self->{pid} = $pid;
     return $pid;
