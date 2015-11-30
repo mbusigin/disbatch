@@ -5,7 +5,6 @@ use warnings;
 
 use Carp;
 use Data::Dumper;
-use DateTime;
 use JSON -convert_blessed_universally;
 use Log::Log4perl;
 use MongoDB;
@@ -14,6 +13,7 @@ use Storable qw(thaw nfreeze);
 use Synacor::Disbatch::Backend;
 use Synacor::Disbatch::ChunkedTaskFactory;
 use Synacor::Disbatch::WorkerThread;
+use Time::Moment;
 use Try::Tiny;
 
 $Storable::interwork_56_64bit = 1;
@@ -393,9 +393,9 @@ sub update_node_status() {
     my $status = Synacor::Disbatch::Backend::query_one('nodes', {node => $self->{config}{node}});
     $status->{node}      = $self->{config}{node};
     $status->{queues}    = $self->scheduler_report;
-    $status->{timestamp} = DateTime->now;
+    $status->{timestamp} = Time::Moment->now_utc;
 
-    Synacor::Disbatch::Backend::update_collection('nodes', {node => $self->{config}{node}}, $status, {upsert => 1});
+    Synacor::Disbatch::Backend::update_collection('nodes', {node => $self->{config}{node}}, {'$set' => $status}, {upsert => 1});
     $self->reflect_queue_changes;
 }
 
@@ -493,9 +493,10 @@ sub search_tasks {
 
     $hr->{status} = int $hr->{status} if defined $hr->{status};
 
-    my $cursor = Synacor::Disbatch::Backend::query_collection($self->{config}{tasks_collection}, $hr, $attrs, {retry => 'synchronous'});
-    return [ 1, $cursor->count() ] if $count;
-    my @tasks = $cursor->all;
+    if ($count) {
+        return [ 1, Synacor::Disbatch::Backend::count($self->{config}{tasks_collection}, $hr, {retry => 'synchronous'}) ];
+    }
+    my @tasks = Synacor::Disbatch::Backend::query_collection($self->{config}{tasks_collection}, $hr, $attrs, {retry => 'synchronous'})->all;
 
     for my $task (@tasks) {
         my $parameters = $task->{parameters};

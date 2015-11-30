@@ -25,10 +25,7 @@ sub connect_mongo {
 
     my $conn = MongoDB::MongoClient->new(
         host => $host // 'localhost',
-        auto_reconnect => 1,
-        auto_connect   => 1,
-        query_timeout  => 60000,
-        find_master    => 1,
+        socket_timeout_ms  => 60000,
         %$extras,
     );
     my $db = $conn->get_database($dbname);
@@ -50,13 +47,13 @@ sub ensureIndices {
     my ($mongo, $tasks_collection) = @_;
 
     my @task_indexes = (
-        Tie::IxHash->new(node => 1, status => 1, queue => 1),
-        Tie::IxHash->new(node => 1, status => 1, queue => 1, _id => 1),
-        Tie::IxHash->new(node => 1, status => 1, queue => 1, _id => -1),
-        Tie::IxHash->new(queue => 1, status => 1),
+        { keys => [node => 1, status => 1, queue => 1] },
+        { keys => [node => 1, status => 1, queue => 1, _id => 1] },
+        { keys => [node => 1, status => 1, queue => 1, _id => -1] },
+        { keys => [queue => 1, status => 1] },
     );
 
-    $mongo->get_collection( $tasks_collection )->ensure_index($_) for @task_indexes;
+    $mongo->get_collection( $tasks_collection )->indexes->create_many(@task_indexes);
 
 }
 
@@ -68,7 +65,12 @@ sub update_collection {
     my ($cid, $where, $update, $options, $extra) = @_;
 
     try {
-        my $ret = $mongo->get_collection($cid)->update($where, $update, $options);
+        my $ret;
+        if (delete $options->{multiple}) {
+            $ret = $mongo->get_collection($cid)->update_many($where, $update, $options);
+        } else {
+            $ret = $mongo->get_collection($cid)->update_one($where, $update, $options);
+        }
         if (!$ret) {
             $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("Couldn't update collection '$cid'!");
             die "Couldn't update collection '$cid'!";
@@ -97,7 +99,7 @@ sub query_collection {
 
     eval {
         my $collection = $mongo->get_collection($cid);
-        $query = $collection->query($hr, $attrs);
+        $query = $collection->find($hr, $attrs);
         $query->count;		# FIXME: why is this even here? this seems like it would cause extra delays and load
     };
     if ($@) {
@@ -157,11 +159,11 @@ sub count {
 
 sub insert_collection {
     my ($cid, $hr, $extra) = @_;
-    my $oid;
+    my $res;
 
     eval {
         my $collection = $mongo->get_collection($cid);
-        $oid = $collection->insert($hr);
+        $res = $collection->insert_one($hr);
     };
     if ($@) {
         return if (!$extra or $extra->{retry} eq 'no');
@@ -172,7 +174,7 @@ sub insert_collection {
         $Synacor::Disbatch::Engine::Engine->logger('mongo')->error("No such retry method in insert_collection on mongo timeout '$extra->{retry}'!!");
         return undef;
     }
-    $oid;
+    $res->inserted_id;
 }
 
 sub delete_collection {
@@ -180,7 +182,7 @@ sub delete_collection {
 
     eval {
         my $collection = $mongo->get_collection($cid);
-        $collection->remove($hr);
+        $collection->delete_one($hr);
     };
     if ($@) {
         return if (!$extra or $extra->{retry} eq 'no');

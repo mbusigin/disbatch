@@ -47,8 +47,7 @@ sub find_next_task {
     } elsif ($self->{sort} ne 'default') {
         $self->logger->trace("Synacor::Disbatch::Queue->find_next_task() $self->{id} unknown sort order '$self->{sort}' -- using default");
     }
-
-    $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->find_and_modify($command);
+    $Synacor::Disbatch::Backend::mongo->get_collection($self->{engine}{config}{tasks_collection})->find_one_and_update(delete $command->{query}, delete $command->{update}, $command);
 }
 
 sub schedule {
@@ -175,18 +174,6 @@ sub start_thread_pool {
 
 sub get_free_thread {
     pop @{$_[0]->{threads}};
-}
-
-# NOTE: unused
-# FIXME: use cursor and not ->all
-sub load_tasks {
-    my ($self) = @_;
-
-    my @tasks = $Synacor::Disbatch::Engine::mongo->get_collection('tasks')->query({queue => $self->{id}})->all;
-    for my $document (@tasks) {
-        my $parameters = $self->{engine}{parameterformat_read}($document->{parameters}) if $document->{parameters};
-        $self->create_task_actual($parameters);
-    }
 }
 
 sub load_task {
