@@ -1,0 +1,130 @@
+#!/usr/bin/env perl
+
+# USAGE: ./bin/task_runner --host localhost --db disbatch300 --plugin Disbatch::Plugin::Dummy::Task --task 565bc0d43fb6ecd1c8504492
+
+# FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
+#        $workerthread->mongo->get_collection('queues')->find_one({_id => $doc->{queue}})->{constructor}
+# FIXME: Do we need to even pass the queue _id at all? The task _id is unique, and the task contains the queue _id.
+
+use 5.12.0;
+use warnings;
+
+use Data::Dumper;
+use Getopt::Long;
+use JSON;
+use Log::Log4perl;
+use MongoDB 1.0.0;
+use Sys::Hostname;
+use Try::Tiny;
+use Try::Tiny::Retry;
+#use Safe::Isa;
+
+use lib 'lib';
+
+my ($host, $db, $queue, $task_id, $plugin);
+
+{
+    package WorkerThread;
+
+    sub new {
+        my $class = shift;
+        my $self = { @_ };
+        $self->{class} //= 'Disbatch::Plugin::Task';
+        $self->{class} = lc $self->{class};
+
+        Log::Log4perl->init($self->{config}{log4perl_conf});
+        $self->{loggers} = {};
+
+        bless $self, $class;
+    }
+
+    sub mongo { MongoDB->connect($_[0]->{config}{mongohost})->get_database($_[0]->{config}{mongodb}) }
+    sub nodes  { $_[0]->mongo->get_collection('nodes') }
+    sub queues { $_[0]->mongo->get_collection('queues') }
+    sub tasks  { $_[0]->mongo->get_collection('tasks') }
+
+    sub logger {
+        my ($self, $type) = @_;
+        my $logger = defined $type ? "$self->{class}.$type" : $self->{class};
+        $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
+    }
+
+}
+
+GetOptions(
+    'host=s'  => \$host,
+    'db=s'    => \$db,
+    'queue=s' => \$queue,
+    'task=s'  => \$task_id,
+    'plugin=s' => \$plugin,
+);
+
+die 'No --host' unless defined $host;
+die 'No --db' unless defined $db;
+#die 'No --queue' unless defined $queue;
+die 'No --task' unless defined $task_id;
+#die 'No --plugin' unless defined $plugin;
+
+my $node = hostname;
+my $json = JSON->new->utf8;
+
+my $config = {
+    log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
+    mongohost => $host,
+    mongodb => $db,
+};
+my $workerthread = WorkerThread->new(class => $plugin, config => $config);
+my $logger = Log::Log4perl->get_logger('disbatch.task_runner');
+$logger->info("Starting task $task_id");
+
+$logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
+
+my $oid = MongoDB::OID->new(value => $task_id);
+my $tasks = $workerthread->mongo->get_collection('tasks');
+my $doc = try {
+    $tasks->find_one_and_update({_id => $oid, status => -1, node => $node}, {'$set' => {status => 0}});
+} catch {
+    $logger->logdie($_);
+};
+
+$logger->logdie("No task found for $task_id") unless defined $doc;
+$logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
+
+my $task = try {
+    $plugin->new({id => $queue}, $doc->{parameters});
+} catch {
+    $logger->logdie($_);
+};
+$task->{workerthread} = $workerthread;
+
+my ($query, $result) = try {
+    $task->run;
+} catch {
+    $logger->error("Thread has uncaught exception: $_");
+    {queue => $queue, _id => $task_id}, {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
+};
+my $status = $result->{status} == 1 ? 'succeeded' : 'failed';
+$logger->info("Task $task_id $status.");
+warn "STDOUT: $result->{stdout}";
+warn "STDERR: $result->{stderr}";
+
+# set status first:
+retry {
+    $workerthread->tasks->update_one({_id => $oid, status => 0, node => $node}, {'$set' => {status => $result->{status}}});
+    # FIXME: maybe have to test result for failure and throw?
+    # die unless $res->modified_count == 1;
+} catch {
+    $logger->logdie("Could not update task $task_id status to $result->{status} after completion: $_");
+};
+
+$workerthread->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}});
+
+# set rest of result:
+retry {
+    $workerthread->tasks->update_one({_id => $oid, status => $result->{status}, node => $node}, {'$set' => $result});
+    # FIXME: maybe have to test result for failure and throw?
+} on_retry {
+    $result->{stdout} = 'STDOUT too large for MongoDB';
+} catch {
+    $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_");
+};

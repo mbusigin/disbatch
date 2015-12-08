@@ -1,0 +1,241 @@
+#!/usr/bin/env perl
+
+# USAGE: ./disbatchd --host localhost --db disbatch300 --queue abcd1234 --ignore 1234abcd
+
+use 5.12.0;
+use warnings;
+
+use Data::Dumper;
+use Getopt::Long;
+use JSON;
+use Log::Log4perl;
+use MongoDB 1.0.0;
+use Sys::Hostname;
+use Try::Tiny;
+#use Safe::Isa;
+
+use lib 'lib';
+
+my ($host, $db, @queue, @ignore);
+
+GetOptions(
+    'host=s'  => \$host,
+    'db=s'    => \$db,
+    'queue=s' => \@queue,
+    'ignore=s' => \@ignore,
+);
+
+die 'No --host' unless defined $host;
+die 'No --db' unless defined $db;
+
+my $json = JSON->new->utf8;
+
+my $config = {
+    log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
+    mongohost => $host,
+    mongodb => $db,
+};
+
+{
+    package Disbatch;
+
+    use Data::Dumper;
+    use Sys::Hostname;
+
+    sub new {
+        my $class = shift;
+        my $self = { @_ };
+        $self->{node} = hostname;
+        $self->{class} //= 'Disbatch';
+        $self->{class} = lc $self->{class};
+
+        Log::Log4perl->init($self->{config}{log4perl_conf});
+        $self->{loggers} = {};
+
+        bless $self, $class;
+    }
+
+    sub logger {
+        my ($self, $type) = @_;
+        my $logger = defined $type ? "$self->{class}.$type" : $self->{class};
+        $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
+    }
+
+    sub mongo { MongoDB->connect($_[0]->{config}{mongohost})->get_database($_[0]->{config}{mongodb}) }
+    sub nodes  { $_[0]->mongo->get_collection('nodes') }
+    sub queues { $_[0]->mongo->get_collection('queues') }
+    sub tasks  { $_[0]->mongo->get_collection('tasks') }
+
+    # from Synacor::Disbatch::Backend
+    sub ensure_indexes {
+        my ($self) = @_;
+        my @task_indexes = (
+            { keys => [node => 1, status => 1, queue => 1] },
+            { keys => [node => 1, status => 1, queue => 1, _id => 1] },
+            { keys => [node => 1, status => 1, queue => 1, _id => -1] },
+            { keys => [queue => 1, status => 1] },
+        );
+        $self->tasks->indexes->create_many(@task_indexes);
+    }
+
+    # validates constructors for defined queues
+    sub validate_plugins {
+        my ($self) = @_;
+        for my $constructor (map { $_->{constructor} } $self->queues->find->all) {
+            next if exists $self->{plugins}{$constructor};
+            if (eval "require $constructor; $constructor->new->can('run');") {
+                $self->{plugins}{$constructor} = $constructor;
+                $self->logger->info("$constructor is valid for queues");
+                next;
+            }
+            if (eval "require ${constructor}::Task; ${constructor}::Task->new->can('run');") {
+                $self->{plugins}{$constructor} = $constructor . '::Task';
+                $self->logger->info("${constructor}::Task is valid for queues");
+                $self->logger->warn("Having a plugin format with a subpackage *::Task is deprecated");
+                next;
+            }
+            $self->{plugins}{$constructor} = undef;
+            $self->logger->warn("Could not load $constructor, ignoring queues using it");
+        }
+    }
+
+    # clears constructor validation and re-runs
+    sub revalidate_plugins {
+        my ($self) = @_;
+        $self->{plugins} = {};
+        $self->validate_plugins;
+    }
+
+    ### Synacor::Disbatch::Queue like stuff ###
+
+    # will claim and return a task for given queue, or return undef
+    sub claim_task {
+        my ($self, $queue) = @_;
+
+        $self->{sort} //= 'default';
+
+        my $query  = { node => -1, status => -2, queue => $queue->{_id} };
+        my $update = { '$set' => {node => $self->{node}, status => -1, mtime => time} };
+
+        my $options;
+        if ($self->{sort} eq 'fifo') {
+            $options->{sort} = { _id => 1 };
+        } elsif ($self->{sort} eq 'lifo') {
+            $options->{sort} = { _id => -1 };
+        } elsif ($self->{sort} ne 'default') {
+            $self->logger->warn("$queue->{name}: unknown sort order '$self->{sort}' -- using default");
+        }
+        $self->tasks->find_one_and_update($query, $update, $options);
+    }
+
+    # will fork & exec to start a given task
+    sub start_task {
+        my ($self, $queue, $task) = @_;
+        my $command = './bin/task_runner';	# FIXME: don't hardcode this
+        my @args = (
+            '--host' => $self->{config}{mongohost},
+            '--db' => $self->{config}{mongodb},
+            '--plugin' => $self->{plugins}{$queue->{constructor}},
+            '--task' => $task->{_id},
+        );
+        $self->logger->info(join ' ', $command, @args);
+        unless (fork) {
+            unless (exec $command, @args) {
+                $self->logger->error("Could not exec '$command', unclaiming task $task->{_id} and setting threads to 0 for $queue->{name}");
+                $self->tasks->update_one({_id => $task->{_id}}, {'$set' => {node => -1, status => -2, mtime => 0}});
+                $self->queues->update_one({_id => $queue->{_id}}, {'$set' => {maxthreads => 0}});
+                exit;
+            }
+        }
+    }
+
+    # returns count of status -1 and 0 for given queue _id
+    sub count_running {
+        my ($self, $queue_id) = @_;
+        $self->tasks->count({node => $self->{node}, status => {'$in' => [-1,0]}, queue => $queue_id});
+    }
+
+    # returns count_todo for given queue _id, setting it if undefined
+    sub count_todo {
+        my ($self, $queue_id) = @_;
+
+        my $queue = $self->queues->find_one({_id => $queue_id});
+        if (defined $queue and defined $queue->{count_todo}) {
+            return $queue->{count_todo};
+        } else {
+            my $count = $self->tasks->count({queue => $queue_id, status => {'$lte' => 0}});
+            $self->queues->update_one({_id => $queue_id}, {'$set' => {count_todo => $count}});
+            return $count;
+        }
+    }
+
+    # returns count_total for given queue _id, setting it if undefined
+    sub count_total {
+        my ($self, $queue_id) = @_;
+
+        my $queue = $self->queues->find_one({_id => $queue_id});
+        if (defined $queue and defined $queue->{count_total}) {
+            return $queue->{count_total};
+        } else {
+            my $count = $self->tasks->count({queue => $queue_id});
+            $self->queues->update_one({_id => $queue_id}, {'$set' => {count_total => $count}});
+            return $count;
+        }
+    }
+
+    # will run as many tasks for each queue as allowed
+    sub process_queues {
+        my ($self) = @_;
+        for my $queue ($self->queues->find->all) {
+            if ($self->{plugins}{$queue->{constructor}}) {
+                my $running = $self->count_running($queue->{_id});
+                while ($queue->{maxthreads} > $running) {
+                    my $task = $self->claim_task($queue);
+                    last unless defined $task;
+                    $self->start_task($queue, $task);
+                    $running = $self->count_running($queue->{_id});
+                }
+            } else {
+                $self->revalidate_plugins;
+            }
+        }
+    }
+
+    # creates a task for given queue _id and parameters, returning task _id
+    sub create_task {
+        my ($self, $queue_id, $parameters) = @_;
+
+        my $task = {
+            queue      => $queue_id,
+            status     => -2,
+            stdout     => '',
+            stderr     => '',
+            node       => -1,
+            parameters => $parameters,
+            ctime      => time,
+            mtime      => 0,
+        };
+
+        $self->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => 1, count_todo => 1}});
+        my $res;
+        retry {
+            $res = $self->tasks->insert_one($task);
+        } catch {
+            $self->logger->error("Could not create task in queue $queue_id with parameters: ", $json->encode($parameters));
+            $self->logger->error($_);
+        };
+        $res->inserted_id;
+    }
+
+    # TODO: subs parameters_definitions & queue_parameters ???
+
+    ### END Synacor::Disbatch::Queue like stuff ###
+
+}
+
+my $disbatch = Disbatch->new(class => 'Disbatch', config => $config);
+my $logger = $disbatch->logger('daemon');
+$logger->info("Starting disbatch daemon");
+
+$disbatch->validate_plugins;
+$disbatch->process_queues while sleep 1;
