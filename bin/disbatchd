@@ -40,6 +40,7 @@ my $config = {
     package Disbatch;
 
     use Data::Dumper;
+    use POSIX 'setsid';
     use Sys::Hostname;
 
     sub new {
@@ -140,6 +141,7 @@ my $config = {
         );
         $self->logger->info(join ' ', $command, @args);
         unless (fork) {
+            setsid != -1 or die "Can't start a new session: $!";
             unless (exec $command, @args) {
                 $self->logger->error("Could not exec '$command', unclaiming task $task->{_id} and setting threads to 0 for $queue->{name}");
                 $self->tasks->update_one({_id => $task->{_id}}, {'$set' => {node => -1, status => -2, mtime => 0}});
