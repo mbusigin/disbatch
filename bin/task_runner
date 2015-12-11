@@ -96,6 +96,7 @@ my $task = try {
     $logger->logdie($_);
 };
 $task->{workerthread} = $workerthread;
+$task->{id} = $oid;
 
 my ($query, $result) = try {
     $task->run;
