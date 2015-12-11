@@ -16,6 +16,13 @@ use Try::Tiny;
 
 use lib 'lib';
 
+$SIG{HUP}  = sub { exit 129 };	# 1
+$SIG{INT}  = sub { exit 130 };	# 2	ctrl-c
+$SIG{QUIT} = sub { exit 131 };	# 3	ctrl-\
+#$SIG{PIPE} = 'IGNORE';		# 13
+$SIG{TERM} = sub { exit 143 };	# 15	kill
+#$SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
+
 my ($host, $db, @queue, @ignore);
 
 GetOptions(
@@ -126,7 +133,16 @@ my $config = {
         } elsif ($self->{sort} ne 'default') {
             $self->logger->warn("$queue->{name}: unknown sort order '$self->{sort}' -- using default");
         }
-        $self->tasks->find_one_and_update($query, $update, $options);
+        $self->{claimed_task} = $self->tasks->find_one_and_update($query, $update, $options);
+    }
+
+    # will claim and return a task for given queue, or return undef
+    sub unclaim_task {
+        my ($self, $task_id) = @_;
+        my $query  = { _id => $task_id, node => $self->{node}, status => -1 };
+        my $update = { '$set' => {node => -1, status => -2, mtime => 0} };
+        $self->logger->warn("Unclaliming task $task_id");
+        $self->tasks->find_one_and_update($query, $update);
     }
 
     # will fork & exec to start a given task
@@ -149,6 +165,7 @@ my $config = {
                 exit;
             }
         }
+        $self->{claimed_task} = undef;
     }
 
     # returns count of status -1 and 0 for given queue _id
@@ -233,6 +250,11 @@ my $config = {
 
     ### END Synacor::Disbatch::Queue like stuff ###
 
+    DESTROY {
+        my ($self) = @_;
+        # this happens after the END block below
+    }
+
 }
 
 my $disbatch = Disbatch->new(class => 'Disbatch', config => $config);
@@ -241,3 +263,15 @@ $logger->info("Starting disbatch daemon");
 
 $disbatch->validate_plugins;
 $disbatch->process_queues while sleep 1;
+
+END {
+    $logger->info("Exit code $?");
+    if ($disbatch->{claimed_task}) {
+        my $unclaimed = $disbatch->unclaim_task($disbatch->{claimed_task}{_id});
+        if (defined $unclaimed) {
+            $logger->warn("Unclaimed task $unclaimed->{_id}");
+        } else {
+            $logger->error("Task $unclaimed->{_id} not unclaimed!");
+        }
+    }
+}
