@@ -207,6 +207,8 @@ my $config = {
         my ($self) = @_;
         for my $queue ($self->queues->find->all) {
             if ($self->{plugins}{$queue->{constructor}}) {
+                $self->count_total($queue->{_id}) unless defined $queue->{count_total};
+                $self->count_todo($queue->{_id}) unless defined $queue->{count_todo};
                 my $running = $self->count_running($queue->{_id});
                 while ($queue->{maxthreads} > $running) {
                     my $task = $self->claim_task($queue);
@@ -219,34 +221,6 @@ my $config = {
             }
         }
     }
-
-    # creates a task for given queue _id and parameters, returning task _id
-    sub create_task {
-        my ($self, $queue_id, $parameters) = @_;
-
-        my $task = {
-            queue      => $queue_id,
-            status     => -2,
-            stdout     => '',
-            stderr     => '',
-            node       => -1,
-            parameters => $parameters,
-            ctime      => time,
-            mtime      => 0,
-        };
-
-        $self->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => 1, count_todo => 1}});
-        my $res;
-        retry {
-            $res = $self->tasks->insert_one($task);
-        } catch {
-            $self->logger->error("Could not create task in queue $queue_id with parameters: ", $json->encode($parameters));
-            $self->logger->error($_);
-        };
-        $res->inserted_id;
-    }
-
-    # TODO: subs parameters_definitions & queue_parameters ???
 
     ### END Synacor::Disbatch::Queue like stuff ###
 
@@ -261,6 +235,7 @@ my $disbatch = Disbatch->new(class => 'Disbatch', config => $config);
 my $logger = $disbatch->logger('daemon');
 $logger->info("Starting disbatch daemon");
 
+$disbatch->ensure_indexes;
 $disbatch->validate_plugins;
 $disbatch->process_queues while sleep 1;
 
