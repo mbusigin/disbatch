@@ -11,6 +11,7 @@ use JSON;
 use Log::Log4perl;
 use MongoDB 1.0.0;
 use Sys::Hostname;
+use Time::Moment;
 use Try::Tiny;
 #use Safe::Isa;
 
@@ -23,13 +24,13 @@ $SIG{QUIT} = sub { exit 131 };	# 3	ctrl-\
 $SIG{TERM} = sub { exit 143 };	# 15	kill
 #$SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
 
-my ($host, $db, @queue, @ignore);
+my ($host, $db, @activequeues, @ignorequeues);
 
 GetOptions(
     'host=s'  => \$host,
     'db=s'    => \$db,
-    'queue=s' => \@queue,
-    'ignore=s' => \@ignore,
+    'activequeues=s' => \@activequeues,
+    'ignorequeues=s' => \@ignorequeues,
 );
 
 die 'No --host' unless defined $host;
@@ -41,6 +42,8 @@ my $config = {
     log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
     mongohost => $host,
     mongodb => $db,
+    activequeues => \@activequeues,
+    ignorequeues => \@ignorequeues,
 };
 
 {
@@ -56,6 +59,8 @@ my $config = {
         $self->{node} = hostname;
         $self->{class} //= 'Disbatch';
         $self->{class} = lc $self->{class};
+        $self->{config}{activequeues} //= [];
+        $self->{config}{ignorequeues} //= [];
 
         Log::Log4perl->init($self->{config}{log4perl_conf});
         $self->{loggers} = {};
@@ -93,11 +98,13 @@ my $config = {
             next if exists $self->{plugins}{$constructor};
             if (eval "require $constructor; $constructor->new->can('run');") {
                 $self->{plugins}{$constructor} = $constructor;
+                next if exists $self->{old_plugins}{$constructor};
                 $self->logger->info("$constructor is valid for queues");
                 next;
             }
             if (eval "require ${constructor}::Task; ${constructor}::Task->new->can('run');") {
                 $self->{plugins}{$constructor} = $constructor . '::Task';
+                next if exists $self->{old_plugins}{$constructor};
                 $self->logger->info("${constructor}::Task is valid for queues");
                 $self->logger->warn("Having a plugin format with a subpackage *::Task is deprecated");
                 next;
@@ -110,8 +117,44 @@ my $config = {
     # clears constructor validation and re-runs
     sub revalidate_plugins {
         my ($self) = @_;
+        $self->{old_plugins} = $self->{plugins};
         $self->{plugins} = {};
         $self->validate_plugins;
+    }
+
+    # FIXME: merge this and Disbatch::Web /scheduler-json into one thing, so not repeating the (mostly) same code
+    sub scheduler_report {
+        my ($self) = @_;
+        my @result;
+        for my $queue ($self->queues->find->all) {
+            my $tasks_doing = $self->tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}});
+            $queue->{count_total} //= 0;
+            $queue->{count_todo} //= 0;
+            push @result, {
+                id             => $queue->{_id}{value},
+                tasks_todo     => $queue->{count_todo},
+                tasks_done     => ($queue->{count_total} - $tasks_doing - $queue->{count_todo}),
+                tasks_doing    => $tasks_doing,
+                maxthreads     => $queue->{maxthreads},
+                name           => $queue->{name},
+                constructor    => $queue->{constructor},
+                preemptive     => 1,
+                tasks_backfill => 0,
+            };
+        }
+        \@result;
+    }
+
+    # updates the nodes collection
+    sub update_node_status {
+        my ($self) = @_;
+
+        my $status = $self->nodes->find_one({node => $self->{node}}) // {};
+        $status->{node}      = $self->{node};
+        $status->{queues}    = $self->scheduler_report;
+        $status->{timestamp} = Time::Moment->now_utc;
+
+        $self->nodes->update_one({node => $self->{node}}, {'$set' => $status}, {upsert => 1});
     }
 
     ### Synacor::Disbatch::Queue like stuff ###
@@ -143,6 +186,11 @@ my $config = {
         my $update = { '$set' => {node => -1, status => -2, mtime => 0} };
         $self->logger->warn("Unclaliming task $task_id");
         $self->tasks->find_one_and_update($query, $update);
+    }
+
+    sub orphaned_tasks {
+        my ($self) = @_;
+        $self->tasks->update_many({node => $self->{node}, status => -1, mtime => {'$lt' => time - 60} }, {'$set' => {status => -6}});
     }
 
     # will fork & exec to start a given task
@@ -202,24 +250,38 @@ my $config = {
         }
     }
 
+    # checks if this node will process (activequeues) or ignore (ignorequeues) a queue
+    sub is_active_queue {
+        my ($self, $queue_id) = @_;
+        if (@{$self->{config}{activequeues}}) {
+            grep($queue_id->{value} eq $_, @{$self->{config}{activequeues}}) ? 1 : 0;
+        } elsif (@{$self->{config}{ignorequeues}}) {
+            grep($queue_id->{value} eq $_, @{$self->{config}{ignorequeues}}) ? 0 : 1;
+        } else {
+            1;
+        }
+    }
+
     # will run as many tasks for each queue as allowed
     sub process_queues {
         my ($self) = @_;
+        my $revalidate_plugins = 0;
         for my $queue ($self->queues->find->all) {
-            if ($self->{plugins}{$queue->{constructor}}) {
+            if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {
                 $self->count_total($queue->{_id}) unless defined $queue->{count_total};
                 $self->count_todo($queue->{_id}) unless defined $queue->{count_todo};
                 my $running = $self->count_running($queue->{_id});
-                while ($queue->{maxthreads} > $running) {
+                while ($queue->{maxthreads} // 0 > $running) {
                     my $task = $self->claim_task($queue);
                     last unless defined $task;
                     $self->start_task($queue, $task);
                     $running = $self->count_running($queue->{_id});
                 }
             } else {
-                $self->revalidate_plugins;
+                $revalidate_plugins = 1;
             }
         }
+        $self->revalidate_plugins if $revalidate_plugins;
     }
 
     ### END Synacor::Disbatch::Queue like stuff ###
@@ -237,7 +299,12 @@ $logger->info("Starting disbatch daemon");
 
 $disbatch->ensure_indexes;
 $disbatch->validate_plugins;
-$disbatch->process_queues while sleep 1;
+
+do {
+    $disbatch->orphaned_tasks;
+    $disbatch->process_queues;
+    $disbatch->update_node_status;
+} while sleep 1;
 
 END {
     $logger->info("Exit code $?");
