@@ -36,6 +36,8 @@ get '/scheduler-json' => sub {
     my @result;
     for my $queue (queues->find->all) {
         my $tasks_doing = tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}});
+        $queue->{count_total} //= 0;
+        $queue->{count_todo} //= 0;
         push @result, {
             id             => $queue->{_id}{value},
             tasks_todo     => $queue->{count_todo},
@@ -128,6 +130,16 @@ post '/delete-queue-json' => sub {
     send_json [ $reponse->{success}, $reponse ];
 };
 
+sub get_queue_oid {
+    my ($queue) = @_;
+    my $queue_id = try {
+        MongoDB::OID->new(value => $queue);
+    } catch {
+        my $q = queues->find_one({name => $queue});
+        defined $q ? $q->{_id} : undef;
+    };
+}
+
     # creates a task for given queue _id and parameters, returning task _id
     sub create_tasks {
         my ($queue_id, $tasks) = @_;
@@ -162,7 +174,10 @@ post '/queue-create-tasks-json' => sub {
     my $tasks = try { $json->decode($params->{object}) } catch { $_ };
     return send_json [ 0, $tasks ] unless ref $tasks;
 
-    my $res = create_tasks(MongoDB::OID->new(value => $params->{queueid}), $tasks);
+    my $queue_id = get_queue_oid($params->{queueid});
+    return send_json [ 0, 'Queue not found' ] unless defined $queue_id;
+
+    my $res = create_tasks($queue_id, $tasks);
 
     my $reponse = {
         success => @{$res->{inserted}} ? 1 : 0,
@@ -192,6 +207,9 @@ post '/queue-create-tasks-from-query-json' => sub {
     my $parameters = try { $json->decode($params->{parameters}) } catch { $_ };	# {"migration":"document.migration","user1":"document.username"}
     return send_json [ 0, $parameters ] unless ref $parameters;
 
+    my $queue_id = get_queue_oid($params->{queueid});
+    return send_json [ 0, 'Queue not found' ] unless defined $queue_id;
+
     my @fields = grep /^document\./, values %$parameters;
     my %fields = map { s/^document\.//; $_ => 1 } @fields;
 
@@ -212,7 +230,7 @@ post '/queue-create-tasks-from-query-json' => sub {
         push @tasks, $task;
     }
 
-    my $res = create_tasks(MongoDB::OID->new(value => $params->{queueid}), \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
+    my $res = create_tasks($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
 
     my $reponse = {
         success => @{$res->{inserted}} ? 1 : 0,
