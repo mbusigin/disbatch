@@ -140,25 +140,25 @@ sub get_queue_oid {
     };
 }
 
-    # creates a task for given queue _id and parameters, returning task _id
-    sub create_tasks {
-        my ($queue_id, $tasks) = @_;
+# creates a task for given queue _id and parameters, returning task _id
+sub create_tasks {
+    my ($queue_id, $tasks) = @_;
 
-        my @tasks = map {
-            queue      => $queue_id,
-            status     => -2,
-            stdout     => '',
-            stderr     => '',
-            node       => -1,
-            parameters => $_,
-            ctime      => time,
-            mtime      => 0,
-        }, @$tasks;
+    my @tasks = map {
+        queue      => $queue_id,
+        status     => -2,
+        stdout     => '',
+        stderr     => '',
+        node       => -1,
+        parameters => $_,
+        ctime      => time,
+        mtime      => 0,
+    }, @$tasks;
 
-        my $res = tasks->insert_many(\@tasks);
-        queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}});
-        $res;
-    }
+    my $res = tasks->insert_many(\@tasks);
+    queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}});
+    $res;
+}
 
 post '/queue-create-tasks-json' => sub {
     my $params = {};
