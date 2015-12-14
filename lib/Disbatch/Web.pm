@@ -7,6 +7,7 @@ use warnings;
 use Cpanel::JSON::XS;
 use Data::Dumper;
 #use Limper::Engine::PSGI;
+use Limper::SendFile;
 use Limper::SendJSON;
 use Limper;
 use Log::Log4perl;
@@ -26,11 +27,17 @@ sub mongo { MongoDB->connect($config->{mongohost})->get_database($config->{mongo
 sub queues { mongo->get_collection('queues') }
 sub tasks  { mongo->get_collection('tasks') }
 
-######################
+sub parse_params {
+    if ((request->{headers}{'content-type'} // '') eq 'application/x-www-form-urlencoded') {
+        url_params_mixed(request->{body}, 1);
+    } elsif ((request->{headers}{'content-type'} // '') eq 'application/json') {
+        try { $json->decode(request->{body}) } catch { $_ };
+    } elsif (request->{query}) {
+        url_params_mixed(request->{query}, 1);
+    }
+}
 
-get '/' => sub {
-    'hiiiiiii!';
-};
+######################
 
 get '/scheduler-json' => sub {
     my @result;
@@ -54,10 +61,7 @@ get '/scheduler-json' => sub {
 };
 
 post '/set-queue-attr-json' => sub {
-    my $params = {};
-    if (request->{headers}{'content-type'} // '' eq 'application/x-www-form-urlencoded') {
-        $params = url_params_mixed(request->{body}, 1);
-    }
+    my $params = parse_params;
     my @valid_attributes = qw/maxthreads preemptive/;
     unless (grep $params->{attr}, @valid_attributes) {
         status 400;
@@ -65,11 +69,11 @@ post '/set-queue-attr-json' => sub {
     }
     unless (defined $params->{value}) {
         status 400;
-        return send_json  {success => 0, error => 'You must supply a value'};
+        return send_json {success => 0, error => 'You must supply a value'};
     }
     unless (defined $params->{queueid}) {
         status 400;
-        return send_json  {success => 0, error => 'You must supply a queueid'};
+        return send_json {success => 0, error => 'You must supply a queueid'};
     }
     my $res = queues->update_one({_id => MongoDB::OID->new(value => $params->{queueid})}, {'$set' => { $params->{attr} => $params->{value} }});
     my $reponse = {
@@ -84,11 +88,7 @@ post '/set-queue-attr-json' => sub {
 };
 
 post '/start-queue-json' => sub {
-    my $params = {};
-    if (request->{headers}{'content-type'} // '' eq 'application/x-www-form-urlencoded') {
-        $params = url_params_mixed(request->{body}, 1);
-    }
-
+    my $params = parse_params;
     unless (defined $params->{type} and defined $params->{name}) {
         status 400;
         return send_json [ 0, 'type and name required'];
@@ -108,11 +108,7 @@ post '/start-queue-json' => sub {
 };
 
 post '/delete-queue-json' => sub {
-    my $params = {};
-    if (request->{headers}{'content-type'} // '' eq 'application/x-www-form-urlencoded') {
-        $params = url_params_mixed(request->{body}, 1);
-    }
-
+    my $params = parse_params;
     unless (defined $params->{id}) {
         status 400;
         return send_json [ 0, 'id required'];
@@ -161,17 +157,13 @@ sub create_tasks {
 }
 
 post '/queue-create-tasks-json' => sub {
-    my $params = {};
-    if (request->{headers}{'content-type'} // '' eq 'application/x-www-form-urlencoded') {
-        $params = url_params_mixed(request->{body}, 1);
-    }
-
+    my $params = parse_params;
     unless (defined $params->{queueid} and defined $params->{object}) {
         status 400;
         return send_json [ 0, 'queueid and object required'];
     }
 
-    my $tasks = try { $json->decode($params->{object}) } catch { $_ };
+    my $tasks = try { ref $params->{object} ? $params->{object} : $json->decode($params->{object}) } catch { $_ };
     return send_json [ 0, $tasks ] unless ref $tasks;
 
     my $queue_id = get_queue_oid($params->{queueid});
@@ -191,20 +183,16 @@ post '/queue-create-tasks-json' => sub {
 };
 
 post '/queue-create-tasks-from-query-json' => sub {
-    my $params = {};
-    if (request->{headers}{'content-type'} // '' eq 'application/x-www-form-urlencoded') {
-        $params = url_params_mixed(request->{body}, 1);
-    }
-
+    my $params = parse_params;
     unless (defined $params->{queueid} and defined $params->{collection} and defined $params->{jsonfilter} and defined $params->{parameters}) {
         status 400;
         return send_json [ 0, 'queueid, collection, jsonfilter, and parameters required'];
     }
 
-    my $filter = try { $json->decode($params->{jsonfilter}) } catch { $_ };	# {"migration":"foo"}
+    my $filter = try { ref $params->{jsonfilter} ? $params->{jsonfilter} : $json->decode($params->{jsonfilter}) } catch { $_ };	# {"migration":"foo"}
     return send_json [ 0, $filter ] unless ref $filter;
 
-    my $parameters = try { $json->decode($params->{parameters}) } catch { $_ };	# {"migration":"document.migration","user1":"document.username"}
+    my $parameters = try { ref $params->{parameters} ? $params->{parameters} : $json->decode($params->{parameters}) } catch { $_ };	# {"migration":"document.migration","user1":"document.username"}
     return send_json [ 0, $parameters ] unless ref $parameters;
 
     my $queue_id = get_queue_oid($params->{queueid});
@@ -244,28 +232,39 @@ post '/queue-create-tasks-from-query-json' => sub {
 #    send_json [ $reponse->{success}, scalar @{$res->{inserted}}, @{$res->{inserted}}, $reponse ], convert_blessed => 1;
 };
 
-get '/queue-prototypes-json' => sub {
-    send_json {};	# for back-compat currently. never really used.
+# This is needed at least to create queues in the web interface (just the keys).
+# FIXME: You currently can't create a queue for a constructor unless there is already a queue with that constructor.
+# NOTE: post, because of the legacy UI that I don't know how to change.
+get post '/queue-prototypes-json' => sub {
+    my $example = {
+        settings => [],
+        'Disbatch::Plugin::Dummy' => {
+            name => {
+                name => 'perl',
+                type => 'string',
+                description => 'a Perl expression to evaluate',
+                default => 'warn "Hello, world!"',
+            }
+        }
+    };
+    my %constructors = map { $_ => undef } queues->distinct('constructor')->all;
+    send_json \%constructors;
 };
 
 get '/reload-queues-json' => sub {
     send_json [1];	# for back-compat only. unneeded.
 };
 
-post '/search-tasks-json' => sub {
-    my $params = {};
-    if (request->{headers}{'content-type'} // '' eq 'application/x-www-form-urlencoded') {
-        $params = url_params_mixed(request->{body}, 1);
-    }
-
+# NOTE: get, because of the legacy UI that I don't know how to change.
+get post '/search-tasks-json' => sub {
+    my $params = parse_params;
     #unless (defined $params->{queue} and defined $params->{filter}) {
     #    status 400;
     #    return send_json [ 0, 'queue and filter required'];
     #}
 
-    $params->{filter} //= '{}';
-
-    my $filter = try { $json->decode($params->{filter}) } catch { $_ };
+    $params->{filter} //= {};
+    my $filter = try { ref $params->{filter} ? $params->{filter} : $json->decode($params->{filter}) } catch { $_ };
     return send_json [ 0, $params->{json} ? $filter : 'JSON object required for filter' ] unless ref $filter eq 'HASH';
 
     my $attrs = {};
@@ -277,7 +276,7 @@ post '/search-tasks-json' => sub {
     $filter->{status} = int $filter->{status} if defined $filter->{status};
 
     if ($params->{count}) {
-        return [ 1, tasks->count($filter) ];
+        return send_json [ 1, tasks->count($filter) ];
     }
     my @tasks = tasks->find($filter, $attrs)->all;
 
@@ -299,6 +298,16 @@ post '/search-tasks-json' => sub {
     }
 
     send_json \@tasks, convert_blessed => 1;
+};
+
+public 'etc/disbatch/htdocs/'; # FIXME
+
+get '/' => sub {
+    send_file '/index.html';
+};
+
+get qr{^/} => sub {
+    send_file;        # sends request->{uri} by default
 };
 
 1;
