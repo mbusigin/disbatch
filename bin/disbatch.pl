@@ -233,11 +233,11 @@ sub status {
             {title => 'Type',       align => 'right'}, $sep,
             {title => 'Name',       align => 'right'}, $sep,
             {title => 'Threads',    align => 'right'}, $sep,
-            {title => 'To-Do',      align => 'right'}, $sep,
-            {title => 'Preemptive', align => 'right'}, $sep,
             {title => 'Done',       align => 'right'}, $sep,
-            {title => 'Processing', align => 'right'}, $sep,
-            {title => 'Backfill',   align => 'right'}
+            {title => 'To-Do',      align => 'right'}, $sep,
+            {title => 'Processing', align => 'right'}, #$sep,
+            #{title => 'Backfill',   align => 'right'}, $sep,
+            #{title => 'Preemptive', align => 'right'},
         );
 
         for my $queue (@$obj) {
@@ -246,15 +246,15 @@ sub status {
                 $queue->{constructor},
                 $queue->{name},
                 $queue->{maxthreads},
-                $queue->{tasks_todo},
-                $queue->{preemptive},
                 $queue->{tasks_done},
+                $queue->{tasks_todo},
                 $queue->{tasks_doing},
-                $queue->{tasks_backfill}
+                #$queue->{tasks_backfill},
+                #$queue->{preemptive},
             );
+            $count++;
         }
 
-        #print $t1->draw;
         print $tl->title;
         print $tl->rule('-', '+');
         say $tl->body;
