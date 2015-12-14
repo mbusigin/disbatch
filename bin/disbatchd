@@ -22,7 +22,7 @@ $SIG{INT}  = sub { exit 130 };	# 2	ctrl-c
 $SIG{QUIT} = sub { exit 131 };	# 3	ctrl-\
 #$SIG{PIPE} = 'IGNORE';		# 13
 $SIG{TERM} = sub { exit 143 };	# 15	kill
-#$SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
+$SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
 
 my ($host, $db, @activequeues, @ignorequeues);
 
