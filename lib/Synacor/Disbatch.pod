@@ -1,7 +1,0 @@
-=head1 NAME
-
-Disbatch - Multi-threaded execution harness
-
-=head1 DESCRIPTION
-
-Disbatch provides a multi-threaded execution harness for doing very large jobs which comprise many smaller self-similar tasks.
