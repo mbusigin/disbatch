@@ -306,6 +306,16 @@ get '/' => sub {
     send_file '/index.html';
 };
 
+get '/legacy' => sub {
+    status 302;
+    headers Location => '/legacy/';
+    '';
+};
+
+get '/legacy/' => sub {
+    send_file '/legacy/index.html';
+};
+
 get qr{^/} => sub {
     send_file;        # sends request->{uri} by default
 };
