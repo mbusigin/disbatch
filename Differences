@@ -1,0 +1,60 @@
+Goals achieved with rewrite:
+- No more memory leak in main process.
+- No more locked up event bus via unix sockets (uses MongoDB to pass all data).
+- Can stop/restart disbatchd process at any time without affecting running tasks.
+- Can update plugins at any time without restarting disbatchd.
+- Independent web server.
+
+
+Backwards compatibility for existing deployments:
+- Can replace v3 of Disbatch with v4 with no* changes to database, and minimal back-compat changes to plugin.
+- Can run both v3 and v4 against the same database.
+- CANNOT pass Perl data structures (only JSON is allowed) to 'queue search' nor 'queue tasks'. That was a horrible idea.
+- The "Backfill" feature has been removed - a web server thread handles this (creating 100k tasks at once only took 12 seconds on my 13" rMBP).
+- The "Preemptive" setting has been removed.
+
+
+Changes:
+- To keep the code simple, as much as possible is by convention instead of config (collection names, node, ...).
+- No need to have a file in etc/disbatch/disbatch.d/ to define a plugin.
+- Only the ::Task part of the plugin is needed. Its parent is unused.
+- bin/disbatchd instead of bin/disbatchd.pl
+- etc/disbatch/disbatch.json instead of etc/disbatch/disbatch.ini
+  - most config will go into a 'config' collection.
+  - the disbatch-log4perl.conf file will be replaced by a section in the config.
+
+FIXME:
+- bin/disbatchd:
+  - don't hardcode log4perl_conf file name (use config collection).
+  - don't hardcode command "./bin/task_runner" (use config collection?).
+  - handle MongoDB errors properly.
+- bin/task_runner:
+  - don't hardcode log4perl_conf file name (use config collection).
+  - handle MongoDB errors properly.
+- lib/Disbatch/Web.pm:
+  - don't hardcode log4perl_conf file name (use config collection).
+  - don't hardcode MongoDB connection settings (use config collection).
+  - don't hardcode web root (use config collection).
+  - handle MongoDB errors properly.
+  - can't create a queue for a constructor unless there is already a queue with that constructor (optional part in config collection??).
+  - add script to start this.
+
+Todo:
+- DOCS DOCS DOCS
+- TESTS TESTS TESTS
+- modularize bin/disbatchd and bin/task_runner
+- write new web interface and API.
+- be able to use any type of task_runner (node.js, ruby, ...)
+- merge disbatchd scheduler_report() and Disbatch::Web /scheduler-json into one thing, so not repeating the (mostly) same code
+
+
+Upgrading:
+- Rename the tasks and queues collections to 'tasks' and 'queues' if they have a different name.
+- If there is already a collection 'config', rename it to something else.
+- Put MongoDB connection details in etc/disbatch/disbatch.json
+- setup config collection:
+  - 
+  - 
+- Modify plugin (these modifications allow plugin to still work on v3):
+  - 
+  - 

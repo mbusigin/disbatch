@@ -1,0 +1,21 @@
+# disbatchd CLI args: host, db, activequeues, ignorequeues
+
+{
+    "mongohost": "mongodb://127.0.0.1:27017",
+    "mongodb": "disbatch300",
+    # mongouser and mongopassword are optional if you run your mongod with --auth
+    #"mongouser": "mulder",
+    #"mongopassword": "trustno1",
+
+    # Everything below here will go into the config collection
+
+    # for web server:
+    "port": 8080,
+    "auth": "none",
+
+    "log4perl_conf": "/etc/disbatch/disbatch-log4perl-dev.conf",
+
+    # can only use one of these:
+    "activequeues": [ "565b34420cef2c52d6000000" ],
+    "ignorequeues": [ "565e75f03fb6ecd1c8504499" ],
+}

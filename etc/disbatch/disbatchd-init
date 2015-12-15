@@ -6,18 +6,18 @@ use Daemon::Control;
 
 my @program_args = ();  # i.e.: ( '--lib', '/path/to/libs,/path/to/more/libs' );
 
-my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/disbatchd.pl', @program_args);
+my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/disbatchd, @program_args);
 
 Daemon::Control->new({
     name         => 'disbatchd',
-    program      => '/usr/bin/disbatchd.pl',
+    program      => '/usr/bin/disbatchd',
     program_args => \@program_args,
     directory    => '/',
 
     lsb_start    => '$syslog $remote_fs',
     lsb_stop     => '$syslog',
     lsb_sdesc    => 'disbatchd',
-    lsb_desc     => 'Daemon for disbatchd.pl',
+    lsb_desc     => 'Daemonized disbatchd',
 
     pid_file     => '/var/run/disbatchd.pid',
     stdout_file  => '/var/log/disbatchd.out',
