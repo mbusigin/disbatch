@@ -1,3 +1,9 @@
+SECURITY ISSUES:
+- Make sure random code cannot be run:
+  - restrict what can edit the config.
+  - any option that can done via the web API must be validated somehow (via config collection settings?).
+  - if can't restrict config collection, then restrict via disbatch.json / CLI flags.
+
 Goals achieved with rewrite:
 - No more memory leak in main process.
 - No more locked up event bus via unix sockets (uses MongoDB to pass all data).
