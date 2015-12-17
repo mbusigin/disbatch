@@ -59,12 +59,6 @@ GetOptions(
     'plugin=s' => \$plugin,
 );
 
-die 'No --host' unless defined $host;
-die 'No --db' unless defined $db;
-#die 'No --queue' unless defined $queue;
-die 'No --task' unless defined $task_id;
-#die 'No --plugin' unless defined $plugin;
-
 my $node = hostname;
 my $json = JSON->new->utf8;
 
@@ -77,6 +71,12 @@ my $workerthread = WorkerThread->new(class => $plugin, config => $config);
 my $logger = Log::Log4perl->get_logger('disbatch.task_runner');
 $logger->info("Starting task $task_id");
 
+$logger->logdie('No --task') unless defined $task_id;
+$logger->logdie('No --host') unless defined $host;
+$logger->logdie('No --db') unless defined $db;
+$logger->logdie('No --plugin') unless defined $plugin;
+#$logger->logdie('No --queue') unless defined $queue;
+$logger->logdie("--plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
 $logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
 my $oid = MongoDB::OID->new(value => $task_id);

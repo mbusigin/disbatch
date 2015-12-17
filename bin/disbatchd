@@ -96,21 +96,21 @@ my $config = {
         my ($self) = @_;
         for my $constructor (map { $_->{constructor} } $self->queues->find->all) {
             next if exists $self->{plugins}{$constructor};
-            if (eval "require $constructor; $constructor->new->can('run');") {
+            if ($constructor !~ /^[\w:]+$/) {
+                $self->logger->error("Illegal constructor value: $constructor");
+            } elsif (eval "require $constructor; $constructor->new->can('run');") {
                 $self->{plugins}{$constructor} = $constructor;
                 next if exists $self->{old_plugins}{$constructor};
                 $self->logger->info("$constructor is valid for queues");
-                next;
-            }
-            if (eval "require ${constructor}::Task; ${constructor}::Task->new->can('run');") {
+            } elsif (eval "require ${constructor}::Task; ${constructor}::Task->new->can('run');") {
                 $self->{plugins}{$constructor} = $constructor . '::Task';
                 next if exists $self->{old_plugins}{$constructor};
                 $self->logger->info("${constructor}::Task is valid for queues");
                 $self->logger->warn("Having a plugin format with a subpackage *::Task is deprecated");
-                next;
+            } else {
+                $self->{plugins}{$constructor} = undef;
+                $self->logger->warn("Could not load $constructor, ignoring queues using it");
             }
-            $self->{plugins}{$constructor} = undef;
-            $self->logger->warn("Could not load $constructor, ignoring queues using it");
         }
     }
 
