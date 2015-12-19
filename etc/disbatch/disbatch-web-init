@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Daemon::Control;
+
+my @program_args = ('--listen' => ':8080', '--workers' => 10, '/etc/disbatch/app.psgi');
+
+my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/starman', @program_args);
+
+Daemon::Control->new({
+    name         => 'disbatch-web',
+    program      => 'starman',
+    program_args => \@program_args,
+    directory    => '/',
+
+    lsb_start    => '$syslog $remote_fs',
+    lsb_stop     => '$syslog',
+    lsb_sdesc    => 'disbatch-web',
+    lsb_desc     => 'Disbatch web server',
+
+    pid_file     => '/var/run/disbatch-web.pid',
+    stdout_file  => '/var/log/disbatch-web.out',
+    stderr_file  => '/var/log/disbatch-web.out',
+
+    #user         => 'awillis',
+    #group        => 'systems',
+
+    #scan_name    => qr/$scan_name/,
+
+    fork         => 2,
+
+})->run;

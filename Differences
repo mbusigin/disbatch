@@ -43,7 +43,6 @@ FIXME:
   - don't hardcode web root (use config collection).
   - handle MongoDB errors properly.
   - can't create a queue for a constructor unless there is already a queue with that constructor (optional part in config collection??).
-  - add script to start this.
 
 Todo:
 - DOCS DOCS DOCS
