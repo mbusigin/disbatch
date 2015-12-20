@@ -250,6 +250,7 @@ GetOptions(
             '--db' => $self->{config}{mongodb},
             '--plugin' => $self->{plugins}{$queue->{constructor}},
             '--task' => $task->{_id},
+            '--log4perl' => Cpanel::JSON::XS->new->utf8->encode($self->{config}{log4perl}),
         );
         $self->logger->info(join ' ', $self->{config}{task_runner}, @args);
         unless (fork) {
