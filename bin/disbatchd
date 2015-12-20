@@ -87,10 +87,6 @@ GetOptions(
         my $json = Cpanel::JSON::XS->new->utf8;
         if (!defined $self->{config}) {
             $self->{config} = $json->relaxed->decode(scalar read_file($config_file));
-            if (!defined $self->{config}{mongohost} or !defined $self->{config}{mongodb}) {
-                # FIXME: use Log::Log4perl somehow...
-                die "Both 'mongohost' and 'mongodb' must be defined in file $config_file\n";
-            }
             @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
         }
         my $config_doc = $self->mongo->get_collection('config')->find_one({active => true});
@@ -111,12 +107,15 @@ GetOptions(
                 $self->{config_quiet}{$key} = $config_doc->{$key};
             } elsif (!Compare($self->{config}{$key},$config_doc->{$key})) {
                 my $value = $config_doc->{$key};
-                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($value));
+                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($value)) unless $key eq 'label';
                 $self->{config}{$key} = $config_doc->{$key};
             }
         }
+
         # FIXME: test that certain config values are defined and are valid
-        #die unless defined $self->{config}{task_runner};
+        if (!defined $self->{config}{task_runner}) {
+            $self->logger->logdie("No 'task_runner' defined in config");
+        }
     }
 
     # from Synacor::Disbatch::Backend
