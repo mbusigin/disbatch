@@ -9,9 +9,9 @@
 use 5.12.0;
 use warnings;
 
+use Cpanel::JSON::XS;
 use Data::Dumper;
 use Getopt::Long;
-use JSON;
 use Log::Log4perl;
 use MongoDB 1.0.0;
 use Sys::Hostname;
@@ -60,7 +60,7 @@ GetOptions(
 );
 
 my $node = hostname;
-my $json = JSON->new->utf8;
+my $json = Cpanel::JSON::XS->new->utf8;
 
 my $config = {
     log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
