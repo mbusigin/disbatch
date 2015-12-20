@@ -6,7 +6,7 @@ use warnings;
 
 use Cpanel::JSON::XS;
 use Data::Dumper;
-#use Limper::Engine::PSGI;
+use File::Slurp;
 use Limper::SendFile;
 use Limper::SendJSON;
 use Limper;
@@ -15,13 +15,14 @@ use MongoDB 1.0.0;
 use Try::Tiny::Retry;
 use URL::Encode qw/url_params_mixed/;
 
+my $config_file = '/etc/disbatch/disbatch.json';
 my $json = Cpanel::JSON::XS->new->utf8;
+my $config;
 
-my $config = {
-    log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
-    mongohost => 'localhost',	# FIXME
-    mongodb => 'disbatch300',	# FIXME
-};
+sub load_config {
+    $config = $json->relaxed->decode(scalar read_file($_[0] // $config_file));
+    public $config->{web_root} // '/etc/disbatch/htdocs/';
+}
 
 sub mongo { MongoDB->connect($config->{mongohost})->get_database($config->{mongodb}) }
 sub queues { mongo->get_collection('queues') }
@@ -299,8 +300,6 @@ get post '/search-tasks-json' => sub {
 
     send_json \@tasks, convert_blessed => 1;
 };
-
-public 'etc/disbatch/htdocs/'; # FIXME
 
 get '/' => sub {
     send_file '/index.html';
