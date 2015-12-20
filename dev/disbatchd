@@ -1,0 +1,1 @@
+./bin/disbatchd --config etc/disbatch/disbatch.json
