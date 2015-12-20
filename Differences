@@ -33,12 +33,8 @@ FIXME:
 - bin/disbatchd:
   - handle MongoDB errors properly.
 - bin/task_runner:
-  - don't hardcode log4perl_conf file name (use config collection).
   - handle MongoDB errors properly.
 - lib/Disbatch/Web.pm:
-  - don't hardcode log4perl_conf file name (use config collection).
-  - don't hardcode MongoDB connection settings (use config collection).
-  - don't hardcode web root (use config collection).
   - handle MongoDB errors properly.
   - can't create a queue for a constructor unless there is already a queue with that constructor (optional part in config collection??).
 

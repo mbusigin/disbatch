@@ -19,9 +19,7 @@ use Try::Tiny;
 use Try::Tiny::Retry;
 #use Safe::Isa;
 
-use lib 'lib';
-
-my ($host, $db, $queue, $task_id, $plugin);
+use lib 'lib';	# FIXME: this is only needed for dev
 
 {
     package WorkerThread;
@@ -31,10 +29,10 @@ my ($host, $db, $queue, $task_id, $plugin);
         my $self = { @_ };
         $self->{class} //= 'Disbatch::Plugin::Task';
         $self->{class} = lc $self->{class};
-
-        Log::Log4perl->init($self->{config}{log4perl_conf});
-        $self->{loggers} = {};
-
+        $self->{config}{log4perl} //= { level => 'TRACE', appenders => {
+            screenlog => { type => 'Log::Log4perl::Appender::ScreenColoredLevels' },
+            filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => "/tmp/$self->{task_id}" } },
+        } };
         bless $self, $class;
     }
 
@@ -47,28 +45,40 @@ my ($host, $db, $queue, $task_id, $plugin);
         my ($self, $type) = @_;
         my $logger = defined $type ? "$self->{class}.$type" : $self->{class};
         $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
+        if (!keys %{Log::Log4perl->appenders}){
+            $self->{loggers}{$logger}->level($self->{config}{log4perl}{level});
+            my $default_layout = "[%p] %d %F{1} %L %C %c> %m %n";
+            for my $name (keys %{$self->{config}{log4perl}{appenders}}) {
+                my $ap = Log::Log4perl::Appender->new($self->{config}{log4perl}{appenders}{$name}{type}, name => $name, %{$self->{config}{log4perl}{appenders}{$name}{args}});
+                $ap->layout(Log::Log4perl::Layout::PatternLayout->new($self->{config}{log4perl}{appenders}{$name}{layout} // $default_layout));
+                $self->{loggers}{$logger}->add_appender($ap);
+            }
+        }
+        $self->{loggers}{$logger};
     }
 
 }
 
+my ($host, $db, $queue, $task_id, $plugin, $log4perl);
+
 GetOptions(
-    'host=s'  => \$host,
-    'db=s'    => \$db,
-    'queue=s' => \$queue,
-    'task=s'  => \$task_id,
-    'plugin=s' => \$plugin,
+    'host=s'     => \$host,
+    'db=s'       => \$db,
+    'queue=s'    => \$queue,
+    'task=s'     => \$task_id,
+    'plugin=s'   => \$plugin,
+    'log4perl=s' => \$log4perl,
 );
 
 my $node = hostname;
 my $json = Cpanel::JSON::XS->new->utf8;
 
-my $config = {
-    log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
-    mongohost => $host,
-    mongodb => $db,
-};
-my $workerthread = WorkerThread->new(class => $plugin, config => $config);
-my $logger = Log::Log4perl->get_logger('disbatch.task_runner');
+my $config = { mongohost => $host, mongodb => $db };
+$config->{log4perl} = try { $json->decode($log4perl) } if defined $log4perl;
+
+my $workerthread = WorkerThread->new(class => $plugin, config => $config, task_id => $task_id);
+my $logger = $workerthread->logger;
+
 $logger->info("Starting task $task_id");
 
 $logger->logdie('No --task') unless defined $task_id;
