@@ -7,7 +7,6 @@ use warnings;
 
 use Data::Dumper;
 use Getopt::Long;
-use JSON;
 use Log::Log4perl;
 use MongoDB 1.0.0;
 use Sys::Hostname;
@@ -25,31 +24,24 @@ $SIG{TERM} = sub { exit 143 };	# 15	kill
 $SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
 
 my ($host, $db, @activequeues, @ignorequeues);
+my $config_file = '/etc/disbatch/disbatch.json';
 
 GetOptions(
     'host=s'  => \$host,
     'db=s'    => \$db,
     'activequeues=s' => \@activequeues,
     'ignorequeues=s' => \@ignorequeues,
+    'config=s' => \$config_file,
 );
-
-die 'No --host' unless defined $host;
-die 'No --db' unless defined $db;
-
-my $json = JSON->new->utf8;
-
-my $config = {
-    log4perl_conf => 'etc/disbatch/disbatch-log4perl-dev.conf',	# FIXME
-    mongohost => $host,
-    mongodb => $db,
-    activequeues => \@activequeues,
-    ignorequeues => \@ignorequeues,
-};
 
 {
     package Disbatch;
 
+    use boolean;
+    use Data::Compare;
     use Data::Dumper;
+    use File::Slurp;
+    use Cpanel::JSON::XS;
     use POSIX 'setsid';
     use Sys::Hostname;
 
@@ -59,13 +51,11 @@ my $config = {
         $self->{node} = hostname;
         $self->{class} //= 'Disbatch';
         $self->{class} = lc $self->{class};
-        $self->{config}{activequeues} //= [];
-        $self->{config}{ignorequeues} //= [];
-
-        Log::Log4perl->init($self->{config}{log4perl_conf});
-        $self->{loggers} = {};
-
         bless $self, $class;
+
+        $self->load_config;
+
+        $self;
     }
 
     sub logger {
@@ -78,6 +68,41 @@ my $config = {
     sub nodes  { $_[0]->mongo->get_collection('nodes') }
     sub queues { $_[0]->mongo->get_collection('queues') }
     sub tasks  { $_[0]->mongo->get_collection('tasks') }
+
+    # loads the config file at startup and (re)loads the current active config collection document
+    # anything in the config file at startup is static and cannot be changed without restarting disbatchd
+    sub load_config {
+        my ($self) = @_;
+        my $json = Cpanel::JSON::XS->new->utf8;
+        if (!defined $self->{config}) {
+            $self->{config} = $json->relaxed->decode(scalar read_file($config_file));
+            if (!defined $self->{config}{mongohost} or !defined $self->{config}{mongodb}) {
+                # FIXME: use Log::Log4perl somehow...
+                die "Both 'mongohost' and 'mongodb' must be defined in file $config_file\n";
+            }
+            @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
+            Log::Log4perl->init($self->{config}{log4perl_conf}) if defined $self->{config}{log4perl_conf};
+        }
+        my $config_doc = $self->mongo->get_collection('config')->find_one({active => true});
+
+        Log::Log4perl->init_once($config_doc->{log4perl_conf});
+
+        for my $key (keys %$config_doc) {
+            next if $key eq 'active' or $key eq '_id';
+            if (grep { $key eq $_ } @{$self->{config_keys_at_startup}}) {
+                if (!exists $self->{config_quiet}{$key} or !Compare($self->{config_quiet}{$key},$config_doc->{$key})) {
+                    $self->logger->warn("Not overwriting hardcoded value for '$key' in $config_file: ", $json->allow_nonref->encode($self->{config}{$key}));
+                }
+                $self->{config_quiet}{$key} = $config_doc->{$key};
+            } elsif (!Compare($self->{config}{$key},$config_doc->{$key})) {
+                my $value = $config_doc->{$key};
+                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($value));
+                $self->{config}{$key} = $config_doc->{$key};
+            }
+        }
+        # FIXME: test that certain config values are defined and are valid
+        #die unless defined $self->{config}{task_runner};
+    }
 
     # from Synacor::Disbatch::Backend
     sub ensure_indexes {
@@ -203,7 +228,7 @@ my $config = {
             '--plugin' => $self->{plugins}{$queue->{constructor}},
             '--task' => $task->{_id},
         );
-        $self->logger->info(join ' ', $command, @args);
+        $self->logger->info(join ' ', $self->{config}{task_runner}, @args);
         unless (fork) {
             setsid != -1 or die "Can't start a new session: $!";
             unless (exec $command, @args) {
@@ -253,9 +278,9 @@ my $config = {
     # checks if this node will process (activequeues) or ignore (ignorequeues) a queue
     sub is_active_queue {
         my ($self, $queue_id) = @_;
-        if (@{$self->{config}{activequeues}}) {
+        if (@{$self->{config}{activequeues} // []}) {
             grep($queue_id->{value} eq $_, @{$self->{config}{activequeues}}) ? 1 : 0;
-        } elsif (@{$self->{config}{ignorequeues}}) {
+        } elsif (@{$self->{config}{ignorequeues} // []}) {
             grep($queue_id->{value} eq $_, @{$self->{config}{ignorequeues}}) ? 0 : 1;
         } else {
             1;
@@ -293,7 +318,7 @@ my $config = {
 
 }
 
-my $disbatch = Disbatch->new(class => 'Disbatch', config => $config);
+my $disbatch = Disbatch->new(class => 'Disbatch', config_file => $config_file);
 my $logger = $disbatch->logger('daemon');
 $logger->info("Starting disbatch daemon");
 
@@ -304,6 +329,7 @@ do {
     $disbatch->orphaned_tasks;
     $disbatch->process_queues;
     $disbatch->update_node_status;
+    $disbatch->load_config;
 } while sleep 1;
 
 END {

@@ -31,8 +31,6 @@ Changes:
 
 FIXME:
 - bin/disbatchd:
-  - don't hardcode log4perl_conf file name (use config collection).
-  - don't hardcode command "./bin/task_runner" (use config collection?).
   - handle MongoDB errors properly.
 - bin/task_runner:
   - don't hardcode log4perl_conf file name (use config collection).
