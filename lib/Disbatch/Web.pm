@@ -6,6 +6,7 @@ use warnings;
 
 use Cpanel::JSON::XS;
 use Data::Dumper;
+use Disbatch;
 use File::Slurp;
 use Limper::SendFile;
 use Limper::SendJSON;
@@ -15,18 +16,15 @@ use MongoDB 1.0.0;
 use Try::Tiny::Retry;
 use URL::Encode qw/url_params_mixed/;
 
-my $config_file = '/etc/disbatch/disbatch.json';
 my $json = Cpanel::JSON::XS->new->utf8;
-my $config;
+my $disbatch;
 
-sub load_config {
-    $config = $json->relaxed->decode(scalar read_file($_[0] // $config_file));
-    public $config->{web_root} // '/etc/disbatch/htdocs/';
+sub init {
+    my $args = { @_ };
+    $disbatch = Disbatch->new(class => 'Disbatch::Web', config_file => $args->{config_file} // '/etc/disbatch/disbatch.json');
+    $disbatch->load_config_file;
+    public $disbatch->{config}{web_root} // '/etc/disbatch/htdocs/';
 }
-
-sub mongo { MongoDB->connect($config->{mongohost})->get_database($config->{mongodb}) }
-sub queues { mongo->get_collection('queues') }
-sub tasks  { mongo->get_collection('tasks') }
 
 sub parse_params {
     if ((request->{headers}{'content-type'} // '') eq 'application/x-www-form-urlencoded') {
@@ -41,24 +39,7 @@ sub parse_params {
 ######################
 
 get '/scheduler-json' => sub {
-    my @result;
-    for my $queue (queues->find->all) {
-        my $tasks_doing = tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}});
-        $queue->{count_total} //= 0;
-        $queue->{count_todo} //= 0;
-        push @result, {
-            id             => $queue->{_id}{value},
-            tasks_todo     => $queue->{count_todo},
-            tasks_done     => ($queue->{count_total} - $tasks_doing - $queue->{count_todo}),
-            tasks_doing    => $tasks_doing,
-            maxthreads     => $queue->{maxthreads},
-            name           => $queue->{name},
-            constructor    => $queue->{constructor},
-            preemptive     => 1,
-            tasks_backfill => 0,
-        };
-    }
-    send_json \@result;
+    send_json $disbatch->scheduler_report;
 };
 
 post '/set-queue-attr-json' => sub {
@@ -76,14 +57,14 @@ post '/set-queue-attr-json' => sub {
         status 400;
         return send_json {success => 0, error => 'You must supply a queueid'};
     }
-    my $res = queues->update_one({_id => MongoDB::OID->new(value => $params->{queueid})}, {'$set' => { $params->{attr} => $params->{value} }});
+    my $res = $disbatch->queues->update_one({_id => MongoDB::OID->new(value => $params->{queueid})}, {'$set' => { $params->{attr} => $params->{value} }});
     my $reponse = {
         success => $res->{matched_count} == 1 ? 1 : 0,
         ref $res => {%$res},
     };
     unless ($reponse->{success}) {
         status 400;
-        $reponse->{error} = queues->count({_id => MongoDB::OID->new(value => $params->{queueid})}) ? 'Unknown error' : 'Unknown queue';
+        $reponse->{error} = $disbatch->queues->count({_id => MongoDB::OID->new(value => $params->{queueid})}) ? 'Unknown error' : 'Unknown queue';
     }
     send_json $reponse;
 };
@@ -96,7 +77,7 @@ post '/start-queue-json' => sub {
     }
 
     my $queue = { constructor => $params->{type}, name => $params->{name} };
-    my $res = queues->insert_one($queue);
+    my $res = $disbatch->queues->insert_one($queue);
     my $reponse = {
         success => defined $res->{inserted_id} ? 1 : 0,
         ref $res => {%$res},
@@ -115,7 +96,7 @@ post '/delete-queue-json' => sub {
         return send_json [ 0, 'id required'];
     }
 
-    my $res = queues->delete_one({_id => MongoDB::OID->new(value => $params->{id})});
+    my $res = $disbatch->queues->delete_one({_id => MongoDB::OID->new(value => $params->{id})});
     my $reponse = {
         success => $res->{deleted_count} ? 1 : 0,
         ref $res => {%$res},
@@ -132,7 +113,7 @@ sub get_queue_oid {
     my $queue_id = try {
         MongoDB::OID->new(value => $queue);
     } catch {
-        my $q = queues->find_one({name => $queue});
+        my $q = $disbatch->queues->find_one({name => $queue});
         defined $q ? $q->{_id} : undef;
     };
 }
@@ -152,8 +133,8 @@ sub create_tasks {
         mtime      => 0,
     }, @$tasks;
 
-    my $res = tasks->insert_many(\@tasks);
-    queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}});
+    my $res = $disbatch->tasks->insert_many(\@tasks);
+    $disbatch->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}});
     $res;
 }
 
@@ -202,7 +183,7 @@ post '/queue-create-tasks-from-query-json' => sub {
     my @fields = grep /^document\./, values %$parameters;
     my %fields = map { s/^document\.//; $_ => 1 } @fields;
 
-    my $cursor = mongo->get_collection($params->{collection})->find($filter)->fields(\%fields);
+    my $cursor = $disbatch->mongo->get_collection($params->{collection})->find($filter)->fields(\%fields);
     my @tasks;
     while (my $object = $cursor->next) {
         my $task = { %$parameters };
@@ -248,7 +229,7 @@ get post '/queue-prototypes-json' => sub {
             }
         }
     };
-    my %constructors = map { $_ => undef } queues->distinct('constructor')->all;
+    my %constructors = map { $_ => undef } $disbatch->queues->distinct('constructor')->all;
     send_json \%constructors;
 };
 
@@ -277,9 +258,9 @@ get post '/search-tasks-json' => sub {
     $filter->{status} = int $filter->{status} if defined $filter->{status};
 
     if ($params->{count}) {
-        return send_json [ 1, tasks->count($filter) ];
+        return send_json [ 1, $disbatch->tasks->count($filter) ];
     }
-    my @tasks = tasks->find($filter, $attrs)->all;
+    my @tasks = $disbatch->tasks->find($filter, $attrs)->all;
 
     for my $task (@tasks) {
         if ($params->{terse}) {

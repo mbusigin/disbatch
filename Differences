@@ -41,10 +41,8 @@ FIXME:
 Todo:
 - DOCS DOCS DOCS
 - TESTS TESTS TESTS
-- modularize bin/disbatchd and bin/task_runner
 - write new web interface and API.
 - be able to use any type of task_runner (node.js, ruby, ...)
-- merge Disbatch::scheduler_report() and Disbatch::Web /scheduler-json into one thing, so not repeating the (mostly) same code
 
 
 Upgrading:

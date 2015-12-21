@@ -45,9 +45,7 @@ sub nodes  { $_[0]->mongo->get_collection('nodes') }
 sub queues { $_[0]->mongo->get_collection('queues') }
 sub tasks  { $_[0]->mongo->get_collection('tasks') }
 
-# loads the config file at startup and (re)loads the current active config collection document
-# anything in the config file at startup is static and cannot be changed without restarting disbatchd
-sub load_config {
+sub load_config_file {
     my ($self) = @_;
     my $json = Cpanel::JSON::XS->new->utf8;
     if (!defined $self->{config}) {
@@ -62,6 +60,14 @@ sub load_config {
             }
         }
     }
+}
+
+# loads the config file at startup and (re)loads the current active config collection document
+# anything in the config file at startup is static and cannot be changed without restarting disbatchd
+sub load_config {
+    my ($self) = @_;
+    my $json = Cpanel::JSON::XS->new->utf8;
+    $self->load_config_file;
 
     my $config_doc = $self->mongo->get_collection('config')->find_one({active => true});
 
