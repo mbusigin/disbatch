@@ -22,10 +22,6 @@ sub new {
     $self->{class} //= 'Disbatch';
     $self->{class} = lc $self->{class};
     bless $self, $class;
-
-    $self->load_config;
-
-    $self;
 }
 
 sub logger {

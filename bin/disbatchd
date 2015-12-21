@@ -32,6 +32,7 @@ GetOptions(
 );
 
 my $disbatch = Disbatch->new(class => 'Disbatch', config_file => $config_file);
+$disbatch->load_config;
 my $logger = $disbatch->logger('daemon');
 $logger->info("Starting disbatch daemon");
 
