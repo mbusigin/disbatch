@@ -29,19 +29,19 @@ Changes:
   - most config will go into a 'config' collection.
   - the disbatch-log4perl.conf file will be replaced by a section in the config.
 
+
 FIXME:
-- bin/disbatchd:
-  - handle MongoDB errors properly.
-- bin/task_runner:
+- everything:
   - handle MongoDB errors properly.
 - lib/Disbatch/Web.pm:
-  - handle MongoDB errors properly.
-  - can't create a queue for a constructor unless there is already a queue with that constructor (optional part in config collection??).
+  - can't create a queue for a constructor unless there is already a queue with that constructor (make optional part in config collection??).
+
 
 Todo:
 - DOCS DOCS DOCS
 - TESTS TESTS TESTS
 - write new web interface and API.
+- move some code from Disbatch::Web to Disbatch
 - be able to use any type of task_runner (node.js, ruby, ...)
 
 

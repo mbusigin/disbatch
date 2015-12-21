@@ -308,7 +308,15 @@ sub process_queues {
 
 DESTROY {
     my ($self) = @_;
-    # this happens after the END block below
+    # this happens after the END block in the calling script, or if the object ever goes out of scope
 }
 
 1;
+
+=head1 NAME
+
+Disbatch - Multi-threaded execution harness
+
+=head1 DESCRIPTION
+
+Disbatch provides a multi-threaded execution harness for doing very large jobs which comprise many smaller self-similar tasks.
