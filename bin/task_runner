@@ -9,55 +9,16 @@
 use 5.12.0;
 use warnings;
 
-use Cpanel::JSON::XS;
-use Data::Dumper;
-use Getopt::Long;
-use Log::Log4perl;
-use MongoDB 1.0.0;
-use Sys::Hostname;
-use Try::Tiny;
-use Try::Tiny::Retry;
-#use Safe::Isa;
-
 use lib 'lib';	# FIXME: this is only needed for dev
 
-{
-    package WorkerThread;
-
-    sub new {
-        my $class = shift;
-        my $self = { @_ };
-        $self->{class} //= 'Disbatch::Plugin::Task';
-        $self->{class} = lc $self->{class};
-        $self->{config}{log4perl} //= { level => 'TRACE', appenders => {
-            screenlog => { type => 'Log::Log4perl::Appender::ScreenColoredLevels' },
-            filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => "/tmp/$self->{task_id}" } },
-        } };
-        bless $self, $class;
-    }
-
-    sub mongo { MongoDB->connect($_[0]->{config}{mongohost})->get_database($_[0]->{config}{mongodb}) }
-    sub nodes  { $_[0]->mongo->get_collection('nodes') }
-    sub queues { $_[0]->mongo->get_collection('queues') }
-    sub tasks  { $_[0]->mongo->get_collection('tasks') }
-
-    sub logger {
-        my ($self, $type) = @_;
-        my $logger = defined $type ? "$self->{class}.$type" : $self->{class};
-        $self->{loggers}{$logger} //= Log::Log4perl->get_logger($logger);
-        if (!keys %{Log::Log4perl->appenders}){
-            $self->{loggers}{$logger}->level($self->{config}{log4perl}{level});
-            my $default_layout = "[%p] %d %F{1} %L %C %c> %m %n";
-            for my $name (keys %{$self->{config}{log4perl}{appenders}}) {
-                my $ap = Log::Log4perl::Appender->new($self->{config}{log4perl}{appenders}{$name}{type}, name => $name, %{$self->{config}{log4perl}{appenders}{$name}{args}});
-                $ap->layout(Log::Log4perl::Layout::PatternLayout->new($self->{config}{log4perl}{appenders}{$name}{layout} // $default_layout));
-                $self->{loggers}{$logger}->add_appender($ap);
-            }
-        }
-        $self->{loggers}{$logger};
-    }
-
-}
+use Cpanel::JSON::XS;
+use Data::Dumper;
+use Disbatch::Task;
+use Getopt::Long;
+use MongoDB::OID 1.0.0;
+use Sys::Hostname;
+use Try::Tiny::Retry;
+#use Safe::Isa;
 
 my ($host, $db, $queue, $task_id, $plugin, $log4perl);
 
@@ -76,8 +37,8 @@ my $json = Cpanel::JSON::XS->new->utf8;
 my $config = { mongohost => $host, mongodb => $db };
 $config->{log4perl} = try { $json->decode($log4perl) } if defined $log4perl;
 
-my $workerthread = WorkerThread->new(class => $plugin, config => $config, task_id => $task_id);
-my $logger = $workerthread->logger;
+my $taskrunner = Disbatch::Task->new(class => $plugin, config => $config, task_id => $task_id);
+my $logger = $taskrunner->logger;
 
 $logger->info("Starting task $task_id");
 
@@ -90,7 +51,7 @@ $logger->logdie("--plugin value '$plugin' must be a valid perl package name, mat
 $logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
 my $oid = MongoDB::OID->new(value => $task_id);
-my $tasks = $workerthread->mongo->get_collection('tasks');
+my $tasks = $taskrunner->mongo->get_collection('tasks');
 my $doc = try {
     $tasks->find_one_and_update({_id => $oid, status => -1, node => $node}, {'$set' => {status => 0}});
 } catch {
@@ -105,7 +66,7 @@ my $task = try {
 } catch {
     $logger->logdie($_);
 };
-$task->{workerthread} = $workerthread;
+$task->{workerthread} = $taskrunner;
 $task->{id} = $oid;
 
 my ($query, $result) = try {
@@ -121,18 +82,18 @@ warn "STDERR: $result->{stderr}";
 
 # set status first:
 retry {
-    $workerthread->tasks->update_one({_id => $oid, status => 0, node => $node}, {'$set' => {status => $result->{status}}});
+    $taskrunner->tasks->update_one({_id => $oid, status => 0, node => $node}, {'$set' => {status => $result->{status}}});
     # FIXME: maybe have to test result for failure and throw?
     # die unless $res->modified_count == 1;
 } catch {
     $logger->logdie("Could not update task $task_id status to $result->{status} after completion: $_");
 };
 
-$workerthread->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}});
+$taskrunner->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}});
 
 # set rest of result:
 retry {
-    $workerthread->tasks->update_one({_id => $oid, status => $result->{status}, node => $node}, {'$set' => $result});
+    $taskrunner->tasks->update_one({_id => $oid, status => $result->{status}, node => $node}, {'$set' => $result});
     # FIXME: maybe have to test result for failure and throw?
 } on_retry {
     $result->{stdout} = 'STDOUT too large for MongoDB';
