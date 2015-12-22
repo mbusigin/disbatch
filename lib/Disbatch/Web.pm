@@ -12,7 +12,8 @@ use Limper::SendFile;
 use Limper::SendJSON;
 use Limper;
 use Log::Log4perl;
-use MongoDB 1.0.0;
+use MongoDB::OID 1.0.0;
+use Safe::Isa;
 use Try::Tiny::Retry;
 use URL::Encode qw/url_params_mixed/;
 
@@ -57,14 +58,19 @@ post '/set-queue-attr-json' => sub {
         status 400;
         return send_json {success => 0, error => 'You must supply a queueid'};
     }
-    my $res = $disbatch->queues->update_one({_id => MongoDB::OID->new(value => $params->{queueid})}, {'$set' => { $params->{attr} => $params->{value} }});
+    my $res = try {
+        $disbatch->queues->update_one({_id => MongoDB::OID->new(value => $params->{queueid})}, {'$set' => { $params->{attr} => $params->{value} }});
+    } catch {
+        Limper::warning "Could not update queue $params->{queueid}: $_";
+        $_;
+    };
     my $reponse = {
         success => $res->{matched_count} == 1 ? 1 : 0,
         ref $res => {%$res},
     };
     unless ($reponse->{success}) {
         status 400;
-        $reponse->{error} = $disbatch->queues->count({_id => MongoDB::OID->new(value => $params->{queueid})}) ? 'Unknown error' : 'Unknown queue';
+        $reponse->{error} = "$res";
     }
     send_json $reponse;
 };
@@ -77,14 +83,14 @@ post '/start-queue-json' => sub {
     }
 
     my $queue = { constructor => $params->{type}, name => $params->{name} };
-    my $res = $disbatch->queues->insert_one($queue);
+    my $res = try { $disbatch->queues->insert_one($queue) } catch { Limper::warning "Could not create queue $params->{id}: $_"; $_ };
     my $reponse = {
         success => defined $res->{inserted_id} ? 1 : 0,
         ref $res => {%$res},
     };
     unless ($reponse->{success}) {
         status 400;
-        $reponse->{error} = 'Unknown error';
+        $reponse->{error} = "$res";
     }
     send_json [ $reponse->{success}, $reponse->{ref $res}{inserted_id}, $reponse ], convert_blessed => 1;
 };
@@ -96,14 +102,14 @@ post '/delete-queue-json' => sub {
         return send_json [ 0, 'id required'];
     }
 
-    my $res = $disbatch->queues->delete_one({_id => MongoDB::OID->new(value => $params->{id})});
+    my $res = try { $disbatch->queues->delete_one({_id => MongoDB::OID->new(value => $params->{id})}) } catch { Limper::warning "Could not delete queue $params->{id}: $_"; $_ };
     my $reponse = {
         success => $res->{deleted_count} ? 1 : 0,
         ref $res => {%$res},
     };
     unless ($reponse->{success}) {
         status 400;
-        $reponse->{error} = 'Unknown error';
+        $reponse->{error} = "$res";
     }
     send_json [ $reponse->{success}, $reponse ];
 };
@@ -113,7 +119,7 @@ sub get_queue_oid {
     my $queue_id = try {
         MongoDB::OID->new(value => $queue);
     } catch {
-        my $q = $disbatch->queues->find_one({name => $queue});
+        my $q = try { $disbatch->queues->find_one({name => $queue}) } catch { Limper::warning "Could not find queue $queue: $_"; undef };
         defined $q ? $q->{_id} : undef;
     };
 }
@@ -133,8 +139,11 @@ sub create_tasks {
         mtime      => 0,
     }, @$tasks;
 
-    my $res = $disbatch->tasks->insert_many(\@tasks);
-    $disbatch->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}});
+    my $res = try { $disbatch->tasks->insert_many(\@tasks) } catch { Limper::warning "Could not create tasks: $_"; $_ };
+    if (!$res->$_isa('MongoDB::InsertManyResult')) {
+        try { $disbatch->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}}) }
+        catch { Limper::warning "Could not update count_total and count_todo for $queue_id: $_" };
+    }
     $res;
 }
 
@@ -185,20 +194,28 @@ post '/queue-create-tasks-from-query-json' => sub {
 
     my $cursor = $disbatch->mongo->get_collection($params->{collection})->find($filter)->fields(\%fields);
     my @tasks;
-    while (my $object = $cursor->next) {
-        my $task = { %$parameters };
-        for my $key (keys %$task) {
-            if ($task->{$key} =~ /^document\./) {
-                for my $field (@fields) {
-                    my $f = quotemeta $field;
-                    if ($task->{$key} =~ /^document\.$f$/) {
-                        $task->{$key} = $object->{$field};
+    my $error;
+    try {
+        while (my $object = $cursor->next) {
+            my $task = { %$parameters };
+            for my $key (keys %$task) {
+                if ($task->{$key} =~ /^document\./) {
+                    for my $field (@fields) {
+                        my $f = quotemeta $field;
+                        if ($task->{$key} =~ /^document\.$f$/) {
+                            $task->{$key} = $object->{$field};
+                        }
                     }
                 }
             }
+            push @tasks, $task;
         }
-        push @tasks, $task;
-    }
+    } catch {
+        Limper::warning "Could not iterate on collection $params->{collection}: $_";
+        $error = "$_";
+    };
+
+    return send_json [ 0, $error ] if defined $error;
 
     my $res = create_tasks($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
 
@@ -229,7 +246,8 @@ get post '/queue-prototypes-json' => sub {
             }
         }
     };
-    my %constructors = map { $_ => undef } $disbatch->queues->distinct('constructor')->all;
+    my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    my %constructors = map { $_ => undef } @constructors;
     send_json \%constructors;
 };
 
@@ -258,9 +276,11 @@ get post '/search-tasks-json' => sub {
     $filter->{status} = int $filter->{status} if defined $filter->{status};
 
     if ($params->{count}) {
-        return send_json [ 1, $disbatch->tasks->count($filter) ];
+        my $count = try { $disbatch->tasks->count($filter) } catch { Limper::warning $_; $_; };
+        return send_json [ 0, "$count" ] if ref $count;
+        return send_json [ 1, $count ];
     }
-    my @tasks = $disbatch->tasks->find($filter, $attrs)->all;
+    my @tasks = try { $disbatch->tasks->find($filter, $attrs)->all } catch { Limper::warning "Could not find tasks: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
 
     for my $task (@tasks) {
         if ($params->{terse}) {

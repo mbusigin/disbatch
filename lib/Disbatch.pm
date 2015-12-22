@@ -53,6 +53,7 @@ sub load_config_file {
         @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
         if (!defined $self->{config}{mongohost} or !defined $self->{config}{mongodb}) {
             my $error = "Both 'mongohost' and 'mongodb' must be defined in file $self->{config_file}";
+            # FIXME: use a default log4perl value
             if (defined $self->{config}{log4perl}) {
                 $self->logger->logdie($error);
             } else {
@@ -68,27 +69,41 @@ sub load_config {
     my ($self) = @_;
     my $json = Cpanel::JSON::XS->new->utf8;
     $self->load_config_file;
+    my $config_doc = try { $self->mongo->get_collection('config')->find_one({active => true}) } catch { $_ };
+    if (!defined $config_doc or ref $config_doc ne 'HASH') {
+        my $error = defined $config_doc ? $config_doc : 'no {"active":true} config doc';
+        if (!defined $self->{config}{log4perl}) {
+            $self->{config}{log4perl} = {
+                level => 'TRACE',
+                appenders => {
+                    screenlog => { type => 'Log::Log4perl::Appender::ScreenColoredLevels' },
+                    filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => "/tmp/disbatchd.log" } },
+                },
+            };
+            $self->logger->warn("No log4perl setting found – logging to /tmp/disbatchd.log");
+        }
+        $self->logger->error("Could not find config doc: $error");
+        undef;
+    } else {
+        # need to initialize Log::Log4perl, but want to log its settings below, so we do this:
+        if (!defined $self->{config}{log4perl}) {
+            $self->{config}{log4perl} = $config_doc->{log4perl};
+            $self->logger;
+            $self->{config}{log4perl} = undef;
+        }
 
-    my $config_doc = $self->mongo->get_collection('config')->find_one({active => true});
-
-    # need to initialize Log::Log4perl, but want to log its settings below, so we do this:
-    if (!defined $self->{config}{log4perl}) {
-        $self->{config}{log4perl} = $config_doc->{log4perl};
-        $self->logger;
-        $self->{config}{log4perl} = undef;
-    }
-
-    for my $key (keys %$config_doc) {
-        next if $key eq 'active' or $key eq '_id';
-        if (grep { $key eq $_ } @{$self->{config_keys_at_startup}}) {
-            if (!exists $self->{config_quiet}{$key} or !Compare($self->{config_quiet}{$key},$config_doc->{$key})) {
-                $self->logger->warn("Not overwriting hardcoded value for '$key' in $self->{config_file}: ", $json->allow_nonref->encode($self->{config}{$key}));
+        for my $key (keys %$config_doc) {
+            next if $key eq 'active' or $key eq '_id';
+            if (grep { $key eq $_ } @{$self->{config_keys_at_startup}}) {
+                if (!exists $self->{config_quiet}{$key} or !Compare($self->{config_quiet}{$key},$config_doc->{$key})) {
+                    $self->logger->warn("Not overwriting hardcoded value for '$key' in $self->{config_file}: ", $json->allow_nonref->encode($self->{config}{$key}));
+                }
+                $self->{config_quiet}{$key} = $config_doc->{$key};
+            } elsif (!Compare($self->{config}{$key},$config_doc->{$key})) {
+                my $value = $config_doc->{$key};
+                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($value)) unless $key eq 'label';
+                $self->{config}{$key} = $config_doc->{$key};
             }
-            $self->{config_quiet}{$key} = $config_doc->{$key};
-        } elsif (!Compare($self->{config}{$key},$config_doc->{$key})) {
-            my $value = $config_doc->{$key};
-            $self->logger->info("Setting $key to ", $json->allow_nonref->encode($value)) unless $key eq 'label';
-            $self->{config}{$key} = $config_doc->{$key};
         }
     }
 
@@ -107,13 +122,14 @@ sub ensure_indexes {
         { keys => [node => 1, status => 1, queue => 1, _id => -1] },
         { keys => [queue => 1, status => 1] },
     );
-    $self->tasks->indexes->create_many(@task_indexes);
+    try { $self->tasks->indexes->create_many(@task_indexes) } catch { $self->logger->logdie("Could not ensure_indexes: $_") };
 }
 
 # validates constructors for defined queues
 sub validate_plugins {
     my ($self) = @_;
-    for my $constructor (map { $_->{constructor} } $self->queues->find->all) {
+    my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
+    for my $constructor (map { $_->{constructor} } @queues) {
         next if exists $self->{plugins}{$constructor};
         if ($constructor !~ /^[\w:]+$/) {
             $self->logger->error("Illegal constructor value: $constructor");
@@ -145,14 +161,15 @@ sub revalidate_plugins {
 sub scheduler_report {
     my ($self) = @_;
     my @result;
-    for my $queue ($self->queues->find->all) {
-        my $tasks_doing = $self->tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}});
+    my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
+    for my $queue (@queues) {
+        my $tasks_doing = try { $self->tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}}) } catch { $self->logger->error("Could not count tasks doing: $_"); -1 };
         $queue->{count_total} //= 0;
         $queue->{count_todo} //= 0;
         push @result, {
             id             => $queue->{_id}{value},
             tasks_todo     => $queue->{count_todo},
-            tasks_done     => ($queue->{count_total} - $tasks_doing - $queue->{count_todo}),
+            tasks_done     => $tasks_doing == -1 ? -1 : ($queue->{count_total} - $tasks_doing - $queue->{count_todo}),
             tasks_doing    => $tasks_doing,
             maxthreads     => $queue->{maxthreads},
             name           => $queue->{name},
@@ -168,12 +185,12 @@ sub scheduler_report {
 sub update_node_status {
     my ($self) = @_;
 
-    my $status = $self->nodes->find_one({node => $self->{node}}) // {};
+    my $status = try { $self->nodes->find_one({node => $self->{node}}) // {} } catch { $self->logger->error("Could not find node: $_"); undef };
+    return unless defined $status;
     $status->{node}      = $self->{node};
     $status->{queues}    = $self->scheduler_report;
     $status->{timestamp} = Time::Moment->now_utc;
-
-    $self->nodes->update_one({node => $self->{node}}, {'$set' => $status}, {upsert => 1});
+    try { $self->nodes->update_one({node => $self->{node}}, {'$set' => $status}, {upsert => 1}) } catch { $self->logger->error("Could not update node: $_") };
 }
 
 ### Synacor::Disbatch::Queue like stuff ###
@@ -195,21 +212,22 @@ sub claim_task {
     } elsif ($self->{sort} ne 'default') {
         $self->logger->warn("$queue->{name}: unknown sort order '$self->{sort}' -- using default");
     }
-    $self->{claimed_task} = $self->tasks->find_one_and_update($query, $update, $options);
+    $self->{claimed_task} = try { $self->tasks->find_one_and_update($query, $update, $options) } catch { $self->logger->error("Could not claim task: $_"); undef };
 }
 
-# will claim and return a task for given queue, or return undef
+# will unclaim and return a task for given queue, or return undef
 sub unclaim_task {
     my ($self, $task_id) = @_;
     my $query  = { _id => $task_id, node => $self->{node}, status => -1 };
     my $update = { '$set' => {node => -1, status => -2, mtime => 0} };
     $self->logger->warn("Unclaliming task $task_id");
-    $self->tasks->find_one_and_update($query, $update);
+    retry { $self->tasks->find_one_and_update($query, $update) } catch { $self->logger->error("Could not unclaim task $task_id: $_"); undef };
 }
 
 sub orphaned_tasks {
     my ($self) = @_;
-    $self->tasks->update_many({node => $self->{node}, status => -1, mtime => {'$lt' => time - 60} }, {'$set' => {status => -6}});
+    try { $self->tasks->update_many({node => $self->{node}, status => -1, mtime => {'$lt' => time - 300} }, {'$set' => {status => -6}}) }
+    catch { $self->logger->error("Could not find orphaned_tasks: $_") };
 }
 
 # will fork & exec to start a given task
@@ -228,8 +246,8 @@ sub start_task {
         setsid != -1 or die "Can't start a new session: $!";
         unless (exec $command, @args) {
             $self->logger->error("Could not exec '$command', unclaiming task $task->{_id} and setting threads to 0 for $queue->{name}");
-            $self->tasks->update_one({_id => $task->{_id}}, {'$set' => {node => -1, status => -2, mtime => 0}});
-            $self->queues->update_one({_id => $queue->{_id}}, {'$set' => {maxthreads => 0}});
+            retry { $self->queues->update_one({_id => $queue->{_id}}, {'$set' => {maxthreads => 0}}) } catch { "Could not set queues to 0 for $queue->{name}: $_" };
+            $self->unclaim_task($task->{_id});
             exit;
         }
     }
@@ -239,20 +257,25 @@ sub start_task {
 # returns count of status -1 and 0 for given queue _id
 sub count_running {
     my ($self, $queue_id) = @_;
-    $self->tasks->count({node => $self->{node}, status => {'$in' => [-1,0]}, queue => $queue_id});
+    try { $self->tasks->count({node => $self->{node}, status => {'$in' => [-1,0]}, queue => $queue_id}) } catch { $self->logger->error("Could not count running tasks"); undef };
 }
 
 # returns count_todo for given queue _id, setting it if undefined
 sub count_todo {
     my ($self, $queue_id) = @_;
 
-    my $queue = $self->queues->find_one({_id => $queue_id});
+    my $queue = try { $self->queues->find_one({_id => $queue_id}) } catch { $self->logger->error("Could not find queue"); undef };
     if (defined $queue and defined $queue->{count_todo}) {
-        return $queue->{count_todo};
+        $queue->{count_todo};
     } else {
-        my $count = $self->tasks->count({queue => $queue_id, status => {'$lte' => 0}});
-        $self->queues->update_one({_id => $queue_id}, {'$set' => {count_todo => $count}});
-        return $count;
+        try {
+            my $count = $self->tasks->count({queue => $queue_id, status => {'$lte' => 0}});
+            $self->queues->update_one({_id => $queue_id}, {'$set' => {count_todo => $count}});
+            $count;
+        } catch {
+            $self->logger->error("Could not update count_todo: $_");
+            undef;
+        };
     }
 }
 
@@ -260,13 +283,18 @@ sub count_todo {
 sub count_total {
     my ($self, $queue_id) = @_;
 
-    my $queue = $self->queues->find_one({_id => $queue_id});
+    my $queue = try { $self->queues->find_one({_id => $queue_id}) } catch { $self->logger->error("Could not find queue"); undef };
     if (defined $queue and defined $queue->{count_total}) {
-        return $queue->{count_total};
+        $queue->{count_total};
     } else {
-        my $count = $self->tasks->count({queue => $queue_id});
-        $self->queues->update_one({_id => $queue_id}, {'$set' => {count_total => $count}});
-        return $count;
+        try {
+            my $count = $self->tasks->count({queue => $queue_id});
+            $self->queues->update_one({_id => $queue_id}, {'$set' => {count_total => $count}});
+            $count;
+        } catch {
+            $self->logger->error("Could not update count_total: $_");
+            undef;
+        };
     }
 }
 
@@ -286,12 +314,13 @@ sub is_active_queue {
 sub process_queues {
     my ($self) = @_;
     my $revalidate_plugins = 0;
-    for my $queue ($self->queues->find->all) {
+    my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
+    for my $queue (@queues) {
         if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {
             $self->count_total($queue->{_id}) unless defined $queue->{count_total};
             $self->count_todo($queue->{_id}) unless defined $queue->{count_todo};
             my $running = $self->count_running($queue->{_id});
-            while ($queue->{maxthreads} // 0 > $running) {
+            while (defined $running and $queue->{maxthreads} // 0 > $running) {
                 my $task = $self->claim_task($queue);
                 last unless defined $task;
                 $self->start_task($queue, $task);

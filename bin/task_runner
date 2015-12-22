@@ -17,7 +17,7 @@ use Disbatch;
 use Getopt::Long;
 use MongoDB::OID 1.0.0;
 use Try::Tiny::Retry;
-#use Safe::Isa;
+use Safe::Isa;
 
 my ($host, $db, $queue, $task_id, $plugin, $log4perl);
 
@@ -57,10 +57,10 @@ $logger->logdie("--plugin value '$plugin' must be a valid perl package name, mat
 $logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
 my $oid = MongoDB::OID->new(value => $task_id);
-my $doc = try {
+my $doc = retry {
     $disbatch->tasks->find_one_and_update({_id => $oid, status => -1, node => $disbatch->{node}}, {'$set' => {status => 0}});
 } catch {
-    $logger->logdie($_);
+    $logger->logdie("Could not find and set task $task_id to status 0: $_");
 };
 
 $logger->logdie("No task found for $task_id") unless defined $doc;
@@ -86,22 +86,13 @@ warn "STDOUT: $result->{stdout}";
 warn "STDERR: $result->{stderr}";
 
 # set status first:
-retry {
-    $disbatch->tasks->update_one({_id => $oid, status => 0, node => $disbatch->{node}}, {'$set' => {status => $result->{status}}});
-    # FIXME: maybe have to test result for failure and throw?
-    # die unless $res->modified_count == 1;
-} catch {
-    $logger->logdie("Could not update task $task_id status to $result->{status} after completion: $_");
-};
+retry { $disbatch->tasks->update_one({_id => $oid, status => 0, node => $disbatch->{node}}, {'$set' => {status => $result->{status}}}) }
+catch { $logger->logdie("Could not update task $task_id status to $result->{status} after completion: $_") };
 
-$disbatch->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}});
+# decrement count_todo
+try { $disbatch->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}}) } catch { $logger->error("Could not decrement count_todo for queue $doc->{queue}: $_") };
 
 # set rest of result:
-retry {
-    $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result});
-    # FIXME: maybe have to test result for failure and throw?
-} on_retry {
-    $result->{stdout} = 'STDOUT too large for MongoDB';
-} catch {
-    $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_");
-};
+retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
+on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }	# MongoDB::DocumentError: Document exceeds maximum size 16777216
+catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };

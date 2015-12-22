@@ -31,8 +31,6 @@ Changes:
 
 
 FIXME:
-- everything:
-  - handle MongoDB errors properly.
 - lib/Disbatch/Web.pm:
   - can't create a queue for a constructor unless there is already a queue with that constructor (make optional part in config collection??).
 
