@@ -156,6 +156,7 @@ post '/queue-create-tasks-json' => sub {
 
     my $tasks = try { ref $params->{object} ? $params->{object} : $json->decode($params->{object}) } catch { $_ };
     return send_json [ 0, $tasks ] unless ref $tasks;
+    return send_json [ 0, 'object param must be a JSON array' ] unless ref $tasks eq 'ARRAY';
 
     my $queue_id = get_queue_oid($params->{queueid});
     return send_json [ 0, 'Queue not found' ] unless defined $queue_id;
@@ -296,13 +297,17 @@ get post '/search-tasks-json' => sub {
         }
 
         if ($task->{mtime}) {
-            my $dt = DateTime->from_epoch(epoch => $task->{mtime});
-            $task->{mtime_str} = $dt->ymd . ' ' . $dt->hms;
+            try {
+                my $dt = DateTime->from_epoch(epoch => $task->{mtime});
+                $task->{mtime_str} = $dt->ymd . ' ' . $dt->hms;
+            };
         }
 
         if ($task->{ctime}) {
-            my $dt = DateTime->from_epoch(epoch => $task->{ctime});
-            $task->{ctime_str} = $dt->ymd . ' ' . $dt->hms;
+            try {
+                my $dt = DateTime->from_epoch(epoch => $task->{ctime});
+                $task->{ctime_str} = $dt->ymd . ' ' . $dt->hms;
+            };
         }
     }
 

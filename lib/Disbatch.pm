@@ -15,6 +15,8 @@ use Sys::Hostname;
 use Time::Moment;
 use Try::Tiny::Retry;
 
+my $json = Cpanel::JSON::XS->new->utf8;
+
 sub new {
     my $class = shift;
     my $self = { @_ };
@@ -47,9 +49,8 @@ sub tasks  { $_[0]->mongo->get_collection('tasks') }
 
 sub load_config_file {
     my ($self) = @_;
-    my $json = Cpanel::JSON::XS->new->utf8;
     if (!defined $self->{config}) {
-        $self->{config} = $json->relaxed->decode(scalar read_file($self->{config_file}));
+        $self->{config} = try { $json->relaxed->decode(scalar read_file($self->{config_file})) } catch { die "Could not parse $self->{config_file}: $_" };	# FIXME: log4perl the error
         @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
         if (!defined $self->{config}{mongohost} or !defined $self->{config}{mongodb}) {
             my $error = "Both 'mongohost' and 'mongodb' must be defined in file $self->{config_file}";
@@ -67,7 +68,6 @@ sub load_config_file {
 # anything in the config file at startup is static and cannot be changed without restarting disbatchd
 sub load_config {
     my ($self) = @_;
-    my $json = Cpanel::JSON::XS->new->utf8;
     $self->load_config_file;
     my $config_doc = try { $self->mongo->get_collection('config')->find_one({active => true}) } catch { $_ };
     if (!defined $config_doc or ref $config_doc ne 'HASH') {
@@ -100,8 +100,7 @@ sub load_config {
                 }
                 $self->{config_quiet}{$key} = $config_doc->{$key};
             } elsif (!Compare($self->{config}{$key},$config_doc->{$key})) {
-                my $value = $config_doc->{$key};
-                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($value)) unless $key eq 'label';
+                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($config_doc->{$key})) unless $key eq 'label';
                 $self->{config}{$key} = $config_doc->{$key};
             }
         }
@@ -239,7 +238,7 @@ sub start_task {
         '--db' => $self->{config}{mongodb},
         '--plugin' => $self->{plugins}{$queue->{constructor}},
         '--task' => $task->{_id},
-        '--log4perl' => Cpanel::JSON::XS->new->utf8->encode($self->{config}{log4perl}),
+        '--log4perl' => $json->encode($self->{config}{log4perl}),
     );
     $self->logger->info(join ' ', $command, @args);
     unless (fork) {
