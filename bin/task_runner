@@ -38,7 +38,7 @@ $config->{log4perl} //= {
     level => 'TRACE',
     appenders => {
         screenlog => { type => 'Log::Log4perl::Appender::ScreenColoredLevels' },
-        filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => "/tmp/$task_id" } },
+        filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => '/tmp/' . ($task_id // 'task_runner') } },
     },
 };
 
@@ -56,7 +56,7 @@ $logger->logdie('No --plugin') unless defined $plugin;
 $logger->logdie("--plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
 $logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
-my $oid = MongoDB::OID->new(value => $task_id);
+my $oid = try { MongoDB::OID->new(value => $task_id) } catch { $logger->logdie($_) };
 my $doc = retry {
     $disbatch->tasks->find_one_and_update({_id => $oid, status => -1, node => $disbatch->{node}}, {'$set' => {status => 0}});
 } catch {

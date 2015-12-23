@@ -271,8 +271,15 @@ get post '/search-tasks-json' => sub {
     $attrs->{limit} = $params->{limit} if $params->{limit};
     $attrs->{skip}  = $params->{skip}  if $params->{skip};
 
-    $filter->{queue} = MongoDB::OID->new(value => $params->{queue}) if $params->{queue};
-    $filter->{_id} = MongoDB::OID->new(value => delete $filter->{id}) if $filter->{id};
+    my $error;
+    try {
+        $filter->{queue} = MongoDB::OID->new(value => $params->{queue}) if $params->{queue};
+        $filter->{_id} = MongoDB::OID->new(value => delete $filter->{id}) if $filter->{id};
+    } catch {
+        $error = "$_";
+        Limper::warning "Bad OID passed: $error";
+    };
+    return send_json [ 0, $error ] if defined $error;
     $filter->{status} = int $filter->{status} if defined $filter->{status};
 
     if ($params->{count}) {
