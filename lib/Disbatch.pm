@@ -7,10 +7,12 @@ use boolean;
 use Cpanel::JSON::XS;
 use Data::Compare;
 use Data::Dumper;
+use Encode;
 use File::Slurp;
 use Log::Log4perl;
 use MongoDB 1.0.0;
 use POSIX 'setsid';
+use Safe::Isa;
 use Sys::Hostname;
 use Time::Moment;
 use Try::Tiny::Retry;
@@ -122,6 +124,12 @@ sub ensure_indexes {
         { keys => [queue => 1, status => 1] },
     );
     try { $self->tasks->indexes->create_many(@task_indexes) } catch { $self->logger->logdie("Could not ensure_indexes: $_") };
+    try {
+        $self->mongo->coll('task_output.chunks')->indexes->create_one([ files_id => 1, n => 1 ], { unique => true });
+        $self->mongo->coll('task_output.files')->indexes->create_one([ filename => 1, 'metadata.task_id' => 1 ]);
+    } catch {
+        $self->logger->logdie("Could not ensure_indexes: $_")
+    };
 }
 
 # validates constructors for defined queues
@@ -240,6 +248,7 @@ sub start_task {
         '--task' => $task->{_id},
         '--log4perl' => $json->encode($self->{config}{log4perl}),
     );
+    push @args, '--nogfs' unless $self->{config}{gfs} // true;
     $self->logger->info(join ' ', $command, @args);
     unless (fork) {
         setsid != -1 or die "Can't start a new session: $!";
@@ -333,6 +342,54 @@ sub process_queues {
 }
 
 ### END Synacor::Disbatch::Queue like stuff ###
+
+# returns the file document
+# throws any error
+sub put_gfs {
+    my ($self, $content, $filename, $metadata) = @_;
+    $filename ||= 'unknown';
+    my $chunk_size = 255 * 1024;
+    my $file_doc = {
+        uploadDate => DateTime->now,
+        filename   => $filename,
+        chunkSize  => $chunk_size,
+        length     => length encode_utf8($content),
+        md5        => Digest::MD5->new->add(encode_utf8($content))->hexdigest,
+    };
+    if (defined $metadata) {
+        die 'metadata must be a HASH' unless ref $metadata eq 'HASH';
+        $file_doc->{metadata} = $metadata;
+    }
+    my $files_id = $self->mongo->coll('task_output.files')->insert($file_doc);
+    my $n = 0;
+    for (my $n = 0; length $content; $n++) {
+        my $data = substr $content, 0, $chunk_size, '';
+        $self->mongo->coll('task_output.chunks')->insert({ n => $n, data => bless(\$data, 'MongoDB::BSON::String'), files_id => $files_id });
+    }
+    $files_id;
+}
+
+# returns the content as a string
+# throws an error if the file document does not exist, and any other error
+sub get_gfs {
+    my ($self, $filename_or_id, $metadata) = @_;
+    my $file_id;
+    if ($filename_or_id->$_isa('MongoDB::OID')) {
+        $file_id = $filename_or_id;
+    } else {
+        my $query = {};
+        $query->{filename} = $filename_or_id if defined $filename_or_id;
+        $query->{metadata} = $metadata if defined $metadata;
+        $file_id = $self->mongo->coll('task_output.files')->find($query)->next->{_id};
+    }
+    # this does no error-checking:
+    my $result = $self->mongo->coll('task_output.chunks')->find({files_id => $file_id})->sort({n => 1})->result;
+    my $data;
+    while (my $chunk = $result->next) {
+        $data .= $chunk->{data};
+    }
+    $data;
+}
 
 DESTROY {
     my ($self) = @_;

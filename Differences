@@ -28,6 +28,7 @@ Changes:
 - etc/disbatch/disbatch.json instead of etc/disbatch/disbatch.ini
   - most config will go into a 'config' collection.
   - the disbatch-log4perl.conf file will be replaced by a section in the config.
+- task stdout and stderr are now written to (mostly-compatible) GridFS documents.
 
 
 FIXME:

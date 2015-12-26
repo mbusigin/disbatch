@@ -19,7 +19,7 @@ use MongoDB::OID 1.0.0;
 use Try::Tiny::Retry;
 use Safe::Isa;
 
-my ($host, $db, $queue, $task_id, $plugin, $log4perl);
+my ($host, $db, $queue, $task_id, $plugin, $log4perl, $gfs);
 
 GetOptions(
     'host=s'     => \$host,
@@ -28,7 +28,10 @@ GetOptions(
     'task=s'     => \$task_id,
     'plugin=s'   => \$plugin,
     'log4perl=s' => \$log4perl,
+    'gfs!'       => \$gfs,
 );
+
+$gfs //= 1;	# use GridFS by default
 
 my $json = Cpanel::JSON::XS->new->utf8;
 
@@ -93,6 +96,15 @@ catch { $logger->logdie("Could not update task $task_id status to $result->{stat
 try { $disbatch->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}}) } catch { $logger->error("Could not decrement count_todo for queue $doc->{queue}: $_") };
 
 # set rest of result:
-retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
-on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }	# MongoDB::DocumentError: Document exceeds maximum size 16777216
-catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };
+if ($gfs) {
+    my $stdout_doc = retry { $disbatch->put_gfs($result->{stdout}, 'stdout', { task_id => $oid }) } catch { $logger->error("Could not create GridFS content for task $oid stdout: $_"); {} };
+    my $stderr_doc = retry { $disbatch->put_gfs($result->{stderr}, 'stderr', { task_id => $oid }) } catch { $logger->error("Could not create GridFS content for task $oid stderr: $_"); {} };
+    $result->{stdout} = $stdout_doc->{_id};
+    $result->{stderr} = $stderr_doc->{_id};
+    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
+    catch { $logger->logdie("Could not update task $task_id stdout/stderr file ids after completion: $_") };
+} else {
+    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
+    on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }	# MongoDB::DocumentError: Document exceeds maximum size 16777216
+    catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };
+}

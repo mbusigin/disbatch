@@ -131,8 +131,8 @@ sub create_tasks {
     my @tasks = map {
         queue      => $queue_id,
         status     => -2,
-        stdout     => '',
-        stderr     => '',
+        stdout     => undef,
+        stderr     => undef,
         node       => -1,
         parameters => $_,
         ctime      => time,
@@ -292,8 +292,11 @@ get post '/search-tasks-json' => sub {
 
     for my $task (@tasks) {
         if ($params->{terse}) {
-            $task->{stdout} = '[terse mode]';
-            $task->{stderr} = '[terse mode]';
+            $task->{stdout} = '[terse mode]' unless $task->{stdout}->$_isa('MongoDB::OID');
+            $task->{stderr} = '[terse mode]' unless $task->{stderr}->$_isa('MongoDB::OID');
+        } else {
+            $task->{stdout} = try { $disbatch->get_gfs($task->{stdout}) } catch { Limper::warning "Could not get task $task->{_id} stdout: $_"; $task->{stdout} } if $task->{stdout}->$_isa('MongoDB::OID');
+            $task->{stderr} = try { $disbatch->get_gfs($task->{stderr}) } catch { Limper::warning "Could not get task $task->{_id} stderr: $_"; $task->{stderr} } if $task->{stderr}->$_isa('MongoDB::OID');
         }
 
         if ($task->{mtime}) {
