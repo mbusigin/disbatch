@@ -83,7 +83,7 @@ post '/start-queue-json' => sub {
     }
 
     my $queue = { constructor => $params->{type}, name => $params->{name} };
-    my $res = try { $disbatch->queues->insert_one($queue) } catch { Limper::warning "Could not create queue $params->{id}: $_"; $_ };
+    my $res = try { $disbatch->queues->insert_one($queue) } catch { Limper::warning "Could not create queue $params->{name}: $_"; $_ };
     my $reponse = {
         success => defined $res->{inserted_id} ? 1 : 0,
         ref $res => {%$res},
@@ -248,7 +248,7 @@ get post '/queue-prototypes-json' => sub {
         }
     };
     my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
-    my %constructors = map { $_ => undef } @constructors;
+    my %constructors = map { $_ => $_ } @constructors;
     send_json \%constructors;
 };
 
@@ -332,7 +332,7 @@ get '/legacy/' => sub {
 };
 
 get qr{^/} => sub {
-    send_file;        # sends request->{uri} by default
+    send_file request->{path};        # sends request->{uri} by default
 };
 
 1;
