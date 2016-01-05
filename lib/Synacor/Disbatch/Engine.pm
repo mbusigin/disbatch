@@ -209,19 +209,8 @@ sub filter_collection {
         # de-share it
         $hr = $filter;
     } else {
-
-        # NOTE: WUT
-        eval {
-            $hr = eval $filter;
-            if ($@) {
-                $Engine->logger->warn("Filter eval failure: $@");
-                return {};
-            }
-        };
-        if ($@) {
-            $Engine->logger->warn("Error processing filter: $@");
-            return {};
-        }
+        $Engine->logger->fatal("Refuse to eval: $filter");
+        return {};
     }
 
     if (ref $hr ne 'HASH') {
@@ -473,11 +462,8 @@ sub search_tasks {
             }
         }
     } else {
-        $hr = eval $filter;
-        if ($@) {
-            $self->logger->error("Error evaluating filter: $@");
-            return [];
-        }
+        $Engine->logger->fatal("Refuse to eval: $filter");
+        return [];
     }
 
     if (ref $hr ne 'HASH') {
