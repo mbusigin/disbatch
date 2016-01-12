@@ -3,7 +3,7 @@ package Disbatch;
 use 5.12.0;
 use warnings;
 
-use boolean;
+use boolean 0.25;
 use Cpanel::JSON::XS;
 use Data::Compare;
 use Data::Dumper;
