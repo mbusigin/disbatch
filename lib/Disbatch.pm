@@ -19,6 +19,47 @@ use Try::Tiny::Retry;
 
 my $json = Cpanel::JSON::XS->new->utf8;
 
+my $default_configs = {
+    development => {
+        label => 'development',
+        log4perl => {
+            level => 'TRACE',
+            appenders => {
+                filelog => {
+                    type => 'Log::Log4perl::Appender::File',
+                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
+                    args => { filename => 'disbatchd.log' }
+                },
+                screenlog => {
+                    type => 'Log::Log4perl::Appender::ScreenColoredLevels',
+                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
+                    args => { },
+                }
+            }
+        },
+        task_runner => './bin/task_runner',
+    },
+    production => {
+        label => 'production',
+        log4perl => {
+            level => 'DEBUG',
+            appenders => {
+                filelog => {
+                    type => 'Log::Log4perl::Appender::File',
+                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
+                    args => { filename => '/var/log/disbatchd.log' },
+                },
+                screenlog => {
+                    type => 'Log::Log4perl::Appender::ScreenColoredLevels',
+                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
+                    args => { },
+                }
+            }
+        },
+        task_runner => '/usr/bin/task_runner',
+    },
+};
+
 sub new {
     my $class = shift;
     my $self = { @_ };
@@ -49,19 +90,36 @@ sub nodes  { $_[0]->mongo->get_collection('nodes') }
 sub queues { $_[0]->mongo->get_collection('queues') }
 sub tasks  { $_[0]->mongo->get_collection('tasks') }
 
+# ensures that 'production' and 'development' config documents exist, and that $self->{config}{default_config} // 'production' is active
+sub ensure_config {
+    my ($self) = @_;
+    my $conf = $self->mongo->get_collection('config');
+    my $config_doc = try { $conf->find_one({active => true}) } catch { $_ };
+    if (!defined $config_doc or ref $config_doc ne 'HASH') {
+        my $err = $config_doc // 'no {"active":true} config doc';
+        warn "$err\n";
+        for my $label (keys %$default_configs) {
+            if (!$conf->find_one({ label => $label })) {
+                try { $conf->insert($default_configs->{$label}) } catch { warn "Could not insert $label config document: $_\n" };
+            }
+        }
+        my $set_active = $self->{config}{default_config} // 'production';
+        my $res = $conf->update({ label => $set_active }, { '$set' => { active => true } });
+        die "Could not set config document $set_active to active\n" unless $res->{n} == 1;
+    }
+}
+
 sub load_config_file {
     my ($self) = @_;
     if (!defined $self->{config}) {
         $self->{config} = try { $json->relaxed->decode(scalar read_file($self->{config_file})) } catch { die "Could not parse $self->{config_file}: $_" };	# FIXME: log4perl the error
         @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
+        $self->ensure_config;
         if (!defined $self->{config}{mongohost} or !defined $self->{config}{mongodb}) {
             my $error = "Both 'mongohost' and 'mongodb' must be defined in file $self->{config_file}";
-            # FIXME: use a default log4perl value
-            if (defined $self->{config}{log4perl}) {
-                $self->logger->logdie($error);
-            } else {
-                die "$error\n";
-            }
+            my $label = $self->{config}{default_config} // 'production';
+            $self->{config}{log4perl} //= $default_configs->{$label}{log4perl};
+            $self->logger->logdie($error);
         }
     }
 }
@@ -125,6 +183,8 @@ sub ensure_indexes {
     );
     try { $self->tasks->indexes->create_many(@task_indexes) } catch { $self->logger->logdie("Could not ensure_indexes: $_") };
     try {
+        $self->mongo->coll('config')->indexes->create_one([ active => 1 ], { unique => true, sparse => true });
+        $self->mongo->coll('config')->indexes->create_one([ label => 1 ], { unique => true });
         $self->mongo->coll('task_output.chunks')->indexes->create_one([ files_id => 1, n => 1 ], { unique => true });
         $self->mongo->coll('task_output.files')->indexes->create_one([ filename => 1, 'metadata.task_id' => 1 ]);
     } catch {
