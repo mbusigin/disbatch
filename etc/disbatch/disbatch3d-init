@@ -6,22 +6,22 @@ use Daemon::Control;
 
 my @program_args = ();  # i.e.: ( '--lib', '/path/to/libs,/path/to/more/libs' );
 
-my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/disbatchd.pl', @program_args);
+my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/disbatch3d.pl', @program_args);
 
 Daemon::Control->new({
-    name         => 'disbatchd',
-    program      => '/usr/bin/disbatchd.pl',
+    name         => 'disbatch3d',
+    program      => '/usr/bin/disbatch3d.pl',
     program_args => \@program_args,
     directory    => '/',
 
     lsb_start    => '$syslog $remote_fs',
     lsb_stop     => '$syslog',
-    lsb_sdesc    => 'disbatchd',
-    lsb_desc     => 'Daemon for disbatchd.pl',
+    lsb_sdesc    => 'disbatch3d',
+    lsb_desc     => 'Daemon for disbatch3d.pl',
 
-    pid_file     => '/var/run/disbatchd.pid',
-    stdout_file  => '/var/log/disbatchd.out',
-    stderr_file  => '/var/log/disbatchd.out',
+    pid_file     => '/var/run/disbatch3d.pid',
+    stdout_file  => '/var/log/disbatch3d.out',
+    stderr_file  => '/var/log/disbatch3d.out',
 
     #user         => 'awillis',
     #group        => 'systems',

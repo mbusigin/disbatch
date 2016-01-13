@@ -12,6 +12,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-BUILD
 BuildArch: noarch
 BuildRequires: perl >= 0:5.01204
 
+Obsoletes: disbatch < 3.2.4.9
+
 %description
 <% $zilla->abstract %>
 
@@ -48,21 +50,21 @@ fi
 install -d -m0755 %{buildroot}/etc/disbatch
 cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
 
-install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
-install -D -m0644 etc/logrotate.d/disbatch %{buildroot}/etc/logrotate.d/disbatch
+install -D -m0755 etc/init.d/disbatch3d %{buildroot}/etc/init.d/disbatch3d
+install -D -m0644 etc/logrotate.d/disbatch3 %{buildroot}/etc/logrotate.d/disbatch3
 
 #install -d -m0755 %{buildroot}/etc/disbatch/htdocs
 cp -Lr frontend/build %{buildroot}/etc/disbatch/htdocs
 
 %post
-/sbin/chkconfig --add disbatchd
-/sbin/chkconfig disbatchd on
+/sbin/chkconfig --add disbatch3d
+/sbin/chkconfig disbatch3d on
 
 %preun
 if [ $1 -lt 1 ]; then
-	/sbin/service disbatchd stop > /dev/null 2>&1
+	/sbin/service disbatch3d stop > /dev/null 2>&1
 
-	/sbin/chkconfig --del disbatchd
+	/sbin/chkconfig --del disbatch3d
 fi
 
 %clean
@@ -71,9 +73,9 @@ if [ "%{buildroot}" != "/" ] ; then
 fi
 
 %files -f %{name}-%{version}-filelist
-/etc/init.d/disbatchd
+/etc/init.d/disbatch3d
 /etc/disbatch/
-/etc/logrotate.d/disbatch
+/etc/logrotate.d/disbatch3
 
 %defattr(-,root,root)
 

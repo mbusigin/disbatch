@@ -5,3 +5,5 @@ disbatchd.log
 ignore/
 disbatch-*.tar.gz
 disbatch-*/
+disbatch3-*.tar.gz
+disbatch3-*/

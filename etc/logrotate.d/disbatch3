@@ -1,4 +1,4 @@
-/var/log/disbatchd.out {
+/var/log/disbatch3d.out {
 	missingok
 	copytruncate
 	notifempty
@@ -6,7 +6,7 @@
 	compress
 }
 
-/var/log/disbatchd.log {
+/var/log/disbatch3d.log {
 	missingok
 	copytruncate
 	notifempty
