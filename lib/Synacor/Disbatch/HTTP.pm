@@ -134,7 +134,7 @@ sub handle_request {
                 print $json->encode([ 0, "Error executing JSON handler: $_" ]);
             };
         }
-    } elsif (-r "$self->{base}/etc/disbatch/htdocs/$path" && $path !~ /\.\./) {
+    } elsif (-r "$self->{base}/etc/disbatch/htdocs3/$path" && $path !~ /\.\./) {
         print "HTTP/1.0 200 OK\r\n";
 
         my $type = 'text/html';
@@ -144,7 +144,7 @@ sub handle_request {
         $type = 'image/gif'       if $path =~ /\.gif$/;
 
         print $cgi->header(-type => $type);
-        open my $f, '<', "$self->{base}/etc/disbatch/htdocs/$path";
+        open my $f, '<', "$self->{base}/etc/disbatch/htdocs3/$path";
         print while (<$f>);
     } else {
         print "HTTP/1.0 404 Not found\r\n";
@@ -292,7 +292,7 @@ It maintains a JSON object, and makes JSON API calls (translating the
 responses to JSON for output) if the request path ends in "-json".
 
 If the request path does not end in "-json", it will attempt to grab a file
-out of the /etc/disbatch/htdocs/ directory.
+out of the /etc/disbatch/htdocs3/ directory.
 
 =item start()
 

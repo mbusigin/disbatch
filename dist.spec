@@ -53,8 +53,8 @@ cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
 install -D -m0755 etc/init.d/disbatch3d %{buildroot}/etc/init.d/disbatch3d
 install -D -m0644 etc/logrotate.d/disbatch3 %{buildroot}/etc/logrotate.d/disbatch3
 
-#install -d -m0755 %{buildroot}/etc/disbatch/htdocs
-cp -Lr frontend/build %{buildroot}/etc/disbatch/htdocs
+#install -d -m0755 %{buildroot}/etc/disbatch/htdocs3
+cp -Lr frontend/build %{buildroot}/etc/disbatch/htdocs3
 
 %post
 /sbin/chkconfig --add disbatch3d
