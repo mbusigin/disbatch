@@ -49,6 +49,7 @@ install -d -m0755 %{buildroot}/etc/disbatch
 cp -Lr etc/disbatch/* %{buildroot}/etc/disbatch
 
 install -D -m0755 etc/init.d/disbatchd %{buildroot}/etc/init.d/disbatchd
+install -D -m0755 etc/init.d/disbatch-webd %{buildroot}/etc/init.d/disbatch-webd
 install -D -m0644 etc/logrotate.d/disbatch %{buildroot}/etc/logrotate.d/disbatch
 
 %post
@@ -69,6 +70,7 @@ fi
 
 %files -f %{name}-%{version}-filelist
 /etc/init.d/disbatchd
+/etc/init.d/disbatch-webd
 /etc/disbatch/
 /etc/logrotate.d/disbatch
 
