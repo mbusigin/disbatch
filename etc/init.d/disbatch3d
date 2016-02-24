@@ -12,8 +12,8 @@
 # Provides:          disbatch3d
 # Required-Start:    $syslog $remote_fs
 # Required-Stop:     $syslog
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
+# Default-Start:     
+# Default-Stop:      0 2 3 4 5 1 6
 # Short-Description: disbatch3d
 # Description:       Daemon for disbatch3d.pl
 ### END INIT INFO`

@@ -7,3 +7,4 @@ disbatch-*.tar.gz
 disbatch-*/
 disbatch3-*.tar.gz
 disbatch3-*/
+etc/disbatch/disbatch.json
