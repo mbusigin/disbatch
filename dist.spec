@@ -12,6 +12,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-BUILD
 BuildArch: noarch
 BuildRequires: perl >= 0:5.01204
 
+Requires: perl(Limper::Engine::PSGI) perl(Starman) perl(File::Find::Rule)
+
 %description
 <% $zilla->abstract %>
 
@@ -55,12 +57,15 @@ install -D -m0644 etc/logrotate.d/disbatch %{buildroot}/etc/logrotate.d/disbatch
 %post
 /sbin/chkconfig --add disbatchd
 /sbin/chkconfig disbatchd on
+/sbin/chkconfig --add disbatch-webd
+/sbin/chkconfig disbatch-webd on
 
 %preun
 if [ $1 -lt 1 ]; then
 	/sbin/service disbatchd stop > /dev/null 2>&1
-
 	/sbin/chkconfig --del disbatchd
+	/sbin/service disbatch-webd stop > /dev/null 2>&1
+	/sbin/chkconfig --del disbatch-webd
 fi
 
 %clean
