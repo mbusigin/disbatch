@@ -6,8 +6,6 @@ use Daemon::Control;
 
 my @program_args = ();  # i.e.: ( '--lib', '/path/to/libs,/path/to/more/libs' );
 
-my $scan_name = quotemeta join(' ', '/usr/bin/perl /usr/bin/disbatchd', @program_args);
-
 Daemon::Control->new({
     name         => 'disbatchd',
     program      => '/usr/bin/disbatchd',
@@ -25,8 +23,6 @@ Daemon::Control->new({
 
     #user         => 'awillis',
     #group        => 'systems',
-
-    scan_name    => qr/$scan_name/,
 
     fork         => 2,
 
