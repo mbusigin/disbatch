@@ -98,6 +98,7 @@ sub ensure_config {
     if (!defined $config_doc or ref $config_doc ne 'HASH') {
         my $err = $config_doc // 'no {"active":true} config doc';
         warn "$err\n";
+        $self->ensure_indexes;
         for my $label (keys %$default_configs) {
             if (!$conf->find_one({ label => $label })) {
                 try { $conf->insert($default_configs->{$label}) } catch { warn "Could not insert $label config document: $_\n" };
