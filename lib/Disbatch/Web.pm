@@ -22,7 +22,8 @@ my $disbatch;
 
 sub init {
     my $args = { @_ };
-    $disbatch = Disbatch->new(class => 'Disbatch::Web', config_file => $args->{config_file} // '/etc/disbatch/disbatch.json');
+    my %args = $args->{config} ? (config => $args->{config}) : (config_file => $args->{config_file} // '/etc/disbatch/disbatch.json');
+    $disbatch = Disbatch->new(class => 'Disbatch::Web', %args);
     $disbatch->load_config_file;
     public $disbatch->{config}{web_root} // '/etc/disbatch/htdocs/';
 }
@@ -40,10 +41,12 @@ sub parse_params {
 ######################
 
 get '/scheduler-json' => sub {
+    undef $disbatch->{mongo};
     send_json $disbatch->scheduler_report;
 };
 
 post '/set-queue-attr-json' => sub {
+    undef $disbatch->{mongo};
     my $params = parse_params;
     my @valid_attributes = qw/maxthreads preemptive/;
     unless (grep $params->{attr}, @valid_attributes) {
@@ -76,6 +79,7 @@ post '/set-queue-attr-json' => sub {
 };
 
 post '/start-queue-json' => sub {
+    undef $disbatch->{mongo};
     my $params = parse_params;
     unless (defined $params->{type} and defined $params->{name}) {
         status 400;
@@ -96,6 +100,7 @@ post '/start-queue-json' => sub {
 };
 
 post '/delete-queue-json' => sub {
+    undef $disbatch->{mongo};
     my $params = parse_params;
     unless (defined $params->{id}) {
         status 400;
@@ -140,7 +145,7 @@ sub create_tasks {
     }, @$tasks;
 
     my $res = try { $disbatch->tasks->insert_many(\@tasks) } catch { Limper::warning "Could not create tasks: $_"; $_ };
-    if (!$res->$_isa('MongoDB::InsertManyResult')) {
+    if ($res->$_isa('MongoDB::InsertManyResult')) {
         try { $disbatch->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}}) }
         catch { Limper::warning "Could not update count_total and count_todo for $queue_id: $_" };
     }
@@ -148,6 +153,7 @@ sub create_tasks {
 }
 
 post '/queue-create-tasks-json' => sub {
+    undef $disbatch->{mongo};
     my $params = parse_params;
     unless (defined $params->{queueid} and defined $params->{object}) {
         status 400;
@@ -175,6 +181,7 @@ post '/queue-create-tasks-json' => sub {
 };
 
 post '/queue-create-tasks-from-query-json' => sub {
+    undef $disbatch->{mongo};
     my $params = parse_params;
     unless (defined $params->{queueid} and defined $params->{collection} and defined $params->{jsonfilter} and defined $params->{parameters}) {
         status 400;
@@ -236,6 +243,7 @@ post '/queue-create-tasks-from-query-json' => sub {
 # FIXME: You currently can't create a queue for a constructor unless there is already a queue with that constructor.
 # NOTE: post, because of the legacy UI that I don't know how to change.
 get post '/queue-prototypes-json' => sub {
+    undef $disbatch->{mongo};
     my $example = {
         settings => [],
         'Disbatch::Plugin::Dummy' => {
@@ -258,6 +266,7 @@ get '/reload-queues-json' => sub {
 
 # NOTE: get, because of the legacy UI that I don't know how to change.
 get post '/search-tasks-json' => sub {
+    undef $disbatch->{mongo};
     my $params = parse_params;
     #unless (defined $params->{queue} and defined $params->{filter}) {
     #    status 400;

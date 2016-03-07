@@ -85,7 +85,22 @@ sub logger {
     $self->{loggers}{$logger};
 }
 
-sub mongo { MongoDB->connect($_[0]->{config}{mongohost})->get_database($_[0]->{config}{mongodb}) }
+sub mongo {
+    my ($self) = @_;
+    return $self->{mongo} if defined $self->{mongo};
+    $self->{config}{attributes} //= {};
+    my %attributes = %{ $self->{config}{attributes} // {} };
+    if (defined $self->{config}{auth}) {
+        my $username = 'task_runner';
+        $username = 'disbatchd' if $self->{class} eq 'disbatch';
+        $username = 'disbatch_web' if $self->{class} eq 'disbatch::web';
+        $attributes{username} = $username;
+        $attributes{password} = $self->{config}{auth}{$username};
+        $attributes{db_name} = $self->{config}{database};
+    }
+    warn "Connecting ", scalar localtime;
+    $self->{mongo} = MongoDB->connect($self->{config}{mongohost}, \%attributes)->get_database($self->{config}{database}) ;
+}
 sub nodes  { $_[0]->mongo->get_collection('nodes') }
 sub queues { $_[0]->mongo->get_collection('queues') }
 sub tasks  { $_[0]->mongo->get_collection('tasks') }
@@ -116,8 +131,8 @@ sub load_config_file {
         $self->{config} = try { $json->relaxed->decode(scalar read_file($self->{config_file})) } catch { die "Could not parse $self->{config_file}: $_" };	# FIXME: log4perl the error
         @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
         $self->ensure_config;
-        if (!defined $self->{config}{mongohost} or !defined $self->{config}{mongodb}) {
-            my $error = "Both 'mongohost' and 'mongodb' must be defined in file $self->{config_file}";
+        if (!defined $self->{config}{mongohost} or !defined $self->{config}{database}) {
+            my $error = "Both 'mongohost' and 'database' must be defined in file $self->{config_file}";
             my $label = $self->{config}{default_config} // 'production';
             $self->{config}{log4perl} //= $default_configs->{$label}{log4perl};
             $self->logger->logdie($error);
@@ -225,15 +240,15 @@ sub revalidate_plugins {
     $self->validate_plugins;
 }
 
-# TODO: merge this and Disbatch::Web /scheduler-json into one thing, so not repeating the (mostly) same code
 sub scheduler_report {
     my ($self) = @_;
     my @result;
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         my $tasks_doing = try { $self->tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}}) } catch { $self->logger->error("Could not count tasks doing: $_"); -1 };
-        $queue->{count_total} //= 0;
-        $queue->{count_todo} //= 0;
+        # FIXME: the below two lines can cause a race condition with Disbatch::Web::create_tasks()
+        $queue->{count_total} //= $self->count_total($queue->{_id});
+        $queue->{count_todo} //= $self->count_todo($queue->{_id});
         push @result, {
             id             => $queue->{_id}{value},
             tasks_todo     => $queue->{count_todo},
@@ -303,8 +318,7 @@ sub start_task {
     my ($self, $queue, $task) = @_;
     my $command = $self->{config}{task_runner};
     my @args = (
-        '--host' => $self->{config}{mongohost},
-        '--db' => $self->{config}{mongodb},
+        '--config' => $self->{config_file},
         '--plugin' => $self->{plugins}{$queue->{constructor}},
         '--task' => $task->{_id},
         '--log4perl' => $json->encode($self->{config}{log4perl}),
@@ -314,6 +328,7 @@ sub start_task {
     unless (fork) {
         setsid != -1 or die "Can't start a new session: $!";
         unless (exec $command, @args) {
+            $self->mongo->reconnect;
             $self->logger->error("Could not exec '$command', unclaiming task $task->{_id} and setting threads to 0 for $queue->{name}");
             retry { $self->queues->update_one({_id => $queue->{_id}}, {'$set' => {maxthreads => 0}}) } catch { "Could not set queues to 0 for $queue->{name}: $_" };
             $self->unclaim_task($task->{_id});
@@ -339,7 +354,7 @@ sub count_todo {
     } else {
         try {
             my $count = $self->tasks->count({queue => $queue_id, status => {'$lte' => 0}});
-            $self->queues->update_one({_id => $queue_id}, {'$set' => {count_todo => $count}});
+            $self->queues->update_one({_id => $queue_id, count_todo => undef}, {'$set' => {count_todo => $count}});
             $count;
         } catch {
             $self->logger->error("Could not update count_todo: $_");
@@ -358,7 +373,7 @@ sub count_total {
     } else {
         try {
             my $count = $self->tasks->count({queue => $queue_id});
-            $self->queues->update_one({_id => $queue_id}, {'$set' => {count_total => $count}});
+            $self->queues->update_one({_id => $queue_id, count_total => undef}, {'$set' => {count_total => $count}});
             $count;
         } catch {
             $self->logger->error("Could not update count_total: $_");
@@ -386,8 +401,6 @@ sub process_queues {
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {
-            $self->count_total($queue->{_id}) unless defined $queue->{count_total};
-            $self->count_todo($queue->{_id}) unless defined $queue->{count_todo};
             my $running = $self->count_running($queue->{_id});
             while (defined $running and $queue->{maxthreads} // 0 > $running) {
                 my $task = $self->claim_task($queue);
