@@ -22,10 +22,10 @@ my $disbatch;
 
 sub init {
     my $args = { @_ };
-    my %args = $args->{config} ? (config => $args->{config}) : (config_file => $args->{config_file} // '/etc/disbatch/disbatch.json');
+    my %args = $args->{config} ? (config => $args->{config}) : (config_file => ($args->{config_file} // '/etc/disbatch/disbatch.json'));
     $disbatch = Disbatch->new(class => 'Disbatch::Web', %args);
     $disbatch->load_config_file;
-    public $disbatch->{config}{web_root} // '/etc/disbatch/htdocs/';
+    public ($disbatch->{config}{web_root} // '/etc/disbatch/htdocs/');
 }
 
 sub parse_params {

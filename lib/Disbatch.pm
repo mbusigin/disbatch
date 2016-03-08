@@ -323,7 +323,7 @@ sub start_task {
         '--task' => $task->{_id},
         '--log4perl' => $json->encode($self->{config}{log4perl}),
     );
-    push @args, '--nogfs' unless $self->{config}{gfs} // true;
+    push @args, '--nogfs' unless ($self->{config}{gfs} // true);
     $self->logger->info(join ' ', $command, @args);
     unless (fork) {
         setsid != -1 or die "Can't start a new session: $!";
@@ -402,7 +402,7 @@ sub process_queues {
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {
             my $running = $self->count_running($queue->{_id});
-            while (defined $running and $queue->{maxthreads} // 0 > $running) {
+            while (defined $running and ($queue->{maxthreads} // 0) > $running) {
                 my $task = $self->claim_task($queue);
                 last unless defined $task;
                 $self->start_task($queue, $task);
