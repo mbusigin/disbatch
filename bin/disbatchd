@@ -20,16 +20,9 @@ $SIG{QUIT} = sub { exit 131 };	# 3	ctrl-\
 $SIG{TERM} = sub { exit 143 };	# 15	kill
 $SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
 
-my ($host, $db, @activequeues, @ignorequeues);
 my $config_file = '/etc/disbatch/disbatch.json';
 
-GetOptions(
-    'host=s'  => \$host,
-    'db=s'    => \$db,
-    'activequeues=s' => \@activequeues,
-    'ignorequeues=s' => \@ignorequeues,
-    'config=s' => \$config_file,
-);
+GetOptions('config=s' => \$config_file);
 
 my $disbatch = Disbatch->new(class => 'Disbatch', config_file => $config_file);
 $disbatch->load_config;

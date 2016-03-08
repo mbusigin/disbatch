@@ -19,15 +19,12 @@ use MongoDB::OID 1.0.0;
 use Try::Tiny::Retry;
 use Safe::Isa;
 
-my ($host, $db, $queue, $task_id, $plugin, $log4perl, $gfs, $config_file);
+my ($queue, $task_id, $plugin, $gfs, $config_file);
 
 GetOptions(
-    'host=s'     => \$host,
-    'db=s'       => \$db,
     'queue=s'    => \$queue,
     'task=s'     => \$task_id,
     'plugin=s'   => \$plugin,
-    'log4perl=s' => \$log4perl,
     'gfs!'       => \$gfs,
     'config=s'   => \$config_file,
 );
@@ -36,33 +33,14 @@ $gfs //= 1;	# use GridFS by default
 
 my $json = Cpanel::JSON::XS->new->utf8;
 
-my $disbatch;
-if (defined $config_file) {
-    $disbatch = Disbatch->new(class => $plugin, config_file => $config_file);
-    $disbatch->load_config;
-} else {
-    my $config = { mongohost => $host, database => $db };
-    $config->{log4perl} = try { $json->decode($log4perl) } if defined $log4perl;
-    $config->{log4perl} //= {
-        level => 'TRACE',
-        appenders => {
-            screenlog => { type => 'Log::Log4perl::Appender::ScreenColoredLevels' },
-            filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => '/tmp/' . ($task_id // 'task_runner') } },
-        },
-    };
-    $disbatch = Disbatch->new(class => $plugin, config => $config);
-}
+my $disbatch = Disbatch->new(class => $plugin, config_file => $config_file);
+$disbatch->load_config;
 
 my $logger = $disbatch->logger;
 
 $logger->info("Starting task $task_id");
 
-unless (defined $config_file or (defined $host and defined $db)) {
-    $logger->logdie('Either --config or --host and --db options must be used');
-}
-if (defined $config_file and (defined $host and defined $db)) {
-    $logger->logdie('--host and --db options cannot be used with --config');
-}
+$logger->logdie('Config file must be passed with --config option') unless defined $config_file;
 
 $logger->logdie('No --task') unless defined $task_id;
 $logger->logdie('No --plugin') unless defined $plugin;

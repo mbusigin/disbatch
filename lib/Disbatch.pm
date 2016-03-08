@@ -314,6 +314,7 @@ sub orphaned_tasks {
 }
 
 # will fork & exec to start a given task
+# NOTE: $self->{config_file} is required
 sub start_task {
     my ($self, $queue, $task) = @_;
     my $command = $self->{config}{task_runner};
@@ -321,7 +322,6 @@ sub start_task {
         '--config' => $self->{config_file},
         '--plugin' => $self->{plugins}{$queue->{constructor}},
         '--task' => $task->{_id},
-        '--log4perl' => $json->encode($self->{config}{log4perl}),
     );
     push @args, '--nogfs' unless ($self->{config}{gfs} // true);
     $self->logger->info(join ' ', $command, @args);
