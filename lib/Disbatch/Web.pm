@@ -199,7 +199,7 @@ post '/queue-create-tasks-from-query-json' => sub {
     my @fields = grep /^document\./, values %$parameters;
     my %fields = map { s/^document\.//; $_ => 1 } @fields;
 
-    my $cursor = $disbatch->mongo->get_collection($params->{collection})->find($filter)->fields(\%fields);
+    my $cursor = $disbatch->mongo->coll($params->{collection})->find($filter)->fields(\%fields);
     my @tasks;
     my $error;
     try {

@@ -101,10 +101,10 @@ sub mongo {
     warn "Connecting ", scalar localtime;
     $self->{mongo} = MongoDB->connect($self->{config}{mongohost}, \%attributes)->get_database($self->{config}{database}) ;
 }
-sub nodes  { $_[0]->mongo->get_collection('nodes') }
-sub queues { $_[0]->mongo->get_collection('queues') }
-sub tasks  { $_[0]->mongo->get_collection('tasks') }
-sub config { $_[0]->mongo->get_collection('config') }
+sub nodes  { $_[0]->mongo->coll('nodes') }
+sub queues { $_[0]->mongo->coll('queues') }
+sub tasks  { $_[0]->mongo->coll('tasks') }
+sub config { $_[0]->mongo->coll('config') }
 
 # ensures that 'production' and 'development' config documents exist, and that $self->{config}{default_config} // 'production' is active
 sub ensure_config {

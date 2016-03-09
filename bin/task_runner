@@ -3,7 +3,7 @@
 # USAGE: ./bin/task_runner --host localhost --db disbatch300 --plugin Disbatch::Plugin::Dummy::Task --task 565bc0d43fb6ecd1c8504492
 
 # FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
-#        $workerthread->mongo->get_collection('queues')->find_one({_id => $doc->{queue}})->{constructor}
+#        $workerthread->queues->find_one({_id => $doc->{queue}})->{constructor}
 # FIXME: Do we need to even pass the queue _id at all? The task _id is unique, and the task contains the queue _id.
 
 use 5.12.0;
