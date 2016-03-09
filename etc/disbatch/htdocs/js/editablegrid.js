@@ -20,8 +20,8 @@ function Column(config)
 			unit: null,
 			precision: -1, // means that all decimals are displayed
 			nansymbol: '',
-			decimal_point: ',',
-			thousands_separator: '.',
+			decimal_point: '.',
+			thousands_separator: ',',
 			unit_before_number: false,
 			bar: true, // is the column to be displayed in a bar chart ? relevant only for numerical columns 
 			hidden: false, // should the column be hidden by default
@@ -486,8 +486,8 @@ EditableGrid.prototype.parseColumnType = function(column)
 	// reset
 	column.unit = null;
 	column.precision = -1;
-	column.decimal_point = ',';
-	column.thousands_separator = '.';
+	column.decimal_point = '.';
+	column.thousands_separator = ',';
 	column.unit_before_number = false;
 	column.nansymbol = '';
 
