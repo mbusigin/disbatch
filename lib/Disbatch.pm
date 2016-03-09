@@ -104,23 +104,23 @@ sub mongo {
 sub nodes  { $_[0]->mongo->get_collection('nodes') }
 sub queues { $_[0]->mongo->get_collection('queues') }
 sub tasks  { $_[0]->mongo->get_collection('tasks') }
+sub config { $_[0]->mongo->get_collection('config') }
 
 # ensures that 'production' and 'development' config documents exist, and that $self->{config}{default_config} // 'production' is active
 sub ensure_config {
     my ($self) = @_;
-    my $conf = $self->mongo->get_collection('config');
-    my $config_doc = try { $conf->find_one({active => true}) } catch { $_ };
+    my $config_doc = try { $self->config->find_one({active => true}) } catch { $_ };
     if (!defined $config_doc or ref $config_doc ne 'HASH') {
         my $err = $config_doc // 'no {"active":true} config doc';
         warn "$err\n";
         $self->ensure_indexes;
         for my $label (keys %$default_configs) {
-            if (!$conf->find_one({ label => $label })) {
-                try { $conf->insert($default_configs->{$label}) } catch { warn "Could not insert $label config document: $_\n" };
+            if (!$self->config->find_one({ label => $label })) {
+                try { $self->config->insert($default_configs->{$label}) } catch { warn "Could not insert $label config document: $_\n" };
             }
         }
         my $set_active = $self->{config}{default_config} // 'production';
-        my $res = $conf->update({ label => $set_active }, { '$set' => { active => true } });
+        my $res = $self->config->update({ label => $set_active }, { '$set' => { active => true } });
         die "Could not set config document $set_active to active\n" unless $res->{n} == 1;
     }
 }
@@ -145,7 +145,7 @@ sub load_config_file {
 sub load_config {
     my ($self) = @_;
     $self->load_config_file;
-    my $config_doc = try { $self->mongo->get_collection('config')->find_one({active => true}) } catch { $_ };
+    my $config_doc = try { $self->config->find_one({active => true}) } catch { $_ };
     if (!defined $config_doc or ref $config_doc ne 'HASH') {
         my $error = defined $config_doc ? $config_doc : 'no {"active":true} config doc';
         if (!defined $self->{config}{log4perl}) {
@@ -199,8 +199,8 @@ sub ensure_indexes {
     );
     try { $self->tasks->indexes->create_many(@task_indexes) } catch { $self->logger->logdie("Could not ensure_indexes: $_") };
     try {
-        $self->mongo->coll('config')->indexes->create_one([ active => 1 ], { unique => true, sparse => true });
-        $self->mongo->coll('config')->indexes->create_one([ label => 1 ], { unique => true });
+        $self->config->indexes->create_one([ active => 1 ], { unique => true, sparse => true });
+        $self->config->indexes->create_one([ label => 1 ], { unique => true });
         $self->mongo->coll('task_output.chunks')->indexes->create_one([ files_id => 1, n => 1 ], { unique => true });
         $self->mongo->coll('task_output.files')->indexes->create_one([ filename => 1, 'metadata.task_id' => 1 ]);
     } catch {
