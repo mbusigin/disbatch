@@ -7,6 +7,7 @@ use warnings;
 
 use Cpanel::JSON::XS;
 use Data::Dumper;
+use File::Path qw/remove_tree/;
 use File::Slurp;
 use MongoDB;
 use Net::HTTP::Client;
@@ -18,30 +19,33 @@ use Disbatch;
 use Disbatch::Roles;
 use Disbatch::Web;
 
+my $use_ssl = $ENV{USE_SSL} // 1;
+my $use_auth = $ENV{USE_AUTH} // 1;
+
 unless ($ENV{AUTHOR_TESTING}) {
     plan skip_all => 'Skipping author tests';
     exit;
 }
-unless ($ENV{MONGOPASS}) {
-    BAIL_OUT 'Must pass MONGOPASS=<password> for MongoDB root user';
+
+sub get_free_port {
+    my ($port, $sock);
+    do {
+        $port = int rand()*32767+32768;
+        $sock = IO::Socket::INET->new(Listen => 1, ReuseAddr => 1, LocalAddr => 'localhost', LocalPort => $port, Proto => 'tcp')
+                or warn "\n# cannot bind to port $port: $!";
+    } while (!defined $sock);
+    $sock->shutdown(2);
+    $sock->close();
+    $port;
 }
 
-sub mongo {
-    my ($host, $database, $username, $password, $ssl) = @_;
-    my $attributes = {
-        ssl => $ssl,
-        username => $username,
-        password => $password,
-        #db_name => $database,
-    };
-    MongoDB->connect($host, $attributes)->get_database($database);
-}
+my $mongoport = get_free_port;
 
 # define config and make up a database name:
 my $config = {
-    mongohost => 'mongodb://127.0.0.1:27017',
+    mongohost => "localhost:$mongoport",
     database => "disbatch_test$$" . int(rand(10000)),
-    attributes => { ssl => { SSL_verify_mode => 0x00 }, },
+    attributes => { ssl => { SSL_verify_mode => 0x00 } },
     auth => {
         disbatchd => 'qwerty1',		# { username => 'disbatchd', password => 'qwerty1' },
         disbatch_web => 'qwerty1',	# { username => 'disbatch_web', password => 'qwerty2' },
@@ -51,21 +55,46 @@ my $config = {
     web_root => 'etc/disbatch/htdocs/',
     task_runner => './bin/task_runner',
 };
+delete $config->{auth} unless $use_auth;
+delete $config->{attributes} unless $use_ssl;
 
-my $config_file = "/tmp/$config->{database}.json";
+mkdir "/tmp/$config->{database}";
+my $config_file = "/tmp/$config->{database}/config.json";
 write_file $config_file, encode_json $config;
 
 say "database = $config->{database}";
 
+my @mongo_args = (
+    '--logpath' => "/tmp/$config->{database}/mongod.log",
+    '--dbpath' => "/tmp/$config->{database}/",
+    '--pidfilepath' => "/tmp/$config->{database}/mongod.pid",
+    '--port' => $mongoport,
+    '--noprealloc',
+    '--nojournal',
+    '--fork'
+);
+push @mongo_args, $use_auth ? '--auth' : '--noauth';
+push @mongo_args, '--sslMode' => 'requireSSL', '--sslPEMKeyFile' => 't/test-cert.pem', if $use_ssl;
+my $mongo_args = join ' ', @mongo_args;
+say `mongod $mongo_args`;	# TODO: blegh
+
 # Get test database, authed as root:
-my $test_db_root = MongoDB->connect('localhost', { username => ($ENV{MONGOROOT} // 'root'), password => $ENV{MONGOPASS}, ssl => {SSL_verify_mode => 0x00} })->get_database($config->{database});
+my $attributes = {};
+$attributes->{ssl} = $config->{attributes}{ssl} if $use_ssl;
+if ($use_auth) {
+    my $admin = MongoDB->connect($config->{mongohost}, $attributes)->get_database('admin');
+    retry { $admin->run_command([createUser => 'root', pwd => 'kjfiwey76r3gjm', roles => [ { role => 'root', db => 'admin' } ]]) } catch { die $_ };
+    $attributes->{username} = 'root';
+    $attributes->{password} = 'kjfiwey76r3gjm';
+}
+my $test_db_root = retry { MongoDB->connect($config->{mongohost}, $attributes)->get_database($config->{database}) } catch { die $_ };
 
 # Create roles and users for a database:
-Disbatch::Roles->new(db => $test_db_root, %{$config->{auth}})->create_roles_and_users;
+Disbatch::Roles->new(db => $test_db_root, %{$config->{auth}})->create_roles_and_users if $use_auth;
 
 # Create users collection:
 for my $username (qw/ foo bar /) {
-    $test_db_root->coll('users')->insert({username => $username, migration => 'test'});
+    retry { $test_db_root->coll('users')->insert({username => $username, migration => 'test'}) } catch { die $_ };
 }
 
 # Ensure indexes:
@@ -85,24 +114,16 @@ sub daemonize {
     0;
 }
 
-my ($port, $sock);
+my $webport = get_free_port;
 
-do {
-    $port = int rand()*32767+32768;
-    $sock = IO::Socket::INET->new(Listen => 5, ReuseAddr => 1, LocalAddr => 'localhost', LocalPort => $port, Proto => 'tcp')
-            or warn "\n# cannot bind to port $port: $!";
-} while (!defined $sock);
-$sock->shutdown(2);
-$sock->close();
-
-my $pid = daemonize();
-if ($pid == 0) {
+my $webpid = daemonize();
+if ($webpid == 0) {
     Disbatch::Web::init(config_file => $config_file);
-    Disbatch::Web::limp({workers => 5}, LocalPort => $port);
+    Disbatch::Web::limp({workers => 5}, LocalPort => $webport);
     die "This shouldn't have happened";
 } else {
     # Run tests:
-    my $uri = "localhost:$port";
+    my $uri = "localhost:$webport";
     my ($res, $data, $content);
 
     my $queueid;	# OID
@@ -310,13 +331,18 @@ if ($pid == 0) {
     is $content->[1]{'MongoDB::DeleteResult'}{deleted_count}, 1, 'count';
 
     done_testing;
+}
 
-    # Stop web:
-    kill -9, $pid;
-
-    # Delete config file:
-    unlink $config_file;
-
-    # Drop database:
-    $test_db_root->drop;
+END {
+    # Cleanup:
+    if (defined $config and $config->{database}) {
+        kill -9, $webpid if $webpid;
+        my $pidfile = "/tmp/$config->{database}/mongod.pid";
+        if (-e $pidfile) {
+            my $mongopid = read_file $pidfile;
+            chomp $mongopid;
+            kill 9, $mongopid;
+        }
+        remove_tree "/tmp/$config->{database}";
+    }
 }
