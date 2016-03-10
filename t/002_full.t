@@ -51,7 +51,7 @@ my $config = {
         disbatch_web => 'qwerty1',	# { username => 'disbatch_web', password => 'qwerty2' },
         task_runner => 'qwerty1',	# { username => 'task_runner', password => 'qwerty3' },
     },
-    plugins => [ 'Synacor::Migration::Plugins::Dummy' ],
+    plugins => [ 'Disbatch::Plugin::Demo' ],
     default_config => 'development',
     web_root => 'etc/disbatch/htdocs/',
     task_runner => './bin/task_runner',

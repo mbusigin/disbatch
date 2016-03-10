@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# USAGE: ./bin/task_runner --host localhost --db disbatch300 --plugin Disbatch::Plugin::Dummy::Task --task 565bc0d43fb6ecd1c8504492
+# USAGE: ./bin/task_runner --host localhost --db disbatch_test --plugin Disbatch::Plugin::Dummy --task 565bc0d43fb6ecd1c8504492
 
 # FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
 #        $workerthread->queues->find_one({_id => $doc->{queue}})->{constructor}

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# USAGE: ./disbatchd --host localhost --db disbatch300 --queue abcd1234 --ignore 1234abcd
+# USAGE: ./disbatchd --host localhost --db disbatch_test --queue abcd1234 --ignore 1234abcd
 
 use 5.12.0;
 use warnings;

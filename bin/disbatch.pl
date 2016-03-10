@@ -469,6 +469,6 @@ can increase that by increasing the maxthread queue attribute:
 
 Next, let's create a new queue:
 
-  $ disbatch.pl queue start Synacor::Migration::Plugins::IMAP2IMAP foo
+  $ disbatch.pl queue start Disbatch::Plugin::Dummy foo
   New Queue #2185663
 

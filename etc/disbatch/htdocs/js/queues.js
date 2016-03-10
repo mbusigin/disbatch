@@ -108,7 +108,7 @@ window.onload = function() {
   }
   newQueue = function() {		// no var because needed for New Queue button
     // POST /start-queue-json?type=Disbatch%3A%3APlugin%3A%3ADummy&name=newq
-    // -X POST -d '{"type":"Disbatch::3lugin::Dummy","name":"newq"}' /start-queue-json
+    // -X POST -d '{"type":"Disbatch::Plugin::Dummy","name":"newq"}' /start-queue-json
     var elements = document.getElementById('queue-form').elements;
     var name = elements.inputName.value;
     var type = elements.inputType.value;
