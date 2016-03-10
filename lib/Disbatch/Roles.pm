@@ -3,6 +3,9 @@ package Disbatch::Roles;
 use 5.12.0;
 use warnings;
 
+use Safe::Isa;
+use Try::Tiny;
+
 sub new {
     my $class = shift;
     my $self = { @_ };
@@ -57,6 +60,32 @@ sub create_roles_and_users {
     };
 }
 
+sub drop_roles_and_users {
+    my ($self) = @_;
+    for my $name (keys %{$self->{userroles}}) {
+        try {
+            $self->{db}->run_command([dropRole => $name]);
+        } catch {
+            # MongoDB::DatabaseError: No role named disbatch_web@disbatch
+            if ($_->$_isa('MongoDB::DatabaseError') and $_->{message} =~ /^No role named $name\@$self->{db}{name}$/) {
+                warn "$_->{message} (ignoring error)\n";
+            } else {
+                die $_;
+            }
+        };
+        # User 'disbatch_web@disbatch' not found
+        try {
+            $self->{db}->run_command([dropUser => $name]);
+        } catch {
+            if ($_->$_isa('MongoDB::DatabaseError') and $_->{message} =~ /^User '$name\@$self->{db}{name}' not found$/) {
+                warn "$_->{message} (ignoring error)\n";
+            } else {
+                die $_;
+            }
+        };
+    };
+}
+
 1;
 
 =encoding utf8
@@ -85,6 +114,14 @@ Parameters: none.
 Creates the roles and users for C<disbatchd>, C<disbatch_web>, and C<task_runner>.
 
 Dies if the roles or users already exist, or on any other MongoDB error.
+
+=item drop_roles_and_users
+
+Parameters: none.
+
+Drops the roles and users for C<disbatchd>, C<disbatch_web>, and C<task_runner>.
+
+Dies if the roles or users don't exist(???), or on any other MongoDB error.
 
 =back
 
