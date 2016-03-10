@@ -1,9 +1,3 @@
-SECURITY ISSUES:
-- Make sure random code cannot be run:
-  - restrict what can edit the config.
-  - any option that can done via the web API must be validated somehow (via config collection settings?).
-  - if can't restrict config collection, then restrict via disbatch.json / CLI flags.
-
 Goals achieved with rewrite:
 - No more memory leak in main process.
 - No more locked up event bus via unix sockets (uses MongoDB to pass all data).
@@ -14,11 +8,11 @@ Goals achieved with rewrite:
 
 Backwards compatibility for existing deployments:
 - Can replace v3 of Disbatch with v4 with no* changes to database, and minimal back-compat changes to plugin.
-- Can run both v3 and v4 against the same database.
+- Can run both v3 and v4 against the same unauthenticated database.
 - CANNOT pass Perl data structures (only JSON is allowed) to 'queue search' nor 'queue tasks'. That was a horrible idea.
 - The "Backfill" feature has been removed - a web server thread handles this (creating 100k tasks at once only took 12 seconds on my 13" rMBP).
 - The "Preemptive" setting has been removed.
-
+- The main process, the web server, and the task runner all have their own permission models if using authentication instead of sharing one account.
 
 Changes:
 - To keep the code simple, as much as possible is by convention instead of config (collection names, node, ...).
@@ -27,20 +21,14 @@ Changes:
 - bin/disbatchd instead of bin/disbatchd.pl
 - etc/disbatch/disbatch.json instead of etc/disbatch/disbatch.ini
   - most config will go into a 'config' collection.
-  - the disbatch-log4perl.conf file will be replaced by a section in the config.
-- task stdout and stderr are now written to (mostly-compatible) GridFS documents.
-
-
-FIXME:
-- lib/Disbatch/Web.pm:
-  - can't create a queue for a constructor unless there is already a queue with that constructor (make optional part in config collection??).
-
+- The disbatch-log4perl.conf file no longer used (automatically generated settings, can be overwritten in the config file)
+- Task stdout and stderr are now written to (mostly-compatible) GridFS documents.
+- To define a queue, the type must already be used in another queue, or listed in 'plugins' in the config
 
 Todo:
 - DOCS DOCS DOCS
-- TESTS TESTS TESTS
-- write new web interface and API.
-- move some code from Disbatch::Web to Disbatch
+- write new web API
+- move some code from Disbatch::Web to Disbatch ??
 - be able to use any type of task_runner (node.js, ruby, ...)
 
 
@@ -48,6 +36,9 @@ Upgrading:
 - Rename the tasks and queues collections to 'tasks' and 'queues' if they have a different name.
 - If there is already a collection 'config', rename it to something else.
 - Put MongoDB connection details in etc/disbatch/disbatch.json
+- Setup Authentication (optional):
+  - Put datbase user passwords in etc/disbatch/disbatch.json
+  - Run bin/disbatch-create-users
 - Setup config collection:
   - this is done automatically if not defined: creates 2 documents with labels 'production' and 'development'
   - production will be set to active unless the config file has a 'default_config' value of something else
