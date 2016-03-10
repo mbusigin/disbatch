@@ -255,7 +255,8 @@ get post '/queue-prototypes-json' => sub {
         }
     };
     my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
-    my %constructors = map { $_ => $_ } @constructors;
+    my $plugins = $disbatch->{config}{plugins} // [];
+    my %constructors = map { $_ => $_ } @constructors, @$plugins;
     send_json \%constructors;
 };
 
