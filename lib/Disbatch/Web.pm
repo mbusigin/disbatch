@@ -77,12 +77,24 @@ post '/set-queue-attr-json' => sub {
     send_json $reponse;
 };
 
+sub get_plugins {
+    my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    my $plugins = $disbatch->{config}{plugins} // [];
+    my %constructors = map { $_ => $_ } @constructors, @$plugins;
+    \%constructors;
+}
+
 post '/start-queue-json' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
     unless (defined $params->{type} and defined $params->{name}) {
         status 400;
         return send_json [ 0, 'type and name required'];
+    }
+
+    unless (get_plugins->{$params->{type}}) {
+        status 400;
+        return send_json [ 0, 'unknown type'];
     }
 
     my $queue = { constructor => $params->{type}, name => $params->{name} };
@@ -119,25 +131,10 @@ post '/delete-queue-json' => sub {
 };
 
 # This is needed at least to create queues in the web interface (just the keys).
-# FIXME: You currently can't create a queue for a constructor unless there is already a queue with that constructor.
 # NOTE: post, because of the legacy UI that I don't know how to change.
 get post '/queue-prototypes-json' => sub {
     undef $disbatch->{mongo};
-    my $example = {
-        settings => [],
-        'Disbatch::Plugin::Dummy' => {
-            name => {
-                name => 'perl',
-                type => 'string',
-                description => 'a Perl expression to evaluate',
-                default => 'warn "Hello, world!"',
-            }
-        }
-    };
-    my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
-    my $plugins = $disbatch->{config}{plugins} // [];
-    my %constructors = map { $_ => $_ } @constructors, @$plugins;
-    send_json \%constructors;
+    send_json get_plugins;
 };
 
 get '/reload-queues-json' => sub {

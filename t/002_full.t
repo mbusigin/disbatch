@@ -51,6 +51,7 @@ my $config = {
         disbatch_web => 'qwerty1',	# { username => 'disbatch_web', password => 'qwerty2' },
         task_runner => 'qwerty1',	# { username => 'task_runner', password => 'qwerty3' },
     },
+    plugins => [ 'Synacor::Migration::Plugins::Dummy' ],
     default_config => 'development',
     web_root => 'etc/disbatch/htdocs/',
     task_runner => './bin/task_runner',
@@ -140,7 +141,7 @@ if ($webpid == 0) {
     my $terse;	# boolean
 
     $name = 'test_queue';
-    $plugin = 'Synacor::Migration::Plugins::Dummy';
+    $plugin = $config->{plugins}[0];
 
     # make sure web server is running:
     retry { Net::HTTP::Client->request(GET => "$uri/") } catch { die $_ };
@@ -181,7 +182,7 @@ if ($webpid == 0) {
     $res = Net::HTTP::Client->request(GET => "$uri/queue-prototypes-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
-    is $res->content, '{}', 'empty hash';
+    is $res->content, "{\"$plugin\":\"$plugin\"}", 'empty hash';
 
     $res = Net::HTTP::Client->request(GET => "$uri/reload-queues-json");
     is $res->status_line, '200 OK', '200 status';
@@ -271,7 +272,7 @@ if ($webpid == 0) {
     is $content->[0]{tasks_todo}, 5, 'tasks_todo';
     is $content->[0]{preemptive}, 1, 'preemptive';
     is $content->[0]{tasks_backfill}, 0, 'tasks_backfill';
-    is $content->[0]{constructor}, 'Synacor::Migration::Plugins::Dummy', 'constructor';
+    is $content->[0]{constructor}, $plugin, 'constructor';
     is $content->[0]{name}, 'test_queue', 'name';
     is $content->[0]{id}, $queueid, 'id';
 
@@ -296,7 +297,7 @@ if ($webpid == 0) {
     $res = Net::HTTP::Client->request(GET => "$uri/queue-prototypes-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
-    is $res->content, '{"Synacor::Migration::Plugins::Dummy":"Synacor::Migration::Plugins::Dummy"}', 'defined plugins';
+    is $res->content, "{\"$plugin\":\"$plugin\"}", 'defined plugins';
 
     # This will run 1 task:
     $disbatch->validate_plugins;
