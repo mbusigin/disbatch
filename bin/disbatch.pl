@@ -282,6 +282,8 @@ sub status {
         print $tl->rule('-', '+');
         say $tl->body;
         say "$count total queues.";
+    } else {
+        say "Unable to connect to $this_url: ", $r->status_line;
     }
 }
 
