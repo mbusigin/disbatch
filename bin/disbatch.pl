@@ -4,6 +4,7 @@ use 5.12.0;
 use warnings;
 
 use Data::Dumper;
+use File::Slurp;
 use Getopt::Long;
 use IO::Wrap;
 use JSON;
@@ -11,24 +12,46 @@ use LWP::UserAgent;
 use Pod::Usage;
 use Text::CSV_XS;
 use Text::Table;
+use Try::Tiny;
 
 my $url = 'http://localhost:8080';
 my $username;
 my $password;
 my $help = 0;
+my $config_file = '/etc/disbatch/disbatch.json';
+my $ssl_ca_file;
+my $disable_ssl_verification = 0;
 
 GetOptions(
-    'url|u=s'      => \$url,
-    'username|n=s' => \$username,
-    'password=s'   => \$password,
-    'help'         => \$help,
+    'url|u=s'       => \$url,
+    'username|n=s'  => \$username,
+    'password=s'    => \$password,
+    'help'          => \$help,
+    'config=s'      => \$config_file,
+    'ssl_ca_file=s' => \$ssl_ca_file,
+    'disable_ssl_verification' => \$disable_ssl_verification,
 );
 
 pod2usage(-verbose => 2, -exitval => 0) if $help;
 pod2usage(1) unless @ARGV;
 
 my $json = JSON->new;
-my $ua   = LWP::UserAgent->new;
+
+my $options = {};
+if (defined $ssl_ca_file) {
+    $options->{ssl_opts}{SSL_ca_file} = $ssl_ca_file;
+} elsif ($disable_ssl_verification) {
+    $options->{ssl_opts}{verify_hostname} = 0;
+} else {
+    # try loading the config file, but don't fail if it doesn't exist
+    my $config = try { $json->relaxed->decode(scalar read_file $config_file) } catch { {} };
+    if (defined $config->{attributes}{ssl}) {
+        $options->{ssl_opts} = $config->{attributes}{ssl};
+        $options->{ssl_opts}{verify_hostname} = $options->{ssl_opts}{SSL_verify_mode} if defined $options->{ssl_opts}{SSL_verify_mode};
+    }
+}
+
+my $ua = LWP::UserAgent->new(%$options);
 
 if (defined $username and defined $password) {
     my ($host) = $url =~ qr{^https?://(.+?)(?:/|$)};

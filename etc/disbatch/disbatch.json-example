@@ -3,7 +3,10 @@
     "database": "disbatch_test",
     # attributes is optional:
     "attributes": {
-        "ssl": { "SSL_verify_mode": 0 },	# ssl is enabled on the server, but without a valid cert
+        "ssl": {
+            "SSL_ca_file": "/etc/ssl/certs/ca-bundle.crt",	# ssl is enabled on the server
+#            "SSL_verify_mode": 0,				# ssl is enabled on the server, but without a valid cert
+        },
     },
     # auth is optional:
     "auth": {
