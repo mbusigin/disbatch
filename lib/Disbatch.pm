@@ -251,8 +251,8 @@ sub scheduler_report {
         $queue->{count_todo} //= $self->count_todo($queue->{_id});
         push @result, {
             id             => $queue->{_id}{value},
-            tasks_todo     => $queue->{count_todo},
-            tasks_done     => $tasks_doing == -1 ? -1 : ($queue->{count_total} - $tasks_doing - $queue->{count_todo}),
+            tasks_todo     => $tasks_doing == -1 ? $queue->{count_todo} : ($queue->{count_todo} - $tasks_doing),
+            tasks_done     => $tasks_doing == -1 ? -1 : ($queue->{count_total} - $queue->{count_todo}),
             tasks_doing    => $tasks_doing,
             maxthreads     => $queue->{maxthreads},
             name           => $queue->{name},
