@@ -1,1 +1,1 @@
-./bin/disbatchd --config etc/disbatch/disbatch.json
+./bin/disbatchd --config etc/disbatch/config.json

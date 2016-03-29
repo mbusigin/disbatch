@@ -20,7 +20,7 @@ $SIG{QUIT} = sub { exit 131 };	# 3	ctrl-\
 $SIG{TERM} = sub { exit 143 };	# 15	kill
 $SIG{CHLD} = 'IGNORE';		# 20	Zombies are bad, m'kay?
 
-my $config_file = '/etc/disbatch/disbatch.json';
+my $config_file = '/etc/disbatch/config.json';
 
 GetOptions('config=s' => \$config_file);
 

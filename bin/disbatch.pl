@@ -18,7 +18,7 @@ my $url = 'http://localhost:8080';
 my $username;
 my $password;
 my $help = 0;
-my $config_file = '/etc/disbatch/disbatch.json';
+my $config_file = '/etc/disbatch/config.json';
 my $ssl_ca_file;
 my $disable_ssl_verification = 0;
 

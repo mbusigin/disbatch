@@ -73,7 +73,7 @@ roles.pl – create roles and users for Disbatch
 
 =head1 SYNOPSIS
 
-  roles.pl --config /etc/disbatch/disbatch.json --root_user root
+  roles.pl --config /etc/disbatch/config.json --root_user root
 
 =head1 ARGUMENTS
 

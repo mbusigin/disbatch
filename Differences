@@ -19,7 +19,7 @@ Changes:
 - No need to have a file in etc/disbatch/disbatch.d/ to define a plugin.
 - Only the ::Task part of the plugin is needed. Its parent is unused.
 - bin/disbatchd instead of bin/disbatchd.pl
-- etc/disbatch/disbatch.json instead of etc/disbatch/disbatch.ini
+- etc/disbatch/config.json instead of etc/disbatch/disbatch.ini
   - most config will go into a 'config' collection.
 - The disbatch-log4perl.conf file no longer used (automatically generated settings, can be overwritten in the config file)
 - Task stdout and stderr are now written to (mostly-compatible) GridFS documents.
@@ -35,9 +35,9 @@ Todo:
 Upgrading:
 - Rename the tasks and queues collections to 'tasks' and 'queues' if they have a different name.
 - If there is already a collection 'config', rename it to something else.
-- Put MongoDB connection details in etc/disbatch/disbatch.json
+- Put MongoDB connection details in etc/disbatch/config.json
 - Setup Authentication (optional):
-  - Put datbase user passwords in etc/disbatch/disbatch.json
+  - Put datbase user passwords in etc/disbatch/config.json
   - Run bin/disbatch-create-users
 - Setup config collection:
   - this is done automatically if not defined: creates 2 documents with labels 'production' and 'development'

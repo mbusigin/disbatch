@@ -15,9 +15,9 @@ Disbatch is a multi-platform, multi-language elastic distributed batch processin
 #### Configuring
 
 0. `cp /etc/disbatch/disbatch.ini-example /etc/disbatch/disbatch.ini`
-0. `cp /etc/disbatch/disbatch.json-example /etc/disbatch/disbatch.json`
-0. Make sure that only the process running Disbatch can read and edit `/etc/disbatch/disbatch.json`
-0. `$EDITOR /etc/disbatch/disbatch.json`
+0. `cp /etc/disbatch/config.json-example /etc/disbatch/config.json`
+0. Make sure that only the process running Disbatch can read and edit `/etc/disbatch/config.json`
+0. `$EDITOR /etc/disbatch/config.json`
   0. Change `mongohost` to the URI of your MongoDB servers.
   0. Change `database` to the MongoDB database name you are using for Disbatch.
   0. Change passwords in `auth`.
