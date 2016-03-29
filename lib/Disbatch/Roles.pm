@@ -21,8 +21,8 @@ sub new {
                 { resource => { db => $self->{db}{name}, collection => 'nodes' },  actions => [ 'insert', 'update' ] },	# had to add insert
                 { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks' },  actions => [ 'update', 'createCollection', 'createIndex' ] },
-                { resource => { db => $self->{db}{name}, collection => 'task_output.chunks' },  actions => [ 'createCollection', 'createIndex' ] },
-                { resource => { db => $self->{db}{name}, collection => 'task_output.files' },  actions => [ 'createCollection', 'createIndex' ] },
+                { resource => { db => $self->{db}{name}, collection => 'tasks.chunks' },  actions => [ 'createCollection', 'createIndex' ] },
+                { resource => { db => $self->{db}{name}, collection => 'tasks.files' },  actions => [ 'createCollection', 'createIndex' ] },
             ],
         },
         disbatch_web => {
@@ -39,8 +39,8 @@ sub new {
                 { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
                 { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks' },  actions => [ 'update' ] },
-                { resource => { db => $self->{db}{name}, collection => 'task_output.chunks' },  actions => [ 'insert' ] },
-                { resource => { db => $self->{db}{name}, collection => 'task_output.files' },  actions => [ 'insert' ] },
+                { resource => { db => $self->{db}{name}, collection => 'tasks.chunks' },  actions => [ 'insert' ] },
+                { resource => { db => $self->{db}{name}, collection => 'tasks.files' },  actions => [ 'insert' ] },
                 { resource => { db => $self->{db}{name}, collection => 'users' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'reports' },  actions => [ 'insert' ] },
                 { resource => { db => $self->{db}{name}, collection => 'complete' },  actions => [ 'update' ] },
