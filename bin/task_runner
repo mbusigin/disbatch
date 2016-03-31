@@ -58,8 +58,9 @@ my $doc = retry {
 $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
 
+my $queue_oid = try { MongoDB::OID->new(value => $queue) } catch { $queue };
 my $task = try {
-    $plugin->new({id => $queue}, $doc->{parameters});
+    $plugin->new({id => $queue_oid}, $doc->{parameters});
 } catch {
     $logger->logdie($_);
 };
