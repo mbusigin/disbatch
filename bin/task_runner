@@ -87,10 +87,10 @@ try { $disbatch->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_to
 
 # set rest of result:
 if ($gfs) {
-    my $stdout_doc = retry { $disbatch->put_gfs($result->{stdout}, 'stdout', { task_id => $oid }) } catch { $logger->error("Could not create GridFS content for task $oid stdout: $_"); {} };
-    my $stderr_doc = retry { $disbatch->put_gfs($result->{stderr}, 'stderr', { task_id => $oid }) } catch { $logger->error("Could not create GridFS content for task $oid stderr: $_"); {} };
-    $result->{stdout} = $stdout_doc;
-    $result->{stderr} = $stderr_doc;
+    my $stdout_doc = retry { $disbatch->put_gfs($result->{stdout}, 'stdout', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stdout: $_"); $result->{warning} = "$_"; undef; };
+    my $stderr_doc = retry { $disbatch->put_gfs($result->{stderr}, 'stderr', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stderr: $_"); $result->{warning} = "$_"; undef; };
+    $result->{stdout} = $stdout_doc if defined $stdout_doc;
+    $result->{stderr} = $stderr_doc if defined $stderr_doc;
     retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
     catch { $logger->logdie("Could not update task $task_id stdout/stderr file ids after completion: $_") };
 } else {
