@@ -48,7 +48,7 @@ post '/set-queue-attr-json' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
     my @valid_attributes = qw/maxthreads preemptive/;
-    unless (grep $params->{attr}, @valid_attributes) {
+    unless (grep $_ eq $params->{attr}, @valid_attributes) {
         status 400;
         return send_json { success => 0, error => 'Invalid attr'};
     }
