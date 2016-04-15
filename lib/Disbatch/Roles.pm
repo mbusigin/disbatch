@@ -18,7 +18,7 @@ sub new {
             privileges => [
                 { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
                 { resource => { db => $self->{db}{name}, collection => 'config' },  actions => [ 'insert', 'update', 'createCollection', 'createIndex' ] },
-                { resource => { db => $self->{db}{name}, collection => 'nodes' },  actions => [ 'insert', 'update' ] },	# had to add insert
+                { resource => { db => $self->{db}{name}, collection => 'nodes' },  actions => [ 'find', 'insert', 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks' },  actions => [ 'update', 'createCollection', 'createIndex' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks.chunks' },  actions => [ 'createCollection', 'createIndex' ] },
@@ -29,6 +29,7 @@ sub new {
             password => $self->{disbatch_web},
             privileges => [
                 { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
+                { resource => { db => $self->{db}{name}, collection => 'nodes' },  actions => [ 'find', 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'insert', 'update', 'remove' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks' },  actions => [ 'insert' ] },
             ],

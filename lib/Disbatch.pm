@@ -399,6 +399,10 @@ sub is_active_queue {
 sub process_queues {
     my ($self) = @_;
     my $revalidate_plugins = 0;
+    my $node = try { $self->nodes->find_one({node => $self->{node}}, {maxthreads => 1}) } catch { $self->logger->error("Could not find node: $_"); { maxthreads => 0 } };
+    if (defined $node->{maxthreads}) {
+        return if ($self->count_running({'$exists' => 1}) // 0) >= $node->{maxthreads};
+    }
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {

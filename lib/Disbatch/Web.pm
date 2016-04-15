@@ -77,6 +77,62 @@ post '/set-queue-attr-json' => sub {
     send_json $reponse;
 };
 
+sub get_nodes {
+    my @nodes = try { $disbatch->nodes->find->all } catch { Limper::warning "Could not get current nodes: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    for my $node (@nodes) {
+        $node->{id} = "$node->{_id}";
+        delete $node->{_id};
+        $node->{timestamp} = "$node->{timestamp}";
+    }
+    \@nodes;
+}
+
+get '/nodes' => sub {
+    undef $disbatch->{mongo};
+    send_json get_nodes;
+};
+
+#  postJSON('/nodes/' + row.rowId , { maxthreads: newValue}, loadQueues);
+post qr'^/nodes/(.+)' => sub {
+    undef $disbatch->{mongo};
+    my $node = $1;
+    my $params = parse_params;
+    my @valid_params = qw/maxthreads/;
+    unless (keys %$params) {
+        status 400;
+        return send_json {success => 0, error => 'No keys'};
+    }
+    for my $key (keys %$params) {
+        unless (grep $_ eq $key, @valid_params) {
+            status 400;
+            return send_json {success => 0, error => 'Invalid key', key => $key};
+        }
+    }
+    if (exists $params->{maxthreads} and defined $params->{maxthreads} and $params->{maxthreads} !~ /^\d+$/) {
+        status 400;
+        return send_json {success => 0, error => 'maxthreads must be a non-negative integer or null'};
+    }
+    my $res = try {
+        $disbatch->nodes->update_one({node => $node}, {'$set' => $params });
+    } catch {
+        Limper::warning "Could not update node $node: $_";
+        $_;
+    };
+    my $reponse = {
+        success => $res->{matched_count} == 1 ? 1 : 0,
+        ref $res => {%$res},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        if ($res->$_isa('MongoDB::UpdateResult')) {
+            $reponse->{error} = $reponse->{'MongoDB::UpdateResult'};
+        } else {
+            $reponse->{error} = "$res";
+        }
+    }
+    send_json $reponse;
+};
+
 sub get_plugins {
     my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
     my $plugins = $disbatch->{config}{plugins} // [];

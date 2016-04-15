@@ -68,7 +68,13 @@ function reload(grid, data) {
 window.onload = function() {
   EditableGrid.prototype.modelChanged = function(rowIndex, columnIndex, oldValue, newValue, row) {
     //alert('changed ' + rowIndex + ',' + columnIndex + '\n' + 'from: "' + oldValue + '" to "' + newValue + '"\n' + 'id: ' + row.rowId + '\n' + 'field: ' + this.getColumnName(columnIndex));
-    postJSON('/set-queue-attr-json', { queueid: row.rowId, attr: this.getColumnName(columnIndex), value: newValue}, loadQueues);
+    if (this.currentTableid == 'nodes') {
+      var data = {};
+      data[this.getColumnName(columnIndex)] = newValue;
+      postJSON('/nodes/' + this.getRowAttribute(rowIndex, 'columns')[this.getColumnIndex('node')], data, loadNodes);
+    } else {
+      postJSON('/set-queue-attr-json', { queueid: row.rowId, attr: this.getColumnName(columnIndex), value: newValue}, loadQueues);
+    }
   };
 
   // new
@@ -87,6 +93,11 @@ window.onload = function() {
     America: {"br":"Brazil","ca":"Canada","us":"USA"},
     Africa: {"ng":"Nigeria","za":"South-Africa","zw":"Zimbabwe"},
   };
+  var nodeLayout = [
+    { name: "id", label: "ID", datatype: "string", editable: false},
+    { name: "node", label: "Node", datatype: "string", editable: false},
+    { name: "maxthreads", label: "Max Threads", datatype: "integer", editable: true},
+  ];
   getJSON('/queue-prototypes-json', function(data) {
     queueLayout[1].values = data;
     var selectList = document.getElementById('inputType');
@@ -103,9 +114,16 @@ window.onload = function() {
   var containerid = "tablecontent-jsdata";
   var className = "testgrid table table-striped table-bordered table-hover table-condensed";
   var tableid = "queues";
-  loadQueues = function() {	// no var because needed for Refresh button
+  var loadQueues = function() {
     getJSON("/scheduler-json", function(data) { load(jsdataGrid, queueLayout, data); render(jsdataGrid, containerid, className, tableid); });
   }
+  var nodesGrid = new EditableGrid("DemoGridJsData2");
+  var nodesContainerid = 'nodes-table';
+  var nodesTableid = 'nodes';
+  var loadNodes = function() {
+    getJSON("/nodes", function(data) { load(nodesGrid, nodeLayout, data); render(nodesGrid, nodesContainerid, className, nodesTableid); });
+  }
+  loadQueuesAndNodes = function() { loadQueues(); loadNodes(); }	// no var because needed for Refresh button
   newQueue = function() {		// no var because needed for New Queue button
     // POST /start-queue-json?type=Disbatch%3A%3APlugin%3A%3ADummy&name=newq
     // -X POST -d '{"type":"Disbatch::Plugin::Dummy","name":"newq"}' /start-queue-json
@@ -115,8 +133,8 @@ window.onload = function() {
     document.getElementById('queue-form').reset();
     postJSON('/start-queue-json', {name: name, type: type}, loadQueues);
   }
-  loadQueues();
-  var intervalID = window.setInterval(loadQueues, 60000);
+  loadQueuesAndNodes();
+  var intervalID = window.setInterval(loadQueuesAndNodes, 60000);
 
   // json
   //jsonGrid = new EditableGrid("DemoGridJSON"); 
