@@ -25,6 +25,9 @@ Changes:
 - Task stdout and stderr are now written to (mostly-compatible) GridFS documents.
 - To define a queue, the type must already be used in another queue, or listed in 'plugins' in the config
 
+New:
+- can limit a node to a maximum number of tasks to run (value goes in the nodes collection documents)
+
 Todo:
 - DOCS DOCS DOCS
 - write new web API

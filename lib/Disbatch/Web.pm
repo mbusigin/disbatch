@@ -78,7 +78,7 @@ post '/set-queue-attr-json' => sub {
 };
 
 sub get_nodes {
-    my @nodes = try { $disbatch->nodes->find->all } catch { Limper::warning "Could not get current nodes: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    my @nodes = try { $disbatch->nodes->find->sort({node => 1})->all } catch { Limper::warning "Could not get current nodes: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
     for my $node (@nodes) {
         $node->{id} = "$node->{_id}";
         delete $node->{_id};
