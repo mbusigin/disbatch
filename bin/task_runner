@@ -91,10 +91,10 @@ if ($gfs) {
     my $stderr_doc = retry { $disbatch->put_gfs($result->{stderr}, 'stderr', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stderr: $_"); $result->{warning} = "$_"; undef; };
     $result->{stdout} = $stdout_doc if defined $stdout_doc;
     $result->{stderr} = $stderr_doc if defined $stderr_doc;
-    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
+    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => {stdout => $result->{stdout}, stderr => $result->{stderr}}}) }
     catch { $logger->logdie("Could not update task $task_id stdout/stderr file ids after completion: $_") };
 } else {
-    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => $result}) }
+    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => {stdout => $result->{stdout}, stderr => $result->{stderr}}}) }
     on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }	# MongoDB::DocumentError: Document exceeds maximum size 16777216
     catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };
 }
