@@ -5,10 +5,6 @@ use warnings;
 
 use boolean;
 use Data::Dumper;
-use Synacor::Disbatch::Engine;
-use Synacor::Disbatch::Task;
-
-our @ISA=qw(Synacor::Disbatch::Task);
 
 sub new {
     my ($class, $queue, $parameters) = @_;
@@ -68,7 +64,7 @@ sub finish {
     $report->{counter} = $self->{counter} if exists $self->{counter};
     $self->{workerthread}->mongo->get_collection('reports')->insert($report) unless $self->{engineless} // false;
 
-    {queue => $self->{queue_id}, _id => $self->{id}}, {status => $status, stdout => $stdout, stderr => $stderr};
+    {status => $status, stdout => $stdout, stderr => $stderr};
 }
 
 1;
