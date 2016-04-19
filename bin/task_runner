@@ -1,7 +1,5 @@
 #!/usr/bin/env perl
 
-# USAGE: task_runner --plugin Disbatch::Plugin::Demo --task 565bc0d43fb6ecd1c8504492 --config etc/disbatch/config.json
-
 # FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
 #        $workerthread->queues->find_one({_id => $doc->{queue}})->{constructor}
 
@@ -96,3 +94,69 @@ if ($gfs) {
     on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }	# MongoDB::DocumentError: Document exceeds maximum size 16777216
     catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };
 }
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+task_runner - run a single Disbatch task
+
+=head1 SYNOPSIS
+
+  task_runner --plugin Disbatch::Plugin::Demo --task 565bc0d43fb6ecd1c8504492 --config etc/disbatch/config.json
+
+=head1 ARGUMENTS
+
+=over 2
+
+=item --config <string>
+
+Path to the JSON Disbatch config file.
+
+=item --task <string>
+
+The task's _id. Mandatory.
+
+=item --plugin <string>
+
+The name of the plugin (constructor) to use. Mandatory.
+
+=item --nogfs
+
+Do not use the custom GridFS implementation to store task stderr and stdout. Store them directly in the task like in previous versions.
+
+While using GridFS can make analysing task output more complicated, we periodically have output that exceeds the maximum MongoDB document size.
+
+If you are sure you won't need this, or can accept the loss of stdout and potentially stderr, you can disable this by adding C<"gfs": false> to the config file.
+
+=back
+
+=head1 SEE ALSO
+
+L<Disbatch>
+
+L<Disbatch::Web>
+
+L<Disbatch::Roles>
+
+L<Disbatch::Plugin::Demo>
+
+L<disbatchd>
+
+L<disbatch.pl>
+
+L<disbatch-create-users>
+
+=head1 AUTHORS
+
+Ashley Willis <awillis@synacor.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004

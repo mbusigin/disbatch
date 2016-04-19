@@ -398,3 +398,221 @@ get qr{^/} => sub {
 };
 
 1;
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+Disbatch::Web - web browser and REST interface to Disbatch.
+
+=head1 SUBROUTINES
+
+=over 2
+
+=item init(config_file => $config_file)
+
+Parameters: path to the Disbatch config file. Default is C</etc/disbatch/config.json>.
+
+Initializes the settings for the web server.
+
+Returns nothing.
+
+=item parse_params
+
+Parameters: none
+
+Parses request parameters in the following order:
+
+* from the request body if the Content-Type is C<application/x-www-form-urlencoded>
+
+* from the request body if the Content-Type is C<application/json>
+
+* from the request query otherwise
+
+Returns a C<HASH> of the parsed request parameters.
+
+=item get_nodes
+
+Parameters: none
+
+Returns an array of node objects defined, with C<timestamp> stringified and C<id> the stringified C<_id>.
+
+=item get_plugins
+
+Parameters: none
+
+Returns a C<HASH> of defined queues constructors and any defined C<config.plugins>, where values match the keys.
+
+=item get_queue_oid($queue)
+
+Parameters: Queue ID as a string, or queue name.
+
+Returns a C<MongoDB::OID> object representing this queue's _id.
+
+=item create_tasks($queue_id, $tasks)
+
+Parameters: C<MongoDB::OID> object of the queue _id, C<ARRAY> of task parameters.
+
+Creates one queued task document for the given queue _id per C<$tasks> entry. Each C<$task> entry becomes the value of the C<parameters> field of the document.
+
+Returns: the repsonse object from a C<MongoDB::Collection#insert_many> request.
+
+=back
+
+=head1 JSON ROUTES
+
+=over 2
+
+=item GET /scheduler-json
+
+Parameters: none.
+
+Returns array of queues.
+
+Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, constructor
+
+For legacy reasons, the following key/value pairs are also included: preemptive: 1, tasks_backfill: 0
+
+=item POST /set-queue-attr-json
+
+Parameters: C<< { "queueid": queueid, "attr": attr, "value": value } >>
+
+"attr" must be "maxthreads". "value" should be an integer, but no checking is done.
+
+Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
+
+=item GET /nodes
+
+Returns an array of node objects defined, with C<timestamp> stringified and C<id> the stringified C<_id>.
+
+=item POST /nodes/$node
+
+Parameters: C<< { "maxthreads": maxthreads } >>
+
+"maxthreads" is a non-negative integer or null
+
+Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $res: Object, "error": error_string_or_reponse_object } >>
+
+=item POST /start-queue-json
+
+Parameters: C<< { "name": name, "type": type } >>
+
+"type" is a constructor value.
+
+Returns array: C<< [ success, inserted_id, reponse_object ] >>
+
+=item POST /delete-queue-json
+
+Parameters: C<< { "id": id } >>
+
+Returns array: C<< [ success, error_string_or_reponse_object ] >>
+
+=item GET POST /queue-prototypes-json
+
+Parameters: none.
+
+Note: POST is deprecated.
+
+Note: You currently can't create a queue for a constructor in the web UI unless there is already a queue with that constructor that this returns.
+
+Returns an object where both keys and values are values of currently defined constructors in queues.
+
+=item GET /reload-queues-json
+
+Parameters: none.
+
+Note: Deprecated – for back-compat only. NOOP.
+
+Returns array: C<< [ 1 ] >>
+
+=item POST /queue-create-tasks-json
+
+Parameters: C<< { "queueid": queueid, "object": object } >>
+
+"object" is an array of task parameter objects.
+
+Returns array: C<< [ success, count_inserted, array_of_inserted, reponse_object ] >> or C<< [ 0, error_string ] >>
+
+=item POST /queue-create-tasks-from-query-json
+
+Parameters: C<< { "queueid": queueid, "collection": collection, "jsonfilter": jsonfilter, "parameters": parameters } >>
+
+"collection" is the name of the MongoDB collection to query.
+
+"jsonfilter" is the query.
+
+"parameters" is an object of task parameters. To insert a document value from a query into the parameters, prefix the desired key name with C<document.> as a value.
+
+Returns array: C<< [ success, count_inserted ] >> or C<< [ 0, error_string ] >>
+
+=item GET POST /search-tasks-json
+
+Parameters: C<< { "queue": queue, "filter": filter, "limit": limit, "skip": skip, "count": count, "terse": terse } >>
+
+All parameters are optional.
+
+"filter" is the query. If you want to query by Object ID, use the key "id" and not "_id".
+
+"limit" and "skip" are integers.
+
+"count" and "terse" are booleans.
+
+Note: GET is deprecated.
+
+Returns array of tasks (empty if there is an error in the query), C<< [ status, count_or_error ] >> if "count" is true, or C<< [ 0, error ] >> if other error.
+
+=back
+
+=head1 BROWSER ROUTES
+
+=over 2
+
+=item GET /
+
+Returns the contents of "/index.html" – the queue browser page.
+
+=item GET /legacy
+
+Returns a 302 to "/legacy/".
+
+=item GET /legacy/
+
+Returns the contents of "/legacy/index.html" –the legacy queue browser page.
+
+=item GET qr{^/}
+
+Returns the contents of the request path.
+
+=back
+
+=head1 SEE ALSO
+
+L<Disbatch>
+
+L<Disbatch::Roles>
+
+L<Disbatch::Plugin::Demo>
+
+L<disbatchd>
+
+L<disbatch.pl>
+
+L<task_runner>
+
+L<disbatch-create-users>
+
+=head1 AUTHORS
+
+Ashley Willis <awillis@synacor.com>
+
+Matt Busigin
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004

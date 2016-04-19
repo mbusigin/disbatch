@@ -68,10 +68,79 @@ sub finish {
 }
 
 1;
+
 __END__
 
 =head1 NAME
 
-Disbatch::Plugin::Demo - has commands 'a' (stdout, success), 'b' (stderr, success), and 'c' (stderr, failure)
+Disbatch::Plugin::Demo - demo plugin for Disbatch
 
-=head1 NOBREAK DZIL
+=head1 DESCRIPTION
+
+Has commands 'a' (stdout, success), 'b' (stderr, success), and 'c' (stderr, failure)
+
+=head1 SUBROUTINES
+
+=over 2
+
+=item new($queue, $parameters)
+
+Parameters: C<< { id => $oid } >> where C<$id> is a C<MongoDB::OID> object of the task's queue value, C<HASH> parameters value of the task.
+
+Returns a C<Disbatch::Plugin::Demo> object.
+In this demo, parameters is a C<HASH> with the key C<commands> and a value of C<a>, C<b>, C<c>, or any combination; and optionally the key C<counter>.
+This example will overwrite the parameter C<queue_id> if used.
+Any other characters in the C<commands> value are ignored, as well as any other keys.
+Parameters does not have to be a C<HASH> in your plugin – it can be any value MongoDB can store.
+
+The L<task_runner> command will overwrite any parameter with key name C<id> or C<workerthread>,
+as these are used to store the C<MongoDB::OID> object of the task and the C<Disbatch> object, respectively.
+
+=item run
+
+Parameters: none
+
+Runs the task.
+
+Returns the result of C<finish()>.
+
+=item finish($status, $stdout, $stderr)
+
+Parameters: status (positive integer: 1 for success or 2 for failure), stdout (string), stderr (string)
+
+Creates the report for this task and inserts into the C<reports> collection.
+
+Returns two C<HASH>es: a query for the task and the result to update the task with.
+
+The query is ignored, and the result I<SHOULD> have the keys C<status> (1 for success, 2 for failure), C<stdout>, and C<stderr>.
+Other keys will be ignored.
+
+=back
+
+=head1 SEE ALSO
+
+L<Disbatch>
+
+L<Disbatch::Web>
+
+L<Disbatch::Roles>
+
+L<disbatchd>
+
+L<disbatch.pl>
+
+L<task_runner>
+
+L<disbatch-create-users>
+
+=head1 AUTHORS
+
+Ashley Willis <awillis@synacor.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004

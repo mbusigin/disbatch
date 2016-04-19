@@ -44,7 +44,6 @@ if ($create_root // 0) {
     $admin->run_command([createUser => $root_user, pwd => $root_password, roles => [ { role => 'root', db => 'admin' } ]]);
 }
 
-
 $config->{attributes}{username} = $root_user;
 $config->{attributes}{password} = $root_password;
 
@@ -69,11 +68,11 @@ __END__
 
 =head1 NAME
 
-roles.pl – create roles and users for Disbatch
+disbatch-create-users - create roles and users for Disbatch
 
 =head1 SYNOPSIS
 
-  roles.pl --config /etc/disbatch/config.json --root_user root
+  disbatch-create-users --config /etc/disbatch/config.json --root_user root
 
 =head1 ARGUMENTS
 
@@ -103,6 +102,30 @@ Will drop Disbatch roles and users before creating them. Optional.
 
 =back
 
-=head1 AUTHOR
+=head1 SEE ALSO
+
+L<Disbatch>
+
+L<Disbatch::Web>
+
+L<Disbatch::Roles>
+
+L<Disbatch::Plugin::Demo>
+
+L<disbatchd>
+
+L<disbatch.pl>
+
+L<task_runner>
+
+=head1 AUTHORS
 
 Ashley Willis <awillis@synacor.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004

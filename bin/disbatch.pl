@@ -414,66 +414,140 @@ $params->{execute}->($params);
 
 __END__
 
+=encoding utf8
+
 =head1 NAME
 
-disbatch - Distributed Elastic Batch Processing Framework - Client CLI Tool
+disbatch - CLI interface to the Disbatch JSON API.
 
-=head1 DESCRIPTION
+=head1 SYNOPSIS
 
-This tool interfaces with the disbatchd process via the JSON API.  It
-allows you create new queues, spin off new tasks, and
-alter the parameters of the disbatch engine while in operation.
+    disbatch.pl [<arguments>] <command> [<command arguments>]
 
-=head1 USAGE
+=head2 ARGUMENTS
 
-    disbatch.pl [<options>] [<command>...]
+=over 2
 
-=head2 OPTIONS
+=item --url <URL>
 
-    -u,--url <URL>             disbatchd JSON API URL
-    -n,--username <username>   API username
-    -p,--password <password>   API password
-    -h,--help                  Display this message
+URL for the Disbatch JSON API you wish to connect to. Default is C<http://localhost:8080>.
+
+=item --username <username>
+
+API username
+
+=item --password <password>
+
+API password
+
+=item --help
+
+Display this message
+
+=item --config <config_file>
+
+Path to Disbatch config file. Default is C</etc/disbatch/config.json>.
+
+=item --ssl_ca_file <ssl_ca_file>
+
+Path to the SSL CA file. Needed if using SSL with a private CA.
+
+=item --disable_ssl_verification
+
+Disables hostname verification if SSL is used.
+
+=back
 
 =head2 COMMANDS
 
-    reloadqueues
+=over 2
 
-    status
+=item status
 
-    queue types
-    queue set <queue> <key> <value>
-    queue start <type> <name>
-    queue task <queue> [<key> <value>, ...]
-    queue tasks <queue> <collection> [<filter key> <value>, ...] -- [<parameter key> <value>, ...]
-
-    enclosure <queue> <collection> <filter> [<col1>, ...]
-
-=head1 EXAMPLES
-
-=head2 STATUS
-
-The first example is to grab the current running status of the disbatchd
-process.  This will list all queues, and the state they are in:
+List all queues this disbatch server processes.
 
   $ disbatch.pl status
-  .------------+-----------+--------+------------+--------+------------.
-  | Queue #    | Threads   | To-Do  | Preemptive | Done   | Processing |
-  +------------+-----------+--------+------------+--------+------------+
-  | 2158219    | 3         | 26013  | 1          | 1427   | 3          |
-  '------------+-----------+--------+------------+--------+------------'
+  ID                       | Type                   | Name | Threads | Done | To-Do | Processing
+  -------------------------+------------------------+------+---------+------+-------+-----------
+  56eade3aeb6af81e0123ed21 | Disbatch::Plugin::Demo | demo | 0       | 0    | 0     | 0
 
-=head2 TWEAKING QUEUE SETTINGS
+  1 total queues.
 
-Since there are more than 26,000 tasks, 3 threads seems a bit spartan.  We
-can increase that by increasing the maxthread queue attribute:
+=item queue set <queue> <key> <value>
 
-  $ disbatch.pl queue set 2158219 maxthreads 10
+Change a field's value in a queue.
+The only valid field is C<maxthreads> (although C<preemptive> is allowed for legacy reasons, but is ignored).
 
-=head2 STARTING A NEW QUEUE
+  $ disbatch.pl queue set 56eade3aeb6af81e0123ed21 maxthreads 10
 
-Next, let's create a new queue:
+=item queue start <type> <name>
 
-  $ disbatch.pl queue start Disbatch::Plugin::Dummy foo
-  New Queue #2185663
+Create a new queue.
 
+  $ disbatch.pl queue start Disbatch::Plugin::Demo foo
+  New Queue #5717f5edeb6af80362796221
+
+=item queue task <queue> [<key> <value> ...]
+
+Creates a task in the specified queue with the given parameters.
+
+  $ ./bin/disbatch.pl queue task 5717f5edeb6af80362796221 user1 ashley user2 ashley
+  [1,1,{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}},{"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}}],"write_concern_errors":[],"write_errors":[]},"success":1}]
+
+=item queue tasks <queue> <collection> [<filter key> <value> ...] -- -- [<parameter key> <value> ...]
+
+Creates multiple tasks in the specified queue with the given parameters, based off a filter from another collection.
+
+In the below example, the C<users> collection is queried for all documents matching C<{migration: "foo"}>.
+These documents are then used to set task parameters, and the values from the query collection are accessed by prepending C<document.>.
+
+  $ ./bin/disbatch.pl queue tasks 5717f5edeb6af80362796221 users migration foo -- -- user1 document.username user2 document.username migration document.migration
+  [1,2]
+
+=item queue search <queue> <json_query>
+
+Returns a JSON array of task documents matching the JSON query given.
+
+$ ./bin/disbatch.pl queue search 5717f5edeb6af80362796221 '{"parameters.migration": "foo"}'
+[{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c72"},"node":-1,"parameters":{"migration":"foo","user1":"ashley","user2":"ashley"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20 22:05:20"},{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c73"},"node":-1,"parameters":{"migration":"foo","user1":"matt","user2":"matt"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20 22:05:20"}]
+
+=item queue types
+
+  $ ./bin/disbatch.pl queue types
+  Disbatch::Plugin::Demo
+
+=item reloadqueues
+
+Deprecated – for back-compat only. NOOP.
+
+=back
+
+=head1 SEE ALSO
+
+L<Disbatch>
+
+L<Disbatch::Web>
+
+L<Disbatch::Roles>
+
+L<Disbatch::Plugin::Demo>
+
+L<task_runner>
+
+L<disbatchd>
+
+L<disbatch-create-users>
+
+=head1 AUTHORS
+
+Ashley Willis <awillis@synacor.com>
+
+Matt Busigin
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004

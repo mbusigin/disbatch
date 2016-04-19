@@ -89,11 +89,13 @@ sub drop_roles_and_users {
 
 1;
 
+__END__
+
 =encoding utf8
 
 =head1 NAME
 
-Disbatch::Roles – define and create MongoDB roles and users for Disbatch
+Disbatch::Roles - define and create MongoDB roles and users for Disbatch
 
 =head1 SUBROUTINES
 
@@ -126,3 +128,30 @@ Dies if the roles or users don't exist(???), or on any other MongoDB error.
 
 =back
 
+=head1 SEE ALSO
+
+L<Disbatch>
+
+L<Disbatch::Web>
+
+L<Disbatch::Plugin::Demo>
+
+L<disbatchd>
+
+L<disbatch.pl>
+
+L<task_runner>
+
+L<disbatch-create-users>
+
+=head1 AUTHORS
+
+Ashley Willis <awillis@synacor.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004

@@ -486,10 +486,247 @@ DESTROY {
 
 1;
 
+__END__
+
+=encoding utf8
+
 =head1 NAME
 
-Disbatch - Multi-threaded execution harness
+Disbatch - a scalable distributed batch processing framework using MongoDB.
 
-=head1 DESCRIPTION
+=head1 SUBROUTINES
 
-Disbatch provides a multi-threaded execution harness for doing very large jobs which comprise many smaller self-similar tasks.
+=over 2
+
+=item new(class => $class, ...)
+
+"class" defaults to "Disbatch", and the value is then lowercased.
+
+"node" is the hostname.
+
+Anything else is put into $self.
+
+=item logger($type)
+
+Parameters: type (string, optional)
+
+Returns a L<Log::Log4perl> object.
+
+=item mongo
+
+Parameters: none
+
+Returns a L<MongoDB::Database> object.
+
+=item nodes
+
+Parameters: none
+
+Returns a L<MongoDB::Collection> object for collection "nodes".
+
+=item queues
+
+Parameters: none
+
+Returns a L<MongoDB::Collection> object for collection "queues".
+
+=item tasks
+
+Parameters: none
+
+Returns a L<MongoDB::Collection> object for collection "tasks".
+
+=item config
+
+Parameters: none
+
+Returns a L<MongoDB::Collection> object for collection "config".
+
+=item ensure_config
+
+Parameters: none
+
+Ensures that C<production> and C<development> config documents exist, and that C<< $self->{config}{default_config} // 'production' >> is active.
+
+Returns nothing.
+
+=item load_config_file
+
+Parameters: none
+
+Loads C<< $self->{config_file} >> only if C<< $self->{config} >> is undefined.
+
+Anything in the config file at startup is static and cannot be changed without restarting disbatchd.
+
+Returns nothing.
+
+=item load_config
+
+Parameters: none
+
+Loads the config file at startup and (re)loads the current active config collection document.
+
+Returns nothing.
+
+=item ensure_indexes
+
+Parameters: none
+
+Ensures the proper MongoDB indexes are created for C<tasks>, C<config>, C<tasks.files>, and C<tasks.chunks> collections.
+
+Returns nothing.
+
+=item validate_plugins
+
+Parameters: none
+
+Validates constructors for defined queues.
+
+Returns nothing.
+
+=item revalidate_plugins
+
+Parameters: none
+
+Clears constructor validation and re-runs C<validate_plugins()>.
+
+Returns nothing.
+
+=item scheduler_report
+
+Parameters: none
+
+Used by the CLI tool and the web interface to get queue information.
+
+Returns an C<ARRAY> containing C<HASH>es of queue information.
+
+=item update_node_status
+
+Parameters: none
+
+Updates the node document with the current timestamp and queues as returned by C<scheduler_report()>.
+
+Returns nothing.
+
+=item claim_task($queue)
+
+Parameters: queue document
+
+Claims a task (sets status to -1 and sets node to hostname) for the given queue.
+
+Returns a task document, or undef if no queued task found.
+
+=item unclaim_task($task_id)
+
+Parameters: L<MongoDB::OID> object for a task
+
+Sets the task's node to -1, status to -2, and mtime to 0 if it has status -1 and this node's hostname.
+
+Returns a task document, or undef if a matching task is not found.
+
+=item orphaned_tasks
+
+Parameters: none
+
+Sets status to -6 for all tasks for this node with status -1 and an mtime of more than 300 seconds ago.
+
+Returns nothing.
+
+=item start_task($queue, $task)
+
+Parameters: queue document, task document
+
+Will fork and exec C<< $self->{config}{task_runner} >> to start the given task.
+If the exec fails, it will set threads to 0 for the given queue and call C<unclaim_task()>.
+
+Returns nothing.
+
+=item count_running($queue_id)
+
+Parameters: L<MongoDB::OID> object for a queue (or any other valid query value such as C<< {'$exists' => 1} >>).
+
+Counts all tasks on the current node for the given queue with a status of 0 or -1.
+
+Returns: a non-negative integer, or undef if an error.
+
+=item count_todo($queue_id)
+
+Parameters: L<MongoDB::OID> object for a queue
+
+Returns the C<count_todo> value for the given queue if defined and non-negative,
+otherwise counts all tasks for the given queue with a status less than or equal to 0 and sets C<count_todo>.
+
+Returns: a non-negative integer, or undef if an error.
+
+=item count_total($queue_id)
+
+Parameters: L<MongoDB::OID> object for a queue
+
+Returns the C<count_total> value for the given queue if defined and non-negative, otherwise counts all tasks for the given queue and sets C<count_total>.
+
+Returns: a non-negative integer, or undef if an error.
+
+=item is_active_queue($queue_id)
+
+Parameters: L<MongoDB::OID> object for a queue
+
+Checks C<config.activequeues> if it has entries, and returns 1 if given queue is defined in it or 0 if not.
+If it does not have entries, checks C<config.ignorequeues> if it has entries, and returns 0 if given queue is defined in it or 1 if not.
+
+Returns 1 or 0.
+
+=item process_queues
+
+Parameters: none
+
+Will claim and start as many tasks for each queue as allowed by the current node's C<maxthreads> and each queue's C<maxthreads>.
+
+Returns nothing.
+
+=item put_gfs($content, $filename, $metadata)
+
+Parameters: UTF-8 content to store, optional filename to store it as, optional metadata C<HASH>
+
+Stores UTF-8 content in a custom GridFS format that does not store it as BinData.
+
+Returns a C<MongoDB::OID> object for the ID inserted in the C<tasks.files> collection.
+
+=item get_gfs($filename_or_id, $metadata)
+
+Parameters: filename or C<MongoDB::OID> object, optional metadata C<HASH>
+
+Gets UTF-8 content from the custom GridFS format. Metadata is only used if given a filename instead of a C<MongoDB::OID> object.
+
+Returns: content string.
+
+=back
+
+=head1 SEE ALSO
+
+L<Disbatch::Web>
+
+L<Disbatch::Roles>
+
+L<Disbatch::Plugin::Demo>
+
+L<disbatchd>
+
+L<disbatch.pl>
+
+L<task_runner>
+
+L<disbatch-create-users>
+
+=head1 AUTHORS
+
+Ashley Willis <awillis@synacor.com>
+
+Matt Busigin
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is Copyright (c) 2016 by Ashley Willis.
+
+This is free software, licensed under:
+
+  The Apache License, Version 2.0, January 2004
