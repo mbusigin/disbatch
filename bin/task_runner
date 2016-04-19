@@ -73,6 +73,8 @@ my ($query, $result) = try {
     $logger->error("Thread has uncaught exception: $_");
     {queue => $queue, _id => $task_id}, {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
 };
+$result = $query unless exists $query->{queue} and exists $query->{_id};	# temp hack because there's no reason to return $query
+
 my $status = $result->{status} == 1 ? 'succeeded' : 'failed';
 $logger->info("Task $task_id $status.");
 warn "STDOUT: $result->{stdout}";
