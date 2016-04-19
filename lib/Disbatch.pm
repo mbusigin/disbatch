@@ -298,7 +298,7 @@ sub claim_task {
     $self->{claimed_task} = try { $self->tasks->find_one_and_update($query, $update, $options) } catch { $self->logger->error("Could not claim task: $_"); undef };
 }
 
-# will unclaim and return a task for given queue, or return undef
+# will unclaim and return the task document for the given OID, or return undef
 sub unclaim_task {
     my ($self, $task_id) = @_;
     my $query  = { _id => $task_id, node => $self->{node}, status => -1 };
@@ -345,12 +345,17 @@ sub count_running {
     try { $self->tasks->count({node => $self->{node}, status => {'$in' => [-1,0]}, queue => $queue_id}) } catch { $self->logger->error("Could not count running tasks"); undef };
 }
 
-# returns count_todo for given queue _id, setting it if undefined
+# returns count_todo for given queue _id, setting it if undefined or negative
 sub count_todo {
     my ($self, $queue_id) = @_;
 
+    if (!$queue_id->$_isa('MongoDB::OID')) {
+        $self->logger->error("count_todo() was not passed an MongoDB::OID object");
+        return undef;
+    }
+
     my $queue = try { $self->queues->find_one({_id => $queue_id}) } catch { $self->logger->error("Could not find queue"); undef };
-    if (defined $queue and defined $queue->{count_todo}) {
+    if (defined $queue and defined $queue->{count_todo} and $queue->{count_todo} >= 0) {
         $queue->{count_todo};
     } else {
         try {
@@ -364,12 +369,17 @@ sub count_todo {
     }
 }
 
-# returns count_total for given queue _id, setting it if undefined
+# returns count_total for given queue _id, setting it if undefined or negative
 sub count_total {
     my ($self, $queue_id) = @_;
 
+    if (!$queue_id->$_isa('MongoDB::OID')) {
+        $self->logger->error("count_total() was not passed an MongoDB::OID object");
+        return undef;
+    }
+
     my $queue = try { $self->queues->find_one({_id => $queue_id}) } catch { $self->logger->error("Could not find queue"); undef };
-    if (defined $queue and defined $queue->{count_total}) {
+    if (defined $queue and defined $queue->{count_total} and $queue->{count_total} >= 0) {
         $queue->{count_total};
     } else {
         try {
