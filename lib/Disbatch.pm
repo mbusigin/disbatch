@@ -409,18 +409,18 @@ sub process_queues {
     my ($self) = @_;
     my $revalidate_plugins = 0;
     my $node = try { $self->nodes->find_one({node => $self->{node}}, {maxthreads => 1}) } catch { $self->logger->error("Could not find node: $_"); { maxthreads => 0 } };
-    if (defined $node->{maxthreads}) {
-        return if ($self->count_running({'$exists' => 1}) // 0) >= $node->{maxthreads};
-    }
+    my $node_running = $self->count_running({'$exists' => 1}) // 0;
+    return if defined $node and defined $node->{maxthreads} and $node_running >= $node->{maxthreads};
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {
             my $running = $self->count_running($queue->{_id});
-            while (defined $running and ($queue->{maxthreads} // 0) > $running) {
+            while (defined $running and ($queue->{maxthreads} // 0) > $running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
                 my $task = $self->claim_task($queue);
                 last unless defined $task;
                 $self->start_task($queue, $task);
                 $running = $self->count_running($queue->{_id});
+                $node_running = $self->count_running({'$exists' => 1}) // 0;
             }
         } else {
             $revalidate_plugins = 1;

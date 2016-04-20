@@ -103,6 +103,9 @@ my $disbatch = Disbatch->new(class => 'Disbatch', config_file => $config_file);
 $disbatch->load_config;
 $disbatch->ensure_indexes;
 
+# make sure node document exists:
+$disbatch->update_node_status;	# FIXME: add tests for this
+
 #####################################
 # Start web:
 sub daemonize {
@@ -314,7 +317,7 @@ if ($webpid == 0) {
     is $content->[1], 4, 'count';
 
     # Get report for task:
-    my $report = retry { $disbatch->mongo->coll('reports')->find_one() or die 'No report found' } catch { warn $_ };	# status done task_id
+    my $report = retry { $disbatch->mongo->coll('reports')->find_one() or die 'No report found' } catch { warn $_; {} };	# status done task_id
     is $report->{status}, 'SUCCESS', 'report success';
 
     # Get task of report:
