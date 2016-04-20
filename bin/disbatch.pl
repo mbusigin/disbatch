@@ -315,7 +315,7 @@ sub queue_start {
     if ($r->is_success) {
         my $obj = $json->decode($r->decoded_content);
         if ($obj->[0] == 1) {
-            say "New Queue #$obj->[1]";
+            say "New Queue #$obj->[1]{'$oid'}";
             return;
         } else {
             say "Couldn't create queue:  $obj->[1]";
