@@ -65,7 +65,6 @@ my %commands = (
     status       => \&parse_status,
     queue        => \&parse_queue,
     reloadqueues => \&parse_reloadqueues,
-    enclosure    => \&parse_enclosure,
 );
 
 sub parse_reloadqueues {
@@ -78,25 +77,6 @@ sub parse_status {
     my ($params) = @_;
     $params->{execute} = \&status;
     return 1, 'Status';
-}
-
-sub parse_enclosure {
-    my ($params, @ARGS) = @_;
-
-    my $perl = '';
-    while (<STDIN>) {
-        $perl .= $_;
-    }
-
-    $params->{execute}    = \&queue_tasks;
-    $params->{queueid}    = shift @ARGS;
-    $params->{collection} = shift @ARGS;
-    $params->{filter}     = shift @ARGS;
-    unshift @ARGS, $perl;
-
-    $params->{columns} = $json->encode(\@ARGS);
-
-    return 1, undef;
 }
 
 sub parse_queue {
