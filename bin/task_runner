@@ -1,10 +1,9 @@
 #!/usr/bin/env perl
 
-# USAGE: ./bin/task_runner --host localhost --db disbatch_test --plugin Disbatch::Plugin::Dummy --task 565bc0d43fb6ecd1c8504492
+# USAGE: task_runner --plugin Disbatch::Plugin::Demo --task 565bc0d43fb6ecd1c8504492 --config etc/disbatch/config.json
 
 # FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
 #        $workerthread->queues->find_one({_id => $doc->{queue}})->{constructor}
-# FIXME: Do we need to even pass the queue _id at all? The task _id is unique, and the task contains the queue _id.
 
 use 5.12.0;
 use warnings;
@@ -19,10 +18,9 @@ use MongoDB::OID 1.0.0;
 use Try::Tiny::Retry;
 use Safe::Isa;
 
-my ($queue, $task_id, $plugin, $gfs, $config_file);
+my ($task_id, $plugin, $gfs, $config_file);
 
 GetOptions(
-    'queue=s'    => \$queue,
     'task=s'     => \$task_id,
     'plugin=s'   => \$plugin,
     'gfs!'       => \$gfs,
@@ -44,7 +42,6 @@ $logger->logdie('Config file must be passed with --config option') unless define
 
 $logger->logdie('No --task') unless defined $task_id;
 $logger->logdie('No --plugin') unless defined $plugin;
-#$logger->logdie('No --queue') unless defined $queue;
 $logger->logdie("--plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
 $logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
@@ -58,9 +55,8 @@ my $doc = retry {
 $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
 
-my $queue_oid = try { MongoDB::OID->new(value => $queue) } catch { $queue };
 my $task = try {
-    $plugin->new({id => $queue_oid}, $doc->{parameters});
+    $plugin->new({id => $doc->{queue}}, $doc->{parameters});
 } catch {
     $logger->logdie($_);
 };
@@ -71,7 +67,7 @@ my ($query, $result) = try {
     $task->run;
 } catch {
     $logger->error("Thread has uncaught exception: $_");
-    {queue => $queue, _id => $task_id}, {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
+    {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
 };
 $result = $query unless exists $query->{queue} and exists $query->{_id};	# temp hack because there's no reason to return $query
 

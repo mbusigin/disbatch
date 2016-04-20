@@ -322,7 +322,6 @@ sub start_task {
         '--config' => $self->{config_file},
         '--plugin' => $self->{plugins}{$queue->{constructor}},
         '--task'   => $task->{_id},
-        '--queue'  => $queue->{_id},
     );
     push @args, '--nogfs' unless ($self->{config}{gfs} // true);
     $self->logger->info(join ' ', $command, @args);
