@@ -61,13 +61,12 @@ my $task = try {
 $task->{workerthread} = $disbatch;
 $task->{id} = $oid;
 
-my ($query, $result) = try {
+my ($result) = try {
     $task->run;
 } catch {
     $logger->error("Thread has uncaught exception: $_");
     {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
 };
-$result = $query unless exists $query->{queue} and exists $query->{_id};	# temp hack because there's no reason to return $query
 
 my $status = $result->{status} == 1 ? 'succeeded' : 'failed';
 $logger->info("Task $task_id $status.");
