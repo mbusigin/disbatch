@@ -1,7 +1,7 @@
-## This documents configuring Disbatch 4.
+### This documents configuring Disbatch 4.
 
 
-### Configure `/etc/disbatch/config.json`
+#### Configure `/etc/disbatch/config.json`
 1. Copy `/etc/disbatch/config.json-example` to `/etc/disbatch/config.json`
 2. Make sure that only the process running Disbatch can read and edit
    `/etc/disbatch/config.json`
@@ -16,7 +16,7 @@
    7. Set `activequeues` or `ignorequeues` per node if used
 
 
-### Create MongoDB users for Disbatch if using authentication
+#### Create MongoDB users for Disbatch if using authentication
 - If your MongoDB `root` user has a different name, passs that to `--root_user`.
   If no users exist yet, also pass `--create_root`. See the perldoc for more
   info.
@@ -24,7 +24,7 @@
         disbatch-create-users --config /etc/disbatch/config.json --root_user root
 
 
-### Setup the `config` collection (optional):
+#### Setup the `config` collection (optional):
 - this is done automatically if not defined: disbatchd creates 2 documents with
   labels `production` and `development`
 - each document must have a unique `label`
