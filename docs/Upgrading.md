@@ -10,7 +10,7 @@
 
 #### Configure
 
-See [Configuring](docs/Configuring.md)
+See [Configuring](/docs/Configuring.md)
 
 Consult `/etc/disbatch/disbatch.ini` for reference of current settings.
 
