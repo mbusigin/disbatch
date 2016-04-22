@@ -6,11 +6,13 @@ a scalable distributed batch processing framework
 Disbatch 4 is a scalable distributed batch processing framework using MongoDB.
 It runs on one-to-many nodes (servers), where each node handles hundreds to
 thousands of concurrent tasks for one or more plugins.
-Disbatch can be updated and restarted as needed to deploy changes without
+Disbatch 4 can be updated and restarted as needed to deploy changes without
 interrupting currently running tasks.
 
-The Disbatch daemon starts independent tasks using the specified plugin, and a
+The Disbatch 4 daemon starts independent tasks using the specified plugin, and a
 separate process provides the JSON API for the browser and CLI front ends.
+
+This is almost a complete rewrite of Disbatch 3, written by Matt Busigin.
 
 For an in-depth description of the design, see
 [Design](docs/Design.md).
@@ -30,7 +32,7 @@ For an in-depth description of the design, see
         cpanm disbatch-<VERSION>.tar.gz
 
 
-#### Configuring Disbatch
+#### Configuring Disbatch 4
 
 See [Configuring](docs/Configuring.md)
 
@@ -40,7 +42,7 @@ See [Configuring](docs/Configuring.md)
 See [Plugins](docs/Plugins.md)
 
 
-#### Running Disbatch
+#### Running Disbatch 4
 
 See [Running](docs/Running.md)
 
