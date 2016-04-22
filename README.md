@@ -32,7 +32,7 @@ For an in-depth description of the design, see
 
 #### Configuring Disbatch
 
-See [Configuring](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/Configuring.md)
+See [Configuring](docs/Configuring.md)
 
 
 #### Creating task plugins
