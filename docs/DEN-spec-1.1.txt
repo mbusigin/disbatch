@@ -6,25 +6,24 @@ Created: May, 2011
 Updated: Jan, 2013
 
 
-WARNING: This has been horribly out of date ever since it was added to the repo in Jan, 2013. – awillis
-
+WARNING: This has been horribly out of date ever since it was added to the repo
+in Jan, 2013. — awillis
 
 Disbatch is a multi-platform, multi-language, elastic, distributed batch
 processing framework. This document outlines the protocol which a Disbatch
 Execution Node (DEN) must follow to correctly operate with Disbatch Command
-Nodes (DCN), as well as other DENs operating under the same
-network/database.
+Nodes (DCN), as well as other DENs operating under the same network/database.
 
 OVERVIEW
 
 Disbatch is a multi-platform, multi-language elastic distributed batch
-processing framework. It heavily leverages MongoDB and JSON. The core
-components are MongoDB, N-number of DENs (Disbatch Execution Nodes), and
-potentially one or more DCNs (Disbatch Command Node).
+processing framework. It heavily leverages MongoDB and JSON. The core components
+are MongoDB, N-number of DENs (Disbatch Execution Nodes), and potentially one or
+more DCNs (Disbatch Command Node).
 
-Execution is split among queues, which are of homogenous type. Each queue
-class is implemented as a plugin on the node. Nodes which poll for queues
-that don't have requisite classes implemented are ignored.
+Execution is split among queues, which are of homogenous type. Each queue class
+is implemented as a plugin on the node. Nodes which poll for queues that don't
+have requisite classes implemented are ignored.
 
 MECHANICS
 
@@ -36,52 +35,49 @@ MongoDB, which are created one-document per queue in the 'queues' collection.
 
 TASK LIFECYCLE
 
-A task is first created, generally on a DCN, either individually, or as a
-result of a batch operation. Individual Tasks are saved to the 'tasks'
-collection, with a reference back to the queue (by ObjectId) it sits under.
-All tasks have a number of attributes in common: id, ctime, mtime, queue,
-node, parameters, stdout, stderr, status.
+A task is first created, generally on a DCN, either individually, or as a result
+of a batch operation. Individual Tasks are saved to the 'tasks' collection, with
+a reference back to the queue (by ObjectId) it sits under. All tasks have a
+number of attributes in common: id, ctime, mtime, queue, node, parameters,
+stdout, stderr, status.
 
 The mechanism for creating the tasks is up to the implementor of the DCN, or
 even through some other mechanism. It is their job to create tasks to this
-specification so that DENs may execute them, and a DCN can provide an
-interface into the data.
+specification so that DENs may execute them, and a DCN can provide an interface
+into the data.
 
-A task is created, initialised with parameters, its status set to Created,
-and its node set to Unclaimed. Upon each Scheduling Interval, every DEN will
-seek out these Created and Unclaimed tasks, putting them into a Pending and
-Claimed state up until the per-node maximum thread threshold (Maxthreads) is
-saturated.
+A task is created, initialised with parameters, its status set to Created, and
+its node set to Unclaimed. Upon each Scheduling Interval, every DEN will seek
+out these Created and Unclaimed tasks, putting them into a Pending and Claimed
+state up until the per-node maximum thread threshold (Maxthreads) is saturated.
 
 When the DEN is ready, the Task is actually put into the Running status. The
-plugin itself may report back status at any interval it likes, and it may
-alter the task object any way it likes, but it is the responsibility of the
-DEN to assure the status is up to date after it is complete, whether the
-plugin has adjusted the status correctly or not.
-
+plugin itself may report back status at any interval it likes, and it may alter
+the task object any way it likes, but it is the responsibility of the DEN to
+assure the status is up to date after it is complete, whether the plugin has
+adjusted the status correctly or not.
+
 DISBATCH EXECUTION NODE RESPONSIBILITIES
 
 REQUIREMENTS
 
 Each DEN:
 
-	MUST have a unique Node ID
+* MUST have a unique Node ID
+* MUST register itself via the DEN Node Registration Protocol
+* MUST execute tasks via the DEN Task Execution Protocol
 
-	MUST register itself via the DEN Node Registration Protocol
-
-	MUST execute tasks via the DEN Task Execution Protocol
 
 NODE ID
 
-Node ID should be a short (1-8 characters), and follow the standard C identifier methdology:
-
-[a-zA-Z][a-zA-Z_0-9]*
+Node ID should be a short (1-8 characters), and follow the standard C identifier
+methdology: [a-zA-Z][a-zA-Z_0-9]*
 
 
 STARTUP & INITIALISATION
 
-Before a DEN starts processing tasks, it is obligated to clean up any tasks
-that were not put into a completed state.
+Before a DEN starts processing tasks, it is obligated to clean up any tasks that
+were not put into a completed state.
 
 
 DEN NODE REGISTRATION PROTOCOL
@@ -89,65 +85,56 @@ DEN NODE REGISTRATION PROTOCOL
 Upon startup, each node must register itself to the Nodes collection. The
 following elements must be included:
 
-	_id:		ObjectId()				// Node ID,
-	heartbeat:	{...}					// Heartbeat object (see
-								   below)
-	version:	"r-disbatch 1.21"			// Engine version string
-	spec_version:	"1.0"					// DEN Specification
-	queuetypes	[ { class: "Synacor::Migration::IMAP2IMAP",
-			    version: '1.1a' }, .. ]		// Array of plugins enabled
-
+  _id:		ObjectId()			// Node ID,
+  heartbeat:	{...}				// Heartbeat object
+  version:	"r-disbatch 1.21"		// Engine version string
+  spec_version:	"1.0"				// DEN Specification
+  queuetypes	[ { class: "Synacor::Migration::IMAP2IMAP",
+		    version: '1.1a' }, .. ]	// Array of plugins enabled
 
 
 HEARTBEAT OBJECT
 
-The heartbeat object includes status updates on both the engine, as well as any queues active.
+The heartbeat object includes status updates on both the engine, as well as any
+queues active.
 
-	datetime:	ISODate("2011-05-12T06:00:07Z")		// Heartbeat timestamp
-	pid:		1234					// System PID
-	queues:		[...]					// Queue heartbeat objects (see
-								   below)
+  datetime:	ISODate("2011-05-12T06:00:07Z")	// Heartbeat timestamp
+  pid:		1234				// System PID
+  queues:	[...]				// Queue heartbeat objects
+
 
 QUEUE HEARTBEAT OBJECT
 
 All of this data is on a per-queue basis.
 
-	class:		'Synacor::Migration::IMAP2IMAP'		// Plugin class
-	queue:		ObjectId()				// Queue reference
-	threads		50					// Thread count
+  class:	'Synacor::Migration::IMAP2IMAP'	// Plugin class
+  queue:	ObjectId()			// Queue reference
+  threads	50				// Thread count
 
-
-
+
 FULL NODE JSON OBJECT EXAMPLE
 
 {
-	_id:		'mig01',
-	version:	'Disbatch.pl v2.0.2',
-	den_version:	'1.0',
-	queuetypes:	[
-				{
-					class: 'Synacor::Migration::IMAP2IMAP',
-					version: '1.1a'
-				},
-				{
-					class: 'Synacor::Migration::Zimbra::UserImport',
-					version: '0.9'
-				}
-			],
-	heartbeat:	{
-				datetime: ISODate("2011-05-12T06:00:07Z"),
-
-				pid:		34182,
-				queues: [
-						{
-							class: 'Synacor::Migration::IMAP2IMAP',
-							queue: ObjectId(),
-							threads: 50,
-							idle: 15,
-							processing: 35
-						}
-					]
-			}
+  _id:         'mig01',
+  version:     'Disbatch.pl v2.0.2',
+  den_version: '1.0',
+  queuetypes: [
+    { class: 'Synacor::Migration::IMAP2IMAP', version: '1.1a' },
+    { class: 'Synacor::Migration::Zimbra::UserImport', version: '0.9' }
+  ],
+  heartbeat: {
+    datetime: ISODate("2011-05-12T06:00:07Z"),
+    pid:      34182,
+    queues: [
+      {
+        class: 'Synacor::Migration::IMAP2IMAP',
+        queue: ObjectId(),
+        threads: 50,
+        idle: 15,
+        processing: 35
+      }
+    ]
+  }
 }
 
 
@@ -157,89 +144,86 @@ The DENs will read from the "queues" collection, and can expect the following
 format:
 
 {
-	_id:		'insight1'			// Queue ID,
-	ctime:		ISODate("2011-05-12T06:00:07Z"),// Create time
-	class:		'Synacor::Migration::IMAP2IMAP',// Class
-	description:	'Insight Primary Migration',	// Description
-	maxthreads:	50,				// Maximum per-node concurrency
-
-	nodes_pin:	[ 'mig01', 'mig02' ],		// Pin queue to these nodes (and no-where else)
-	nodes_ignore:	[ 'mig03', 'mig04' ]		// OR: ignore on these nodes
+  _id:	        'insight1'			 // Queue ID,
+  ctime:        ISODate("2011-05-12T06:00:07Z"), // Create time
+  class:        'Synacor::Migration::IMAP2IMAP', // Class
+  description:  'Insight Primary Migration',	 // Description
+  maxthreads:   50,				 // Maximum per-node concurrency
+  nodes_pin:    [ 'mig01', 'mig02' ],		 // Pin queue to these nodes
+  nodes_ignore: [ 'mig03', 'mig04' ]		 // OR: ignore on these nodes
 }
 
-The "nodes_pin" and "nodes_ignore" attributes are mutually exclusive.  If
-using pin, it is exclusive to the specified nodes.  If using ignore, it will
-run on all nodes except for those specified.  If both are erroneously
-provided, nodes_pin takes precedence over nodes_ignore.
+The "nodes_pin" and "nodes_ignore" attributes are mutually exclusive. If using
+pin, it is exclusive to the specified nodes. If using ignore, it will run on all
+nodes except for those specified. If both are erroneously provided, nodes_pin
+takes precedence over nodes_ignore.
 
-Queue IDs can either be automatically generated, or provided as a uniquely
-named user parameter.
+Queue IDs can either be automatically generated, or provided as a uniquely named
+user parameter.
 
-
+
 TASK DOCUMENT SPECIFICATION
 
 Each task the DEN pulls will be in the following format:
 
 {
-	_id:		ObjectId('238d892efadee'),
-	queue:		'insight1',
-	ctime:		ISODate("2011-05-12T06:00:07Z"),// Create time
-	mtime:		ISODate("2011-05-12T06:00:07Z"),// Modify time
-	parameters:	{ username: 'foo@foo.com', host: 'md08.foo.com' }, // Parameters
-	stdout:		'',				// Your task output goes here
-	stderr:		'',				// Your task errors go here
-	status:		-2,				// Task status code (described below)
-	node:		-1
+  _id:        ObjectId('238d892efadee'),
+  queue:      'insight1',
+  ctime:      ISODate("2011-05-12T06:00:07Z"),	// Create time
+  mtime:      ISODate("2011-05-12T06:00:07Z"),	// Modify time
+  parameters: { username: 'foo@foo.com', host: 'md08.foo.com' },
+  stdout:     '',				// Your task output goes here
+  stderr:     '',				// Your task errors go here
+  status:     -2,				// Task status code
+  node:       -1
 }
+
 
 TASK STATUS CODE
 
-	-6:		Orphaned
-	-5:		Cancelled
-	-4:		Blocked
-	-3:		Terminated
-	-2:		Created
-	-1:		Claimed
-	0:		Running
-	1:		Concluded
-	2+:		Concluded with errors
+  -6: Orphaned
+  -5: Cancelled
+  -4: Blocked
+  -3: Terminated
+  -2: Created
+  -1: Claimed
+   0: Running
+   1: Concluded
+  2+: Concluded with errors
 
 
 TASK LIFECYCLE
 
-Each task is initialised with its node as -1 (unclaimed) and status as -2 (created).
+Each task is initialised with its node as -1 (unclaimed) and status as -2
+(created).
 
 DENs can claim tasks from a queue one of two ways:
 
-	1. findAndModify()
-		where: queue: <queue> and node: -1 and status: -2
-		set: node: <node> and status: -1 (or 0 if immediately processed)
+  1. findAndModify()
+     where: queue: <queue> and node: -1 and status: -2
+     set: node: <node> and status: -1 (or 0 if immediately processed)
+  2. update()
+     where: queue: <queue> and node: -1 and status: -2
+     set: node: <node> and status: -1
 
-or
+     <id> = find_one()
+     where: queue: <queue> and node: <node> and status: -1
 
-	2. update()
-		where: queue: <queue> and node: -1 and status: -2
-		set: node: <node> and status: -1
-
-	   <id> = find_one()
-		where: queue: <queue> and node: <node> and status: -1
-
-	   update()
-		where: _id: <id>
-		set: status: 0, mtime: now()
-
+     update()
+     where: _id: <id>
+     set: status: 0, mtime: now()
 
 Both of these mechanisms ensure that there will be no race conditions amongst
 DENs, even in a sharded or replicated MongoDB cluster.
 
-The DEN thread running a task may update any non-specification attributes
-whilst it is being executed.
+The DEN thread running a task may update any non-specification attributes whilst
+it is being executed.
 
 When the DEN thread has concluded the task, it must update the task document:
 
 {
-	status: 1,
-	stdout: 'Completion message',
-	stderr: 'Errors',
-	mtime: now()
+  status: 1,
+  stdout: 'Completion message',
+  stderr: 'Errors',
+  mtime:  now()
 }
