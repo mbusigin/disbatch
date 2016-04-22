@@ -3,7 +3,11 @@ disbatch
 
 Multi-language, elastic, distributed batch processing framework.
 
-Disbatch is a multi-platform, multi-language elastic distributed batch processing framework. It heavily leverages MongoDB and JSON. The core components are MongoDB, N-number of DENs ([Disbatch Execution Nodes](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/DEN-spec-1.1.txt)), and potentially one or more DCNs (Disbatch Command Node).
+Disbatch is a multi-platform, multi-language elastic distributed batch
+processing framework. It heavily leverages MongoDB and JSON. The core components
+are MongoDB, N-number of DENs ([Disbatch Execution Nodes]
+(https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/DEN-spec-1.1.txt)),
+and potentially one or more DCNs (Disbatch Command Node).
 
 #### Installing
 
@@ -16,7 +20,8 @@ Disbatch is a multi-platform, multi-language elastic distributed batch processin
 
 0. `cp /etc/disbatch/disbatch.ini-example /etc/disbatch/disbatch.ini`
 0. `cp /etc/disbatch/config.json-example /etc/disbatch/config.json`
-0. Make sure that only the process running Disbatch can read and edit `/etc/disbatch/config.json`
+0. Make sure that only the process running Disbatch can read and edit
+   `/etc/disbatch/config.json`
 0. `$EDITOR /etc/disbatch/config.json`
   0. Change `mongohost` to the URI of your MongoDB servers.
   0. Change `database` to the MongoDB database name you are using for Disbatch.
