@@ -13,7 +13,7 @@ The Disbatch daemon starts independent tasks using the specified plugin, and a
 separate process provides the JSON API for the browser and CLI front ends.
 
 For an in-depth description of the design, see
-[Design](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/Design.md).
+[Design](docs/Design.md).
 
 
 #### Installing
@@ -37,22 +37,22 @@ See [Configuring](docs/Configuring.md)
 
 #### Creating task plugins
 
-See [Plugins](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/Plugins.md)
+See [Plugins](docs/Plugins.md)
 
 
 #### Running Disbatch
 
-See [Running](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/Running.md)
+See [Running](docs/Running.md)
 
 
 #### Changes from Disbatch 3
 
-See [Differences](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/Differences.md)
+See [Differences](docs/Differences.md)
 
 
 #### Upgrading from Disbatch 3
 
-See [Upgrading](https://raw.githubusercontent.com/mbusigin/disbatch/master/docs/Upgrading.md)
+See [Upgrading](docs/Upgrading.md)
 
 
 #### Authors
