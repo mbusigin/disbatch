@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 # FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
-#        $workerthread->queues->find_one({_id => $doc->{queue}})->{constructor}
+#        $workerthread->queues->find_one({_id => $queue})->{constructor}
 
 use 5.12.0;
 use warnings;
@@ -53,8 +53,10 @@ my $doc = retry {
 $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
 
+my $queue = MongoDB::OID->new($doc->{queue});
+# FIXME: just pass task $doc and $disbatch, but figure out upgrade path...
 my $task = try {
-    $plugin->new({id => $doc->{queue}}, $doc->{parameters});
+    $plugin->new({id => $queue}, $doc->{parameters});
 } catch {
     $logger->logdie($_);
 };
@@ -78,7 +80,7 @@ retry { $disbatch->tasks->update_one({_id => $oid, status => 0, node => $disbatc
 catch { $logger->logdie("Could not update task $task_id status to $result->{status} after completion: $_") };
 
 # decrement count_todo
-try { $disbatch->queues->update_one({_id => $doc->{queue}}, {'$inc' => {count_todo => -1}}) } catch { $logger->error("Could not decrement count_todo for queue $doc->{queue}: $_") };
+try { $disbatch->queues->update_one({_id => $queue}, {'$inc' => {count_todo => -1}}) } catch { $logger->error("Could not decrement count_todo for queue $queue: $_") };
 
 # set rest of result:
 if ($gfs) {
