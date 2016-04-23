@@ -70,6 +70,22 @@ my ($result) = try {
     {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
 };
 
+# verify $result is a HASH and $result->{status} is a postive integer, and if not fail task
+if (ref $result ne 'HASH') {
+    $logger->error("Task $oid did not return a HASH");
+    my $bad = { status => 2, stdout => Dumper($result), stderr => 'Task did not return a HASH. See stdout for Dumper result'};
+    $result = $bad;
+}
+if (ref $result->{status}) {
+    $logger->error("Task $oid returned a ref as status: ", Dumper $result->{status});
+    $result->{status} = 2;
+}
+if ($result->{status} !~ /^[1-9]\d*$/) {
+    $logger->error("Task $oid returned other than a positive integer as status: '$result->{status}'");
+    $result->{status} = 2;
+}
+$result->{status} += 0;		# force integer-as-string to integer
+
 my $status = $result->{status} == 1 ? 'succeeded' : 'failed';
 $logger->info("Task $task_id $status.");
 warn "STDOUT: $result->{stdout}";
