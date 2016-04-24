@@ -7,64 +7,92 @@ use boolean;
 use Data::Dumper;
 
 sub new {
-    my ($class, $queue, $parameters) = @_;
+    my $class = shift;
 
-    warn Dumper $parameters;
-    my %self = map { $_ => $parameters->{$_} } keys %$parameters;       # modifying $parameters breaks something.
-    $self{queue_id} = $queue->{id};
-    bless \%self, $class;
+    # deprecated Disbatch 3 format
+    if (ref $_[0]) {
+        my ($queue, $parameters) = @_;
+        warn Dumper $parameters;
+        my %self = map { $_ => $parameters->{$_} } keys %$parameters;       # modifying $parameters breaks something in Disbatch 3.
+        $self{queue_id} = $queue->{id};
+        return bless \%self, $class;
+    }
+
+    my $self = { @_ };
+    warn Dumper $self->{task}{parameters};
+
+    # back-compat, so as to not change Disbatch 3 plugins so much
+    # stick all params in $self
+    for my $param (keys %{$self->{task}{parameters}}) {
+        next if $param eq 'workerthread' or $param eq 'task';
+        $self->{$param} = $self->{task}{parameters}{$param};
+    }
+    $self->{queue_id} = $self->{task}{queue};
+    $self->{id} = $self->{task}{_id};
+
+    bless $self, $class;
 }
 
 sub run {
     my ($self) = @_;
 
-    my $commands = $self->{commands};
-    $commands = 'abc' if $commands eq '*';
+    $self->{commands} = 'abc' if $self->{commands} eq '*';
 
-    my ($status, $stdout, $stderr) = (1, '', '');
+    $self->{report} = {
+        counter  => $self->{counter},
+        commands => $self->{commands},
+        task_id  => $self->{task}{_id},
+        queue_id => $self->{task}{queue},
+        version  => $Disbatch::Plugin::Demo::VERSION,
+        started  => time,
+        errors   => 0,
+    };
 
     say "You've started a dummy tasks. Congrats!";
 
-    if ($commands =~ /a/) {
-    	my $text = "This is command 'a' for apple.\n";
-    	print $text;
-    	$stdout .= $text;
+    if ($self->{commands} =~ /a/) {
+        my $text = "This is command 'a' for apple.\n";
+        print $text;
+        $self->{stdout} .= $text;
     }
 
-    if ($commands =~ /b/) {
-    	my $text = "This is command 'b' for banana.\n";
-    	warn $text;
-    	$stderr .= $text;
+    if ($self->{commands} =~ /b/) {
+        my $text = "This is command 'b' for banana.\n";
+        warn $text;
+        $self->{stderr} .= $text;
+        $self->{report}{errors}++;
     }
 
-    if ($commands =~ /c/) {
-    	my $text = "This is command 'c' for cry.\n";
-    	warn $text;
-    	$stderr .= $text;
-    	$status = 2;
-    	return $self->finish($status, $stdout, $stderr);;
+    if ($self->{commands} =~ /c/) {
+        my $text = "This is command 'c' for cry.\n";
+        warn $text;
+        $self->{stderr} .= $text;
+        $self->{status} = 2;
+        $self->{report}{errors}++;
+        $self->{report}{error} = "Task failed: $text";
+        return $self->finish;
     }
 
-    $self->finish($status, $stdout, $stderr);
+    $self->{status} = 1;
+
+    $self->finish;
 }
 
 sub finish {
-    my ($self, $status, $stdout, $stderr) = @_;
+    my ($self) = @_;
 
     # anything that must get done goes here:
 
-    warn "Finished with status $status\n\nSTDOUT:\n$stdout\n\nSTDERR:\n$stderr\n";
+    warn "Finished with status $self->{status}\n\nSTDOUT:\n$self->{stdout}\n\nSTDERR:\n$self->{stderr}\n";
 
-    $status += 0;
-    my $report = {
-        status  => $status == 1 ? 'SUCCESS' : 'FAILED',
-        done    => time,
-        task_id => $self->{id},
-    };
-    $report->{counter} = $self->{counter} if exists $self->{counter};
-    $self->{workerthread}->mongo->get_collection('reports')->insert($report) unless $self->{engineless} // false;
+    $self->{status} += 0;
 
-    {status => $status, stdout => $stdout, stderr => $stderr};
+    $self->{report}{completed} = time;
+    $self->{report}{status} = $self->{status} == 1 ? 'SUCCESS' : 'FAILED',
+
+    $self->{workerthread}->mongo->get_collection('reports')->insert($self->{report}) unless $self->{noreport} // false;
+
+    {status => $self->{status}, stdout => $self->{stdout}, stderr => $self->{stderr}};
 }
 
 1;
@@ -77,24 +105,41 @@ Disbatch::Plugin::Demo - demo plugin for Disbatch
 
 =head1 DESCRIPTION
 
-Has commands 'a' (stdout, success), 'b' (stderr, success), and 'c' (stderr, failure)
+A sample Disbatch plugin.
+
+Tasks for this plugin should have in C<parameters> the name C<commands> with a value of C<a>, C<b>, C<c>, or any combination, and optionally the name C<counter>.
+Any other characters in the C<commands> value are ignored, as well as any other names in C<parameters>.
+
+Command C<a> will write to C<stdout> and succeed with status 1.
+
+Command C<b> will write to C<stderr> and succeed with status 1.
+
+Command C<c> will write to C<stderr> and fail with status 2.
 
 =head1 SUBROUTINES
 
 =over 2
 
+=item new(workerthread => $workerthread, task => $doc);
+
+Parameters: C<<$workerthread>> is a C<Disbatch> object from C<task_runner> using the `plugin` MongoDB user and role,
+C<$doc> is the task document from MongoDB.
+
+Returns a C<Disbatch::Plugin::Demo> object.
+
+In this demo, the parameters passed become C<$self>, and all of the task's parameters are put into C<$self>, unless they are named C<workerthread> or C<task>.
+In addition, C<<$self->{queue_id}>> is set to the task's queue id, and C<<$self->{id}>> is set to the task's id.
+This allows minimal modification to Disbatch 3 plugins.
+
 =item new($queue, $parameters)
+
+I<DEPRECATED FORMAT> for usage with Disbatch 3.
 
 Parameters: C<< { id => $oid } >> where C<$id> is a C<MongoDB::OID> object of the task's queue value, C<HASH> parameters value of the task.
 
 Returns a C<Disbatch::Plugin::Demo> object.
-In this demo, parameters is a C<HASH> with the key C<commands> and a value of C<a>, C<b>, C<c>, or any combination; and optionally the key C<counter>.
-This example will overwrite the parameter C<queue_id> if used.
-Any other characters in the C<commands> value are ignored, as well as any other keys.
-Parameters does not have to be a C<HASH> in your plugin – it can be any value MongoDB can store.
 
-The L<task_runner> command will overwrite any parameter with key name C<id> or C<workerthread>,
-as these are used to store the C<MongoDB::OID> object of the task and the C<Disbatch> object, respectively.
+In this demo, the task's parameters become C<$self>, and C<<$self->{queue_id}>> is set to C<<$queue->{id}>>.
 
 =item run
 
@@ -104,15 +149,15 @@ Runs the task.
 
 Returns the result of C<finish()>.
 
-=item finish($status, $stdout, $stderr)
+=item finish
 
-Parameters: status (positive integer: 1 for success or 2 for failure), stdout (string), stderr (string)
+Parameters: none
 
-Creates the report for this task and inserts into the C<reports> collection.
+Finalizes the report for this task and inserts into the C<reports> collection.
 
-Returns two C<HASH>es: a query for the task and the result to update the task with.
+Returns a C<HASH> result to update the task with.
 
-The query is ignored, and the result I<SHOULD> have the keys C<status> (1 for success, 2 for failure), C<stdout>, and C<stderr>.
+The result I<SHOULD> have the keys C<status> (1 for success, 2 for failure), C<stdout>, and C<stderr>.
 Other keys will be ignored.
 
 =back
