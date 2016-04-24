@@ -54,14 +54,11 @@ $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
 
 my $queue = MongoDB::OID->new($doc->{queue});
-# FIXME: just pass task $doc and $disbatch, but figure out upgrade path...
 my $task = try {
-    $plugin->new({id => $queue}, $doc->{parameters});
+    $plugin->new(workerthread => $disbatch, task => $doc);
 } catch {
     $logger->logdie($_);
 };
-$task->{workerthread} = $disbatch;
-$task->{id} = $oid;
 
 my ($result) = try {
     $task->run;
