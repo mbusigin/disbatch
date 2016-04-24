@@ -10,7 +10,7 @@ sub new {
     my $class = shift;
     my $self = { @_ };
     die "A MongoDB::Database object must be passed as 'db'" unless ref ($self->{db} // '') eq 'MongoDB::Database';
-    die "Passwords for accounts must be passed as 'disbatchd', 'disbatch_web', and 'task_runner'" unless $self->{disbatchd} and $self->{disbatch_web} and $self->{task_runner};
+    die "Passwords for accounts must be passed as 'disbatchd', 'disbatch_web', 'task_runner', and 'plugin'" unless $self->{disbatchd} and $self->{disbatch_web} and $self->{task_runner} and $self->{plugin};
 
     $self->{userroles} = {
         disbatchd => {
@@ -42,6 +42,14 @@ sub new {
                 { resource => { db => $self->{db}{name}, collection => 'tasks' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks.chunks' },  actions => [ 'insert' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks.files' },  actions => [ 'insert' ] },
+            ],
+        },
+        plugin => {
+            password => $self->{plugin},
+            privileges => [
+                # FIXME: make this read a config file, as different plugins will have different needs
+                { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
+                { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },	# used to set maxthreads to 0 in case of serious error
                 { resource => { db => $self->{db}{name}, collection => 'users' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'reports' },  actions => [ 'insert' ] },
                 { resource => { db => $self->{db}{name}, collection => 'complete' },  actions => [ 'update' ] },
@@ -103,10 +111,10 @@ Disbatch::Roles - define and create MongoDB roles and users for Disbatch
 
 =item new
 
-Parameters: C<< db => $db, disbatchd => $disbatchd_pw, disbatch_web => $disbatch_web_pw, task_runner => $task_runner_pw >>
+Parameters: C<< db => $db, disbatchd => $disbatchd_pw, disbatch_web => $disbatch_web_pw, task_runner => $task_runner_pw, plugin => $plugin_pw >>
 
   C<db> is a C<MongoDB::Database> object which must be authenticated with an accout having the C<root> role.
-  C<disbatchd>, C<disbatch_web>, and C<task_runner> are roles and users to create, with their values being their respective passwords.
+  C<disbatchd>, C<disbatch_web>, C<task_runner>, and C<plugin> are roles and users to create, with their values being their respective passwords.
 
 Dies if invalid parameters.
 
@@ -114,7 +122,7 @@ Dies if invalid parameters.
 
 Parameters: none.
 
-Creates the roles and users for C<disbatchd>, C<disbatch_web>, and C<task_runner>.
+Creates the roles and users for C<disbatchd>, C<disbatch_web>, C<task_runner>, and C<plugin>.
 
 Dies if the roles or users already exist, or on any other MongoDB error.
 
@@ -122,7 +130,7 @@ Dies if the roles or users already exist, or on any other MongoDB error.
 
 Parameters: none.
 
-Drops the roles and users for C<disbatchd>, C<disbatch_web>, and C<task_runner>.
+Drops the roles and users for C<disbatchd>, C<disbatch_web>, C<task_runner>, and C<plugin>.
 
 Dies if the roles or users don't exist(???), or on any other MongoDB error.
 
