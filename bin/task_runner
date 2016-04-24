@@ -1,8 +1,5 @@
 #!/usr/bin/env perl
 
-# FIXME: Use the queue _id in the task to get the plugin name. Gotcha: WorkerThread has mongo setup, but wants the plugin name.
-#        $workerthread->queues->find_one({_id => $queue})->{constructor}
-
 use 5.12.0;
 use warnings;
 
@@ -16,11 +13,10 @@ use MongoDB::OID 1.0.0;
 use Try::Tiny::Retry;
 use Safe::Isa;
 
-my ($task_id, $plugin, $gfs, $config_file);
+my ($task_id, $gfs, $config_file);
 
 GetOptions(
     'task=s'     => \$task_id,
-    'plugin=s'   => \$plugin,
     'gfs!'       => \$gfs,
     'config=s'   => \$config_file,
 );
@@ -29,7 +25,7 @@ $gfs //= 1;	# use GridFS by default
 
 my $json = Cpanel::JSON::XS->new->utf8->convert_blessed;
 
-my $disbatch = Disbatch->new(class => $plugin, config_file => $config_file);
+my $disbatch = Disbatch->new(class => 'task_runner', config_file => $config_file);
 $disbatch->load_config;
 
 my $logger = $disbatch->logger;
@@ -39,9 +35,6 @@ $logger->info("Starting task $task_id");
 $logger->logdie('Config file must be passed with --config option') unless defined $config_file;
 
 $logger->logdie('No --task') unless defined $task_id;
-$logger->logdie('No --plugin') unless defined $plugin;
-$logger->logdie("--plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
-$logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
 my $oid = try { MongoDB::OID->new(value => $task_id) } catch { $logger->logdie($_) };
 my $doc = retry {
@@ -53,9 +46,17 @@ my $doc = retry {
 $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
 
+my $plugin = ($disbatch->queues->find_one({_id => $doc->{queue}}) // {})->{constructor};
+# FIXME: these will leave the task orphaned:
+$logger->logdie("No plugin defined for task $task_id in queue $doc->{queue}") unless defined $plugin;
+$logger->logdie("plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
+$logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
+
 my $queue = MongoDB::OID->new($doc->{queue});
 my $task = try {
-    $plugin->new(workerthread => $disbatch, task => $doc);
+    my $workerthread = Disbatch->new(class => $plugin, config_file => $config_file);
+    $workerthread->load_config;
+    $plugin->new(workerthread => $workerthread, task => $doc);
 } catch {
     $logger->logdie($_);
 };

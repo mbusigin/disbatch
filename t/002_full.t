@@ -48,8 +48,9 @@ my $config = {
     attributes => { ssl => { SSL_verify_mode => 0x00 } },
     auth => {
         disbatchd => 'qwerty1',		# { username => 'disbatchd', password => 'qwerty1' },
-        disbatch_web => 'qwerty1',	# { username => 'disbatch_web', password => 'qwerty2' },
-        task_runner => 'qwerty1',	# { username => 'task_runner', password => 'qwerty3' },
+        disbatch_web => 'qwerty2',	# { username => 'disbatch_web', password => 'qwerty2' },
+        task_runner => 'qwerty3',	# { username => 'task_runner', password => 'qwerty3' },
+        plugin => 'qwerty4',		# { username => 'plugin', password => 'qwerty3' },
     },
     plugins => [ 'Disbatch::Plugin::Demo' ],
     default_config => 'development',

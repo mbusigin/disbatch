@@ -91,9 +91,10 @@ sub mongo {
     $self->{config}{attributes} //= {};
     my %attributes = %{ $self->{config}{attributes} // {} };
     if (defined $self->{config}{auth}) {
-        my $username = 'task_runner';
+        my $username = 'plugin';
         $username = 'disbatchd' if $self->{class} eq 'disbatch';
         $username = 'disbatch_web' if $self->{class} eq 'disbatch::web';
+        $username = 'task_runner' if $self->{class} eq 'task_runner';
         $attributes{username} = $username;
         $attributes{password} = $self->{config}{auth}{$username};
         $attributes{db_name} = $self->{config}{database};
@@ -320,7 +321,6 @@ sub start_task {
     my $command = $self->{config}{task_runner};
     my @args = (
         '--config' => $self->{config_file},
-        '--plugin' => $self->{plugins}{$queue->{constructor}},
         '--task'   => $task->{_id},
     );
     push @args, '--nogfs' unless ($self->{config}{gfs} // true);
