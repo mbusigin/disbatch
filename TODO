@@ -1,0 +1,19 @@
+Todo:
+- write new web API
+- figure out REST API / web authentication (multi-user)
+- move some code from Disbatch::Web to Disbatch ??
+- be able to use any type of task_runner (node.js, ruby, ...)
+- instantiate plugins a better way:
+  - This passing of the queue id is weird, but how Matt did it.
+      $plugin->new({id => $queue_oid}, $doc->{parameters});
+  - And this thing of setting $task->{workerthread} and $task->{id} is
+    weird, as well:
+      my $task = try {
+          $plugin->new({id => $doc->{queue}}, $doc->{parameters});
+      } catch {
+          $logger->logdie($_);
+      };
+      $task->{workerthread} = $disbatch;
+      $task->{id} = $oid;
+- FIX: add an END or DESTROY block to task_runner to prevent orphaned
+  status 0 tasks
