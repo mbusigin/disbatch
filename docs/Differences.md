@@ -18,8 +18,9 @@
   (creating 100k tasks at once only took 12 seconds on my 13" rMBP).
 - The `Preemptive` setting has been removed.
 - The `enclosure` command has been removed.
-- The main process, the web server, and the task runner all have their own
-  permission models if using authentication instead of sharing one account.
+- The main process, the web server, the task runner, and the plugin all have
+  their own permission models if using authentication instead of sharing one
+  account.
 
 
 #### Changes:
@@ -34,8 +35,8 @@
   settings, can be overwritten in the config file)
 - Task `stdout` and `stderr` are now written to (mostly-compatible) GridFS
   documents.
-- To define a queue, the type must already be used in another queue, or listed
-  in `plugins` in the config
+- To define a queue via the JSON API, the type must already be used in another
+  queue, or listed in `plugins` in the config
 
 
 #### New:

@@ -18,6 +18,7 @@ Consult `/etc/disbatch/disbatch.ini` for reference of current settings.
 #### Modify your plugins:
 
 - To support only Disbatch 4:
+# FIXME: note new new()
   - Remove these lines:
 
             use Synacor::Disbatch::Task;
@@ -29,6 +30,7 @@ Consult `/etc/disbatch/disbatch.ini` for reference of current settings.
 
             {status => $status, stdout => $stdout, stderr => $stderr};
 - To support both Disbatch 3 and Disbatch 4:
+# FIXME: note new new()
   - Replace these lines:
 
             use Synacor::Disbatch::Task;
