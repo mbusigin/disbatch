@@ -1,3 +1,14 @@
+### This documents running Disbatch 4.
+
 FIXME
 
-0. Create queues for plugins.
+* /bin/disbatch-create-users
+* /etc/init.d/disbatchd [start|stop|restart]
+* /etc/init.d/disbatch-webd [start|stop|restart]
+* /bin/disbatch.pl
+* website
+
+* create queues for plugins
+* create tasks
+* run tasks
+* ...
