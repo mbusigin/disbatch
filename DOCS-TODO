@@ -1,0 +1,9 @@
+Docs Todo:
+- docs/Running.md : how to use Disbatch once it is set up
+- docs/Design.md  : an update of DEN-spec-1.1.txt
+
+- document that Disbatch::Roles gives 'plugin's permissions also to
+  'reports', 'complete', 'status', and 'nodeQueues'
+- document how to use SSL, for both MongoDB (Disbatch and mongo shell) and
+  for REST API / web.
+
