@@ -43,7 +43,7 @@ sub run {
         commands => $self->{commands},
         task_id  => $self->{task}{_id},
         queue_id => $self->{task}{queue},
-        version  => $VERSION,
+        version  => $Disbatch::Plugin::Demo::VERSION,
         started  => time,
         errors   => 0,
     };
@@ -73,6 +73,8 @@ sub run {
         return $self->finish;
     }
 
+    $self->{status} = 1;
+
     $self->finish;
 }
 
@@ -87,9 +89,8 @@ sub finish {
 
     $self->{report}{completed} = time;
     $self->{report}{status} = $self->{status} == 1 ? 'SUCCESS' : 'FAILED',
-    $self->{report}{errors} = $self->{errors};
 
-    $self->{workerthread}->mongo->get_collection('reports')->insert($report) unless $self->{noreport} // false;
+    $self->{workerthread}->mongo->get_collection('reports')->insert($self->{report}) unless $self->{noreport} // false;
 
     {status => $self->{status}, stdout => $self->{stdout}, stderr => $self->{stderr}};
 }
