@@ -36,53 +36,62 @@ sub new {
 sub run {
     my ($self) = @_;
 
-    my $commands = $self->{commands};
-    $commands = 'abc' if $commands eq '*';
+    $self->{commands} = 'abc' if $self->{commands} eq '*';
 
-    my ($status, $stdout, $stderr) = (1, '', '');
+    $self->{report} = {
+        counter  => $self->{counter},
+        commands => $self->{commands},
+        task_id  => $self->{task}{_id},
+        queue_id => $self->{task}{queue},
+        version  => $VERSION,
+        started  => time,
+        errors   => 0,
+    };
 
     say "You've started a dummy tasks. Congrats!";
 
-    if ($commands =~ /a/) {
-    	my $text = "This is command 'a' for apple.\n";
-    	print $text;
-    	$stdout .= $text;
+    if ($self->{commands} =~ /a/) {
+        my $text = "This is command 'a' for apple.\n";
+        print $text;
+        $self->{stdout} .= $text;
     }
 
-    if ($commands =~ /b/) {
-    	my $text = "This is command 'b' for banana.\n";
-    	warn $text;
-    	$stderr .= $text;
+    if ($self->{commands} =~ /b/) {
+        my $text = "This is command 'b' for banana.\n";
+        warn $text;
+        $self->{stderr} .= $text;
+        $self->{report}{errors}++;
     }
 
-    if ($commands =~ /c/) {
-    	my $text = "This is command 'c' for cry.\n";
-    	warn $text;
-    	$stderr .= $text;
-    	$status = 2;
-    	return $self->finish($status, $stdout, $stderr);;
+    if ($self->{commands} =~ /c/) {
+        my $text = "This is command 'c' for cry.\n";
+        warn $text;
+        $self->{stderr} .= $text;
+        $self->{status} = 2;
+        $self->{report}{errors}++;
+        $self->{report}{error} = "Task failed: $text";
+        return $self->finish;
     }
 
-    $self->finish($status, $stdout, $stderr);
+    $self->finish;
 }
 
 sub finish {
-    my ($self, $status, $stdout, $stderr) = @_;
+    my ($self) = @_;
 
     # anything that must get done goes here:
 
-    warn "Finished with status $status\n\nSTDOUT:\n$stdout\n\nSTDERR:\n$stderr\n";
+    warn "Finished with status $self->{status}\n\nSTDOUT:\n$self->{stdout}\n\nSTDERR:\n$self->{stderr}\n";
 
-    $status += 0;
-    my $report = {
-        status  => $status == 1 ? 'SUCCESS' : 'FAILED',
-        done    => time,
-        task_id => $self->{id},
-    };
-    $report->{counter} = $self->{counter} if exists $self->{counter};
-    $self->{workerthread}->mongo->get_collection('reports')->insert($report) unless $self->{engineless} // false;
+    $self->{status} += 0;
 
-    {status => $status, stdout => $stdout, stderr => $stderr};
+    $self->{report}{completed} = time;
+    $self->{report}{status} = $self->{status} == 1 ? 'SUCCESS' : 'FAILED',
+    $self->{report}{errors} = $self->{errors};
+
+    $self->{workerthread}->mongo->get_collection('reports')->insert($report) unless $self->{noreport} // false;
+
+    {status => $self->{status}, stdout => $self->{stdout}, stderr => $self->{stderr}};
 }
 
 1;
@@ -139,15 +148,15 @@ Runs the task.
 
 Returns the result of C<finish()>.
 
-=item finish($status, $stdout, $stderr)
+=item finish
 
-Parameters: status (positive integer: 1 for success or 2 for failure), stdout (string), stderr (string)
+Parameters: none
 
-Creates the report for this task and inserts into the C<reports> collection.
+Finalizes the report for this task and inserts into the C<reports> collection.
 
-Returns two C<HASH>es: a query for the task and the result to update the task with.
+Returns a C<HASH> result to update the task with.
 
-The query is ignored, and the result I<SHOULD> have the keys C<status> (1 for success, 2 for failure), C<stdout>, and C<stderr>.
+The result I<SHOULD> have the keys C<status> (1 for success, 2 for failure), C<stdout>, and C<stderr>.
 Other keys will be ignored.
 
 =back
