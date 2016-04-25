@@ -110,9 +110,10 @@ Command C<c> will write to C<stderr> and fail with status 2.
 
 =over 2
 
-=item new(workerthread => $disbatch, task => $doc);
+=item new(workerthread => $workerthread, task => $doc);
 
-Parameters: C<<$disbatch>> is the C<Disbatch> object from C<task_runner>, C<$doc> is the task document from MongoDB.
+Parameters: C<<$workerthread>> is a C<Disbatch> object from C<task_runner> using the `plugin` MongoDB user and role, 
+C<$doc> is the task document from MongoDB.
 
 Returns a C<Disbatch::Plugin::Demo> object.
 
