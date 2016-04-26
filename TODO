@@ -17,3 +17,5 @@ Todo:
       $task->{id} = $oid;
 - FIX: add an END or DESTROY block to task_runner to prevent orphaned
   status 0 tasks
+- show last heartbeat for each node on webpage
+- FIXME: make nodes 'node' unique
