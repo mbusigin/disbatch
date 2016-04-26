@@ -444,10 +444,6 @@ API password
 
 Display this message
 
-=item --config <config_file>
-
-Path to Disbatch config file. Default is C</etc/disbatch/config.json>.
-
 =item --ssl_ca_file <ssl_ca_file>
 
 Path to the SSL CA file. Needed if using SSL with a private CA.
@@ -455,6 +451,14 @@ Path to the SSL CA file. Needed if using SSL with a private CA.
 =item --disable_ssl_verification
 
 Disables hostname verification if SSL is used.
+
+Only used if C<--ssl_ca_file> is not used.
+
+=item --config <config_file>
+
+Path to Disbatch config file. Default is C</etc/disbatch/config.json>.
+
+Only used if neither C<--ssl_ca_file> nor C<--disable_ssl_verification> is used.
 
 =back
 
