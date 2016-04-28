@@ -53,7 +53,7 @@ status of `-1` and an `mtime` of older than 5 minutes.
 
 ##### Task Lifecycle
 
-Each task is initialised with its node as `-1` (unclaimed) and status as `-2`
+Each task is initialised with its node as `null` (unclaimed) and status as `-2`
 (queued).
 
 DENs claim tasks from queues using `findOneAndUpdate(filter, update, options)`,
@@ -71,7 +71,7 @@ FIXME: should `mtime` be updated at completion as well?
 
 * filter
 
-        { node: -1, status: -2, queue: queue._id }
+        { node: null, status: -2, queue: queue._id }
 
   Where `queue._id` is an `ObjectId` of the desired queue
 
@@ -224,7 +224,7 @@ The following elements must be included when creating a task:
 
 * `mtime`: an `ISODate` of the modification time
 
-* `node`: the node this task is running or ran on, or `-1` if queued
+* `node`: the node this task is running or ran on, or `null` if queued
 
 * `status`: an integer for the task status code
 
