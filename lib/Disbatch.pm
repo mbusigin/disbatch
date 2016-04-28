@@ -209,31 +209,31 @@ sub ensure_indexes {
     };
 }
 
-# validates constructors for defined queues
+# validates plugins for defined queues
 sub validate_plugins {
     my ($self) = @_;
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
-    for my $constructor (map { $_->{constructor} } @queues) {
-        next if exists $self->{plugins}{$constructor};
-        if ($constructor !~ /^[\w:]+$/) {
-            $self->logger->error("Illegal constructor value: $constructor");
-        } elsif (eval "require $constructor; $constructor->new->can('run');") {
-            $self->{plugins}{$constructor} = $constructor;
-            next if exists $self->{old_plugins}{$constructor};
-            $self->logger->info("$constructor is valid for queues");
-        } elsif (eval "require ${constructor}::Task; ${constructor}::Task->new->can('run');") {
-            $self->{plugins}{$constructor} = $constructor . '::Task';
-            next if exists $self->{old_plugins}{$constructor};
-            $self->logger->info("${constructor}::Task is valid for queues");
+    for my $plugin (map { $_->{plugin} } @queues) {
+        next if exists $self->{plugins}{$plugin};
+        if ($plugin !~ /^[\w:]+$/) {
+            $self->logger->error("Illegal plugin value: $plugin");
+        } elsif (eval "require $plugin; $plugin->new->can('run');") {
+            $self->{plugins}{$plugin} = $plugin;
+            next if exists $self->{old_plugins}{$plugin};
+            $self->logger->info("$plugin is valid for queues");
+        } elsif (eval "require ${plugin}::Task; ${plugin}::Task->new->can('run');") {
+            $self->{plugins}{$plugin} = $plugin . '::Task';
+            next if exists $self->{old_plugins}{$plugin};
+            $self->logger->info("${plugin}::Task is valid for queues");
             $self->logger->warn("Having a plugin format with a subpackage *::Task is deprecated");
         } else {
-            $self->{plugins}{$constructor} = undef;
-            $self->logger->warn("Could not load $constructor, ignoring queues using it");
+            $self->{plugins}{$plugin} = undef;
+            $self->logger->warn("Could not load $plugin, ignoring queues using it");
         }
     }
 }
 
-# clears constructor validation and re-runs
+# clears plugin validation and re-runs
 sub revalidate_plugins {
     my ($self) = @_;
     $self->{old_plugins} = $self->{plugins};
@@ -257,7 +257,7 @@ sub scheduler_report {
             tasks_doing    => $tasks_doing,
             maxthreads     => $queue->{maxthreads},
             name           => $queue->{name},
-            constructor    => $queue->{constructor},
+            plugin         => $queue->{plugin},
         };
     }
     \@result;
@@ -411,7 +411,7 @@ sub process_queues {
     return if defined $node and defined $node->{maxthreads} and $node_running >= $node->{maxthreads};
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
-        if ($self->{plugins}{$queue->{constructor}} and $self->is_active_queue($queue->{_id})) {
+        if ($self->{plugins}{$queue->{plugin}} and $self->is_active_queue($queue->{_id})) {
             my $running = $self->count_running($queue->{_id});
             while (defined $running and ($queue->{maxthreads} // 0) > $running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
                 my $task = $self->claim_task($queue);
@@ -578,7 +578,7 @@ Returns nothing.
 
 Parameters: none
 
-Validates constructors for defined queues.
+Validates plugins for defined queues.
 
 Returns nothing.
 
@@ -586,7 +586,7 @@ Returns nothing.
 
 Parameters: none
 
-Clears constructor validation and re-runs C<validate_plugins()>.
+Clears plugin validation and re-runs C<validate_plugins()>.
 
 Returns nothing.
 

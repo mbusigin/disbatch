@@ -80,7 +80,7 @@ window.onload = function() {
   // new
   var queueLayout = [
     { name: "id", label: "ID", datatype: "string", editable: false},
-    { name: "constructor", label: "Type", datatype: "string", editable: true},
+    { name: "plugin", label: "Type", datatype: "string", editable: true},
     { name: "name", label: "Name", datatype: "string", editable: true},
     { name: "maxthreads", label: "Threads", datatype: "integer", editable: true},
     { name: "tasks_done", label: "Done", datatype: "integer", editable: false},
