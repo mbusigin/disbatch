@@ -211,7 +211,7 @@ sub create_tasks {
         status     => -2,
         stdout     => undef,
         stderr     => undef,
-        node       => -1,
+        node       => undef,
         parameters => $_,
         ctime      => time,
         mtime      => 0,

@@ -283,7 +283,7 @@ sub claim_task {
 
     $self->{sort} //= 'default';
 
-    my $query  = { node => -1, status => -2, queue => $queue->{_id} };
+    my $query  = { '$or' => [{node => undef}, {node => -1}], status => -2, queue => $queue->{_id} };
     my $update = { '$set' => {node => $self->{node}, status => -1, mtime => time} };
 
     my $options;
@@ -301,7 +301,7 @@ sub claim_task {
 sub unclaim_task {
     my ($self, $task_id) = @_;
     my $query  = { _id => $task_id, node => $self->{node}, status => -1 };
-    my $update = { '$set' => {node => -1, status => -2, mtime => 0} };
+    my $update = { '$set' => {node => undef, status => -2, mtime => 0} };
     $self->logger->warn("Unclaliming task $task_id");
     retry { $self->tasks->find_one_and_update($query, $update) } catch { $self->logger->error("Could not unclaim task $task_id: $_"); undef };
 }
@@ -618,7 +618,7 @@ Returns a task document, or undef if no queued task found.
 
 Parameters: L<MongoDB::OID> object for a task
 
-Sets the task's node to -1, status to -2, and mtime to 0 if it has status -1 and this node's hostname.
+Sets the task's node to null, status to -2, and mtime to 0 if it has status -1 and this node's hostname.
 
 Returns a task document, or undef if a matching task is not found.
 
