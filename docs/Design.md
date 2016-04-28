@@ -116,7 +116,7 @@ The following elements must be included when registering a node:
   * `id`: a string representation of the queue's `_id` (example:
     `"571f8951b75bf335634ec271"`)
 
-  * `constructor`: the name of the plugin this queue uses (example:
+  * `plugin`: the name of the plugin this queue uses (example:
     `"Disbatch::Plugin::Demo"`)
 
   * `maxthreads`: a non-negative integer for the maximum number of threads per
@@ -149,7 +149,7 @@ MongoDB will create an `ObjectId` for the node's `_id`.
         "queues" : [
             {
                 "maxthreads" : 0,
-                "constructor" : "Disbatch::Plugin::Demo",
+                "plugin" : "Disbatch::Plugin::Demo",
                 "name" : "demo",
                 "tasks_doing" : 0,
                 "tasks_done" : 0,
@@ -172,7 +172,7 @@ The following elements must be included when creating a queue:
 * `name`: a string to identify this queue (should be unique, but is not a
   requirement)
 
-* `constructor`: the name of the plugin this queue uses (example:
+* `plugin`: the name of the plugin this queue uses (example:
   `"Disbatch::Plugin::Demo"`)
 
 The following elements may be included when creating a queue:
@@ -201,7 +201,7 @@ MongoDB will create an `ObjectId` for the queue's `_id`.
 
     {
         "_id" : ObjectId("571f8951b75bf335634ec271"),
-        "constructor" : "Disbatch::Plugin::Demo",
+        "plugin" : "Disbatch::Plugin::Demo",
         "name" : "demo",
         "count_total" : 0,
         "count_todo" : 0,

@@ -10,8 +10,8 @@
 
 
 #### Backwards compatibility concerns for existing deployments:
-- Can replace v3 of Disbatch with v4 with likely no changes to the database, and
-  minimal back-compatability changes to the plugin.
+- Can replace v3 of Disbatch with v4 with minimal changes to the database, and
+  few changes to the plugin.
 - Can run both v3 and v4 against the same unauthenticated database.
 - CANNOT pass Perl data structures (only JSON is allowed) to `queue search` nor
   `queue tasks`. That was a horrible idea.
@@ -19,6 +19,7 @@
   (creating 100k tasks at once only took 12 seconds on my 13" rMBP).
 - The `Preemptive` setting has been removed.
 - The `enclosure` command has been removed.
+- The `reloadqueues` command has been removed.
 - The main process, the web server, the task runner, and the plugin all have
   their own permission models if using authentication instead of sharing one
   account.
