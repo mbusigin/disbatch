@@ -226,7 +226,7 @@ sub status {
         my $sep = \' | ';
         my $tl  = Text::Table->new(
             {title => 'ID',         align => 'right'}, $sep,
-            {title => 'Type',       align => 'right'}, $sep,
+            {title => 'Plugin',     align => 'right'}, $sep,
             {title => 'Name',       align => 'right'}, $sep,
             {title => 'Threads',    align => 'right'}, $sep,
             {title => 'Done',       align => 'right'}, $sep,
@@ -237,7 +237,7 @@ sub status {
         for my $queue (@$obj) {
             $tl->add(
                 $queue->{id},
-                $queue->{constructor},
+                $queue->{plugin},
                 $queue->{name},
                 $queue->{maxthreads},
                 $queue->{tasks_done},

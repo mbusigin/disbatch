@@ -165,13 +165,13 @@ if ($webpid == 0) {
     ### GET JSON ROUTES ####
 
     # Returns array of queues.
-    # Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, constructor
+    # Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, plugin
     $res = Net::HTTP::Client->request(GET => "$uri/scheduler-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
     is $res->content, '[]', 'empty array';
 
-    # Returns an object where both keys and values are values of currently defined constructors in queues.
+    # Returns an object where both keys and values are values of currently defined plugins in queues.
     $res = Net::HTTP::Client->request(GET => "$uri/queue-prototypes-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
@@ -258,7 +258,7 @@ if ($webpid == 0) {
     is $content->[0]{tasks_doing}, 0, 'tasks_doing';
     is $content->[0]{tasks_done}, 0, 'tasks_done';
     is $content->[0]{tasks_todo}, 5, 'tasks_todo';
-    is $content->[0]{constructor}, $plugin, 'constructor';
+    is $content->[0]{plugin}, $plugin, 'plugin';
     is $content->[0]{name}, 'test_queue', 'name';
     is $content->[0]{id}, $queueid, 'id';
 
@@ -279,7 +279,7 @@ if ($webpid == 0) {
     is scalar @$content, 1, 'size';
     is $content->[0]{maxthreads}, 1, 'maxthreads';
 
-    # Returns an object where both keys and values are values of currently defined constructors in queues.
+    # Returns an object where both keys and values are values of currently defined plugins in queues.
     $res = Net::HTTP::Client->request(GET => "$uri/queue-prototypes-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';

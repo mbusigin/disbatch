@@ -134,10 +134,10 @@ post qr'^/nodes/(.+)' => sub {
 };
 
 sub get_plugins {
-    my @constructors = try { $disbatch->queues->distinct('constructor')->all } catch { Limper::warning "Could not get current constructors: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    my @plugins = try { $disbatch->queues->distinct('plugin')->all } catch { Limper::warning "Could not get current plugins: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
     my $plugins = $disbatch->{config}{plugins} // [];
-    my %constructors = map { $_ => $_ } @constructors, @$plugins;
-    \%constructors;
+    my %plugins = map { $_ => $_ } @plugins, @$plugins;
+    \%plugins;
 }
 
 post '/start-queue-json' => sub {
@@ -153,7 +153,7 @@ post '/start-queue-json' => sub {
         return send_json [ 0, 'unknown type'];
     }
 
-    my $queue = { constructor => $params->{type}, name => $params->{name} };
+    my $queue = { plugin => $params->{type}, name => $params->{name} };
     my $res = try { $disbatch->queues->insert_one($queue) } catch { Limper::warning "Could not create queue $params->{name}: $_"; $_ };
     my $reponse = {
         success => defined $res->{inserted_id} ? 1 : 0,
@@ -427,7 +427,7 @@ Returns an array of node objects defined, with C<timestamp> stringified and C<id
 
 Parameters: none
 
-Returns a C<HASH> of defined queues constructors and any defined C<config.plugins>, where values match the keys.
+Returns a C<HASH> of defined queues plugins and any defined C<config.plugins>, where values match the keys.
 
 =item get_queue_oid($queue)
 
@@ -455,7 +455,7 @@ Parameters: none.
 
 Returns array of queues.
 
-Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, constructor
+Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, plugin
 
 =item POST /set-queue-attr-json
 
@@ -481,7 +481,7 @@ Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $re
 
 Parameters: C<< { "name": name, "type": type } >>
 
-"type" is a constructor value.
+"type" is a plugin value.
 
 Returns array: C<< [ success, inserted_id, reponse_object ] >>
 
@@ -495,9 +495,9 @@ Returns array: C<< [ success, error_string_or_reponse_object ] >>
 
 Parameters: none.
 
-Note: You currently can't create a queue for a constructor in the web UI unless there is already a queue with that constructor that this returns.
+Note: You currently can't create a queue for a plugin in the web UI unless there is already a queue with that plugin that this returns.
 
-Returns an object where both keys and values are values of currently defined constructors in queues.
+Returns an object where both keys and values are values of currently defined plugins in queues.
 
 =item POST /queue-create-tasks-json
 
