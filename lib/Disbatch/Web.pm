@@ -495,8 +495,6 @@ Returns array: C<< [ success, error_string_or_reponse_object ] >>
 
 Parameters: none.
 
-Note: POST is deprecated.
-
 Note: You currently can't create a queue for a constructor in the web UI unless there is already a queue with that constructor that this returns.
 
 Returns an object where both keys and values are values of currently defined constructors in queues.
@@ -532,8 +530,6 @@ All parameters are optional.
 "limit" and "skip" are integers.
 
 "count" and "terse" are booleans.
-
-Note: GET is deprecated.
 
 Returns array of tasks (empty if there is an error in the query), C<< [ status, count_or_error ] >> if "count" is true, or C<< [ 0, error ] >> if other error.
 
