@@ -6,6 +6,8 @@
 - Rename the tasks and queues collections to `tasks` and `queues` if they have
   different names
 - If there is already a collection `config`, rename it to something else
+- If using MongoDB authentication, make sure the `plugin` role has the proper
+  permissions for any collections the plugin modifies.
 
 
 #### Configure

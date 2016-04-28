@@ -6,6 +6,7 @@
 - Can stop/restart disbatchd process any time without affecting running tasks.
 - Can update plugins at any time without restarting disbatchd.
 - Independent web server.
+- Better permission model for MongoDB.
 
 
 #### Backwards compatibility concerns for existing deployments:
@@ -34,7 +35,7 @@
 - The `disbatch-log4perl.conf` file is no longer used (automatically generated
   settings, can be overwritten in the config file)
 - Task `stdout` and `stderr` are now written to (mostly-compatible) GridFS
-  documents.
+  documents by default. This can be disabled in the config.
 - To define a queue via the JSON API, the type must already be used in another
   queue, or listed in `plugins` in the config
 
