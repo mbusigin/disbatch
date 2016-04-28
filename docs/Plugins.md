@@ -1,4 +1,4 @@
-### This documents writing Perl plugins for Disbatch 4.
+### Writing Perl plugins for Disbatch 4
 
 For a simple example, see `lib/Disbatch/Plugin/Demo.pm`.
 
@@ -10,8 +10,8 @@ For a simple example, see `lib/Disbatch/Plugin/Demo.pm`.
 
     `$workerthread` is a `Disbatch` object using the `plugin` MongoDB user and
     role. This gives access to the Disbatch subroutines, such as `logger`,
-    `mongo`, and the various collection helper subs (`nodes`, `queues`, `tasks`,
-    `config`), with whatever MongoDB access permissions `plugin` has.
+    `mongo`, and the various collection helper subs (`nodes`, `queues`,
+    `tasks`), with whatever MongoDB access permissions `plugin` has.
 
     `$doc` is the task's full document from MongoDB, where `$doc->{_id}` and
     `$doc->{queue}` are `MongoDB::OID` objects.
@@ -28,7 +28,7 @@ For a simple example, see `lib/Disbatch/Plugin/Demo.pm`.
     The values of `stdout` and `stderr` should be simple scalars (strings or
     `undef`), and will be forced to be strings.
 
-#### Task Parameters
+#### Task Params
 
 Anything for a particular task can be here. For email migrations, we typically
 have the following key names: `client`, `migration`, `user1`, `user2`, and
@@ -45,7 +45,7 @@ have the following key names: `client`, `migration`, `user1`, `user2`, and
   `commands` is checked against a regex. An array of commands with descriptive
   names could also be used.
 
-The `parameters` object may also contain additional name/value pairs for special
+The `params` object may also contain additional name/value pairs for special
 options.
 
 #### Recommendations
@@ -63,7 +63,7 @@ options.
 
 * Reports
 
-  A report typically contains the important identifying parameters of the task
+  A report typically contains the important identifying params of the task
   (`migration`, `user1`, `user2`, and `commands`), as well as the task and queue
   ids, the start and end times of the task, the plugin version used, the status
   of the task, a count of any errors encounted, and a simple string identifying

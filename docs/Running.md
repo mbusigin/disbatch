@@ -1,4 +1,4 @@
-### This documents running Disbatch 4.
+### Running Disbatch 4
 
 * [Configure](Configuring.md) Disbatch before running
 
@@ -8,7 +8,7 @@
 
             /etc/init.d/disbatchd [start|stop|restart]
 
-  * On each server you want the Disbatch JSON API and web server running:
+  * On each server you want the Disbatch Command Interface running:
 
             /etc/init.d/disbatch-webd [start|stop|restart]
 
@@ -22,12 +22,13 @@
 
   * Modify an existing queue by clicking on its `Type`, `Name`, or `Threads`.
     `Threads` is the number of concurrent tasks to run from this queue **per
-    node**. You cannot delete a queue from the web interface.
+    DEN**. You cannot delete a queue from the web interface.
 
-  * To limit the total number of concurrent tasks to run per node, set `Max
-    Threads` for that node in the `Nodes` table. This will take precedence over
-    any queue `Threads` settings. To disable a node's `Max Threads` value,
-    delete the value from the table. If you set it to `0`, no threads will run.
+  * To limit the total number of concurrent tasks to run per DEN, set `Max
+    Threads` for that DEN in the `Disbatch Execution Nodes` table. This will
+    take precedence over any queue `Threads` settings. To disable a DEN's `Max
+    Threads` value, delete the value from the table. If you set it to `0`, no
+    threads will run.
 
   * You can refresh the tables at any time by clicking on `Refresh`. They also
     refresh automatically every 60 seconds, and after any changes via the web
@@ -42,5 +43,5 @@
 
   * For a full description, run `perldoc disbatch.pl`
 
-  * If the JSON API is not running on `http://localhost:8080`, pass the URL with
-    the `--url` option.
+  * If the Disbatch Command Interface is not running on `http://localhost:8080`,
+    pass the URL with the `--url` option.

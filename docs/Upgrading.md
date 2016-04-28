@@ -1,11 +1,27 @@
-### This documents upgrading from Disbatch 3 to Disbatch 4.
-
+### Upgrading from Disbatch 3 to Disbatch 4
 
 #### Preliminary steps
 
 - Rename the tasks and queues collections to `tasks` and `queues` if they have
   different names
-- If there is already a collection `config`, rename it to something else
+
+- Set each queue's `threads` to how many maximum concurrent threads should be
+  ran for that queue across all DENs. The queue field `maxthreads`, which
+  applied per DEN, is no longer used.
+
+- Run one of the following on each database, as the `constructor` field has been
+  renamed to `plugin`:
+
+        // for back-compat with Disbatch 3
+        db.queues.distinct("constructor").forEach(function(c){
+            db.queues.update({constructor: c}, {$set: {plugin: c}}, {multi: 1})
+        })
+
+        // or for no back-compat with Disbatch 3
+        db.queues.update({}, {$rename: {constructor: "plugin"}})
+
+- If using MongoDB authentication, make sure the `plugin` role has the proper
+  permissions for any collections the plugin modifies.
 
 
 #### Configure
@@ -91,19 +107,20 @@ The below is from `lib/Disbatch/Plugin/Demo.pm`.
         if (ref $_[0]) {
             my ($queue, $parameters) = @_;
             warn Dumper $parameters;
-            my %self = map { $_ => $parameters->{$_} } keys %$parameters;       # modifying $parameters breaks something in Disbatch 3.
+            my %self = map { $_ => $parameters->{$_} } keys %$parameters;	# modifying $parameters breaks something in Disbatch 3.
             $self{queue_id} = $queue->{id};
             return bless \%self, $class;
         }
 
         my $self = { @_ };
-        warn Dumper $self->{task}{parameters};
+        $self->{task}{params} //= $self->{task}{parameters} if defined $self->{task}{parameters};	# for deprecated Disbatch 3 format
+        warn Dumper $self->{task}{params};
 
         # back-compat, so as to not change Disbatch 3 plugins so much
         # stick all params in $self
-        for my $param (keys %{$self->{task}{parameters}}) {
+        for my $param (keys %{$self->{task}{params}}) {
             next if $param eq 'workerthread' or $param eq 'task';
-            $self->{$param} = $self->{task}{parameters}{$param};
+            $self->{$param} = $self->{task}{params}{$param};
         }
         $self->{queue_id} = $self->{task}{queue};
         $self->{id} = $self->{task}{_id};
