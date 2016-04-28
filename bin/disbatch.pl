@@ -64,14 +64,7 @@ if (defined $username and defined $password) {
 my %commands = (
     status       => \&parse_status,
     queue        => \&parse_queue,
-    reloadqueues => \&parse_reloadqueues,
 );
-
-sub parse_reloadqueues {
-    my ($params) = @_;
-    $params->{execute} = \&reloadqueues;
-    return 1, 'Reload Queues';
-}
 
 sub parse_status {
     my ($params) = @_;
@@ -239,8 +232,6 @@ sub status {
             {title => 'Done',       align => 'right'}, $sep,
             {title => 'To-Do',      align => 'right'}, $sep,
             {title => 'Processing', align => 'right'}, #$sep,
-            #{title => 'Backfill',   align => 'right'}, $sep,
-            #{title => 'Preemptive', align => 'right'},
         );
 
         for my $queue (@$obj) {
@@ -252,8 +243,6 @@ sub status {
                 $queue->{tasks_done},
                 $queue->{tasks_todo},
                 $queue->{tasks_doing},
-                #$queue->{tasks_backfill},
-                #$queue->{preemptive},
             );
             $count++;
         }
@@ -264,19 +253,6 @@ sub status {
         say "$count total queues.";
     } else {
         say "Unable to connect to $this_url: ", $r->status_line;
-    }
-}
-
-sub reloadqueues {
-
-    #my ($params) = @_;
-    my $this_url = "$url/reload-queues-json";
-
-    my $r = $ua->get($this_url);
-    if ($r->is_success) {
-        say Dumper $json->decode($r->decoded_content);
-    } else {
-        say "Unable to connect to $this_url!";
     }
 }
 
@@ -480,7 +456,7 @@ List all queues this disbatch server processes.
 =item queue set <queue> <key> <value>
 
 Change a field's value in a queue.
-The only valid field is C<maxthreads> (although C<preemptive> is allowed for legacy reasons, but is ignored).
+The only valid field is C<maxthreads>.
 
   $ disbatch.pl queue set 56eade3aeb6af81e0123ed21 maxthreads 10
 
@@ -519,10 +495,6 @@ $ ./bin/disbatch.pl queue search 5717f5edeb6af80362796221 '{"parameters.migratio
 
   $ ./bin/disbatch.pl queue types
   Disbatch::Plugin::Demo
-
-=item reloadqueues
-
-Deprecated – for back-compat only. NOOP.
 
 =back
 

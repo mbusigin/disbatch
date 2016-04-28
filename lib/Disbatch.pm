@@ -258,8 +258,6 @@ sub scheduler_report {
             maxthreads     => $queue->{maxthreads},
             name           => $queue->{name},
             constructor    => $queue->{constructor},
-            preemptive     => 1,
-            tasks_backfill => 0,
         };
     }
     \@result;

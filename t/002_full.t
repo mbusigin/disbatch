@@ -157,16 +157,6 @@ if ($webpid == 0) {
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'text/html', 'text/html';
 
-    # Returns a 302 to "/legacy/".
-    $res = Net::HTTP::Client->request(GET => "$uri/legacy");
-    is $res->status_line, '302 Found', '302 status';
-    is $res->header('Location'), '/legacy/', 'Location: /legacy/';
-
-    # Returns the contents of "/legacy/index.html" –the legacy queue browser page.
-    $res = Net::HTTP::Client->request(GET => "$uri/legacy/");
-    is $res->status_line, '200 OK', '200 status';
-    is $res->content_type, 'text/html', 'text/html';
-
     # Returns the contents of the request path.
     $res = Net::HTTP::Client->request(GET => "$uri/js/queues.js");
     is $res->status_line, '200 OK', '200 status';
@@ -176,7 +166,6 @@ if ($webpid == 0) {
 
     # Returns array of queues.
     # Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, constructor
-    # For legacy reasons, the following key/value pairs are also included: preemptive: 1, tasks_backfill: 0
     $res = Net::HTTP::Client->request(GET => "$uri/scheduler-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
@@ -187,11 +176,6 @@ if ($webpid == 0) {
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
     is $res->content, "{\"$plugin\":\"$plugin\"}", 'empty hash';
-
-    $res = Net::HTTP::Client->request(GET => "$uri/reload-queues-json");
-    is $res->status_line, '200 OK', '200 status';
-    is $res->content_type, 'application/json', 'application/json';
-    is $res->content, '[1]', 'Deprecated – for back-compat only. NOOP.';
 
     ### POST JSON ROUTES ####
 
@@ -274,8 +258,6 @@ if ($webpid == 0) {
     is $content->[0]{tasks_doing}, 0, 'tasks_doing';
     is $content->[0]{tasks_done}, 0, 'tasks_done';
     is $content->[0]{tasks_todo}, 5, 'tasks_todo';
-    is $content->[0]{preemptive}, 1, 'preemptive';
-    is $content->[0]{tasks_backfill}, 0, 'tasks_backfill';
     is $content->[0]{constructor}, $plugin, 'constructor';
     is $content->[0]{name}, 'test_queue', 'name';
     is $content->[0]{id}, $queueid, 'id';

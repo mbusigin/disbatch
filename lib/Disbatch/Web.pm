@@ -47,7 +47,7 @@ get '/scheduler-json' => sub {
 post '/set-queue-attr-json' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
-    my @valid_attributes = qw/maxthreads preemptive/;
+    my @valid_attributes = qw/maxthreads/;
     unless (grep $_ eq $params->{attr}, @valid_attributes) {
         status 400;
         return send_json { success => 0, error => 'Invalid attr'};
@@ -187,14 +187,9 @@ post '/delete-queue-json' => sub {
 };
 
 # This is needed at least to create queues in the web interface (just the keys).
-# NOTE: post, because of the legacy UI that I don't know how to change.
-get post '/queue-prototypes-json' => sub {
+get '/queue-prototypes-json' => sub {
     undef $disbatch->{mongo};
     send_json get_plugins;
-};
-
-get '/reload-queues-json' => sub {
-    send_json [1];	# for back-compat only. unneeded.
 };
 
 sub get_queue_oid {
@@ -317,8 +312,7 @@ post '/queue-create-tasks-from-query-json' => sub {
 #    send_json [ $reponse->{success}, scalar @{$res->{inserted}}, @{$res->{inserted}}, $reponse ], convert_blessed => 1;
 };
 
-# NOTE: get, because of the legacy UI that I don't know how to change.
-get post '/search-tasks-json' => sub {
+post '/search-tasks-json' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
     #unless (defined $params->{queue} and defined $params->{filter}) {
@@ -381,16 +375,6 @@ get post '/search-tasks-json' => sub {
 
 get '/' => sub {
     send_file '/index.html';
-};
-
-get '/legacy' => sub {
-    status 302;
-    headers Location => '/legacy/';
-    '';
-};
-
-get '/legacy/' => sub {
-    send_file '/legacy/index.html';
 };
 
 get qr{^/} => sub {
@@ -473,8 +457,6 @@ Returns array of queues.
 
 Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, constructor
 
-For legacy reasons, the following key/value pairs are also included: preemptive: 1, tasks_backfill: 0
-
 =item POST /set-queue-attr-json
 
 Parameters: C<< { "queueid": queueid, "attr": attr, "value": value } >>
@@ -509,23 +491,13 @@ Parameters: C<< { "id": id } >>
 
 Returns array: C<< [ success, error_string_or_reponse_object ] >>
 
-=item GET POST /queue-prototypes-json
+=item GET /queue-prototypes-json
 
 Parameters: none.
-
-Note: POST is deprecated.
 
 Note: You currently can't create a queue for a constructor in the web UI unless there is already a queue with that constructor that this returns.
 
 Returns an object where both keys and values are values of currently defined constructors in queues.
-
-=item GET /reload-queues-json
-
-Parameters: none.
-
-Note: Deprecated – for back-compat only. NOOP.
-
-Returns array: C<< [ 1 ] >>
 
 =item POST /queue-create-tasks-json
 
@@ -547,7 +519,7 @@ Parameters: C<< { "queueid": queueid, "collection": collection, "jsonfilter": js
 
 Returns array: C<< [ success, count_inserted ] >> or C<< [ 0, error_string ] >>
 
-=item GET POST /search-tasks-json
+=item POST /search-tasks-json
 
 Parameters: C<< { "queue": queue, "filter": filter, "limit": limit, "skip": skip, "count": count, "terse": terse } >>
 
@@ -558,8 +530,6 @@ All parameters are optional.
 "limit" and "skip" are integers.
 
 "count" and "terse" are booleans.
-
-Note: GET is deprecated.
 
 Returns array of tasks (empty if there is an error in the query), C<< [ status, count_or_error ] >> if "count" is true, or C<< [ 0, error ] >> if other error.
 
@@ -572,14 +542,6 @@ Returns array of tasks (empty if there is an error in the query), C<< [ status, 
 =item GET /
 
 Returns the contents of "/index.html" – the queue browser page.
-
-=item GET /legacy
-
-Returns a 302 to "/legacy/".
-
-=item GET /legacy/
-
-Returns the contents of "/legacy/index.html" –the legacy queue browser page.
 
 =item GET qr{^/}
 
