@@ -132,9 +132,6 @@ The following elements must be included when registering a node:
   * `tasks_done`: a non-negative integer for the tasks done (this queue's
     `count_total` value minus this queue's `count_todo` value)
 
-  For legacy reasons, the queue objects also include `preemptive` set to `1`
-  and `tasks_backfill` set to `0`.
-
 Each node can also contain:
 
 * `maxthreads`: a non-negative integer or null. If set to an integer, this
@@ -156,10 +153,8 @@ MongoDB will create an `ObjectId` for the node's `_id`.
                 "name" : "demo",
                 "tasks_doing" : 0,
                 "tasks_done" : 0,
-                "preemptive" : 1,
                 "id" : "571f8951b75bf335634ec271",
                 "tasks_todo" : 0,
-                "tasks_backfill" : 0
             }
         ],
         "maxthreads": 5,
