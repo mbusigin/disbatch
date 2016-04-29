@@ -270,7 +270,6 @@ sub update_node_status {
     my $status = try { $self->nodes->find_one({node => $self->{node}}) // {} } catch { $self->logger->error("Could not find node: $_"); undef };
     return unless defined $status;
     $status->{node}      = $self->{node};
-    $status->{queues}    = $self->scheduler_report;
     $status->{timestamp} = Time::Moment->now_utc;
     try { $self->nodes->update_one({node => $self->{node}}, {'$set' => $status}, {upsert => 1}) } catch { $self->logger->error("Could not update node: $_") };
 }
