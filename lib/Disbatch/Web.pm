@@ -219,10 +219,6 @@ sub create_tasks {
     }, @$tasks;
 
     my $res = try { $disbatch->tasks->insert_many(\@tasks) } catch { Limper::warning "Could not create tasks: $_"; $_ };
-    if ($res->$_isa('MongoDB::InsertManyResult')) {
-        try { $disbatch->queues->update_one({_id => $queue_id}, {'$inc' => {count_total => scalar @{$res->{inserted}}, count_todo => scalar @{$res->{inserted}}}}) }
-        catch { Limper::warning "Could not update count_total and count_todo for $queue_id: $_" };
-    }
     $res;
 }
 

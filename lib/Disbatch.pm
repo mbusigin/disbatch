@@ -246,15 +246,11 @@ sub scheduler_report {
     my @result;
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
-        my $tasks_doing = try { $self->tasks->count({queue => $queue->{_id}, status => {'$in' => [-1,0]}}) } catch { $self->logger->error("Could not count tasks doing: $_"); -1 };
-        # FIXME: the below two lines can cause a race condition with Disbatch::Web::create_tasks()
-        $queue->{count_total} //= $self->count_total($queue->{_id});
-        $queue->{count_todo} //= $self->count_todo($queue->{_id});
         push @result, {
             id             => $queue->{_id}{value},
-            tasks_todo     => $tasks_doing == -1 ? $queue->{count_todo} : ($queue->{count_todo} - $tasks_doing),
-            tasks_done     => $tasks_doing == -1 ? -1 : ($queue->{count_total} - $queue->{count_todo}),
-            tasks_doing    => $tasks_doing,
+            tasks_todo     => $self->count_queued($queue->{_id}),
+            tasks_doing    => $self->count_running($queue->{_id}),
+            tasks_done     => $self->count_done($queue->{_id}),
             maxthreads     => $queue->{maxthreads},
             name           => $queue->{name},
             plugin         => $queue->{plugin},
@@ -345,58 +341,40 @@ sub start_task {
     $self->{claimed_task} = undef;
 }
 
-# returns count of status -1 and 0 for given queue _id
+sub count_tasks {
+    my ($self, $queue_id, $status, $node) = @_;
+
+    my $query = {};
+    $query->{queue} = $queue_id if defined $queue_id;
+    $query->{status} = $status if defined $status;
+    $query->{node} = $node if defined $node;
+
+    try { $self->tasks->count($query) } catch { $self->logger->error("Could not count tasks: $_"); undef };
+}
+
+sub count_queued {
+    my ($self, $queue_id) = @_;
+    $self->count_tasks($queue_id, {'$lte' => -2});
+}
+
 sub count_running {
     my ($self, $queue_id) = @_;
-    try { $self->tasks->count({node => $self->{node}, status => {'$in' => [-1,0]}, queue => $queue_id}) } catch { $self->logger->error("Could not count running tasks"); undef };
+    $self->count_tasks($queue_id, {'$in' => [-1,0]});
 }
 
-# returns count_todo for given queue _id, setting it if undefined or negative
-sub count_todo {
+sub count_node_running {
     my ($self, $queue_id) = @_;
-
-    if (!$queue_id->$_isa('MongoDB::OID')) {
-        $self->logger->error("count_todo() was not passed an MongoDB::OID object");
-        return undef;
-    }
-
-    my $queue = try { $self->queues->find_one({_id => $queue_id}) } catch { $self->logger->error("Could not find queue"); undef };
-    if (defined $queue and defined $queue->{count_todo} and $queue->{count_todo} >= 0) {
-        $queue->{count_todo};
-    } else {
-        try {
-            my $count = $self->tasks->count({queue => $queue_id, status => {'$lte' => 0}});
-            $self->queues->update_one({_id => $queue_id, count_todo => undef}, {'$set' => {count_todo => $count}});
-            $count;
-        } catch {
-            $self->logger->error("Could not update count_todo: $_");
-            undef;
-        };
-    }
+    $self->count_tasks($queue_id, {'$in' => [-1,0]}, $self->{node});
 }
 
-# returns count_total for given queue _id, setting it if undefined or negative
+sub count_done {
+    my ($self, $queue_id) = @_;
+    $self->count_tasks($queue_id, {'$gte' => 1});
+}
+
 sub count_total {
     my ($self, $queue_id) = @_;
-
-    if (!$queue_id->$_isa('MongoDB::OID')) {
-        $self->logger->error("count_total() was not passed an MongoDB::OID object");
-        return undef;
-    }
-
-    my $queue = try { $self->queues->find_one({_id => $queue_id}) } catch { $self->logger->error("Could not find queue"); undef };
-    if (defined $queue and defined $queue->{count_total} and $queue->{count_total} >= 0) {
-        $queue->{count_total};
-    } else {
-        try {
-            my $count = $self->tasks->count({queue => $queue_id});
-            $self->queues->update_one({_id => $queue_id, count_total => undef}, {'$set' => {count_total => $count}});
-            $count;
-        } catch {
-            $self->logger->error("Could not update count_total: $_");
-            undef;
-        };
-    }
+    $self->count_tasks($queue_id);
 }
 
 # checks if this node will process (activequeues) or ignore (ignorequeues) a queue
@@ -416,18 +394,18 @@ sub process_queues {
     my ($self) = @_;
     my $revalidate_plugins = 0;
     my $node = try { $self->nodes->find_one({node => $self->{node}}, {maxthreads => 1}) } catch { $self->logger->error("Could not find node: $_"); { maxthreads => 0 } };
-    my $node_running = $self->count_running({'$exists' => 1}) // 0;
+    my $node_running = $self->count_node_running({'$exists' => 1}) // 0;
     return if defined $node and defined $node->{maxthreads} and $node_running >= $node->{maxthreads};
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{plugin}} and $self->is_active_queue($queue->{_id})) {
-            my $running = $self->count_running($queue->{_id});
-            while (defined $running and ($queue->{maxthreads} // 0) > $running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
+            my $queue_running = $self->count_node_running($queue->{_id});
+            while (defined $queue_running and ($queue->{maxthreads} // 0) > $queue_running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
                 my $task = $self->claim_task($queue);
                 last unless defined $task;
                 $self->start_task($queue, $task);
-                $running = $self->count_running($queue->{_id});
-                $node_running = $self->count_running({'$exists' => 1}) // 0;
+                $queue_running = $self->count_node_running($queue->{_id});
+                $node_running = $self->count_node_running({'$exists' => 1}) // 0;
             }
         } else {
             $revalidate_plugins = 1;
@@ -648,28 +626,29 @@ If the exec fails, it will set threads to 0 for the given queue and call C<uncla
 
 Returns nothing.
 
+=item count_tasks($queue_id, $status, $node)
+
+Parameters: L<MongoDB::OID> object for a queue or a query operator value or C<undef>, a status or a query operator value or C<undef>, a node or C<undef>.
+
+Counts all tasks for the given C<$queue_id> with given C<$status> and C<$node>.
+
+Used by the below C<count_*> subroutines. If any of the parameters are C<undef>, they will not be added to the query.
+
+Returns: a non-negative integer, or undef if an error.
+
+=item count_queued($queue_id)
+
 =item count_running($queue_id)
 
-Parameters: L<MongoDB::OID> object for a queue (or any other valid query value such as C<< {'$exists' => 1} >>).
+=item count_node_running($queue_id)
 
-Counts all tasks on the current node for the given queue with a status of 0 or -1.
-
-Returns: a non-negative integer, or undef if an error.
-
-=item count_todo($queue_id)
-
-Parameters: L<MongoDB::OID> object for a queue
-
-Returns the C<count_todo> value for the given queue if defined and non-negative,
-otherwise counts all tasks for the given queue with a status less than or equal to 0 and sets C<count_todo>.
-
-Returns: a non-negative integer, or undef if an error.
+=item count_done($queue_id)
 
 =item count_total($queue_id)
 
-Parameters: L<MongoDB::OID> object for a queue
+Parameters: L<MongoDB::OID> object for a queue or a query operator value or C<undef>
 
-Returns the C<count_total> value for the given queue if defined and non-negative, otherwise counts all tasks for the given queue and sets C<count_total>.
+Counts queued (status <= -2), running (status of 0 or -1), running on this node, completed (status >= 1), or all tasks for the given queue (status <= -2).
 
 Returns: a non-negative integer, or undef if an error.
 

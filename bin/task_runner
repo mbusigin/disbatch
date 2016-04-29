@@ -93,9 +93,6 @@ warn "STDERR: $result->{stderr}";
 retry { $disbatch->tasks->update_one({_id => $oid, status => 0, node => $disbatch->{node}}, {'$set' => {status => $result->{status}}}) }
 catch { $logger->logdie("Could not update task $task_id status to $result->{status} after completion: $_") };
 
-# decrement count_todo
-try { $disbatch->queues->update_one({_id => $queue}, {'$inc' => {count_todo => -1}}) } catch { $logger->error("Could not decrement count_todo for queue $queue: $_") };
-
 # set rest of result:
 if ($gfs) {
     my $stdout_doc = retry { $disbatch->put_gfs($result->{stdout}, 'stdout', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stdout: $_"); $result->{warning} = "$_"; undef; };
