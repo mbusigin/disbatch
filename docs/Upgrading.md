@@ -106,19 +106,20 @@ The below is from `lib/Disbatch/Plugin/Demo.pm`.
         if (ref $_[0]) {
             my ($queue, $parameters) = @_;
             warn Dumper $parameters;
-            my %self = map { $_ => $parameters->{$_} } keys %$parameters;       # modifying $parameters breaks something in Disbatch 3.
+            my %self = map { $_ => $parameters->{$_} } keys %$parameters;	# modifying $parameters breaks something in Disbatch 3.
             $self{queue_id} = $queue->{id};
             return bless \%self, $class;
         }
 
         my $self = { @_ };
-        warn Dumper $self->{task}{parameters};
+        $self->{task}{params} //= $self->{task}{parameters} if defined $self->{task}{parameters};	# for deprecated Disbatch 3 format
+        warn Dumper $self->{task}{params};
 
         # back-compat, so as to not change Disbatch 3 plugins so much
         # stick all params in $self
-        for my $param (keys %{$self->{task}{parameters}}) {
+        for my $param (keys %{$self->{task}{params}}) {
             next if $param eq 'workerthread' or $param eq 'task';
-            $self->{$param} = $self->{task}{parameters}{$param};
+            $self->{$param} = $self->{task}{params}{$param};
         }
         $self->{queue_id} = $self->{task}{queue};
         $self->{id} = $self->{task}{_id};

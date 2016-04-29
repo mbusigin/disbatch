@@ -226,7 +226,7 @@ The following elements must be included when creating a task:
 
 * `status`: an integer for the task status code
 
-* `parameters`: an object describing the unique qualities of this task (user,
+* `params`: an object describing the unique qualities of this task (user,
   commands, etc)
 
 The following elements should be created by the DEN when the task finishes, and
@@ -242,7 +242,7 @@ MongoDB will create an `ObjectId` for the task's `_id`.
 
     {
         "_id" : ObjectId("571fac85ee63413233049fbd"),
-        "parameters" : {
+        "params" : {
             "migration" : "oneoff",
             "user1" : "ashley@example.com",
             "user2" : "ashley@example.com",

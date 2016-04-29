@@ -38,10 +38,10 @@
 - Task `stdout` and `stderr` are now written to (mostly-compatible) GridFS
   documents by default. This can be disabled in the config.
 - To define a queue via the JSON API, the type must already be used in another
-  queue, or listed in `plugins` in the config
+  queue, or listed in `plugins` in the config.
 - `ctime` and `mtime` are now `ISODate()` objects in MongoDB, and not unix
-  timestamps
-
+  timestamps.
+- `parameters` has been renamed to `params` in task documents.
 
 #### New:
 - can limit a node to a maximum number of tasks to run (value goes in the
