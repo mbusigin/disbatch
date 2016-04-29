@@ -102,32 +102,6 @@ The following elements must be included when registering a node:
 
 * `timestamp`: [ISODate](https://docs.mongodb.org/manual/core/shell-types/)
 
-* `queues`: array of queue objects
-
-  **Queue Object**
-
-  Each node's queue object must contain the following:
-
-  * `name`: a string to identify this queue (should be unique, but is not a
-    requirement)
-
-  * `id`: a string representation of the queue's `_id` (example:
-    `"571f8951b75bf335634ec271"`)
-
-  * `plugin`: the name of the plugin this queue uses (example:
-    `"Disbatch::Plugin::Demo"`)
-
-  * `maxthreads`: a non-negative integer for the maximum number of threads per
-    node for this queue, or null
-
-  * `tasks_todo`: a non-negative integer for the number of tasks queued (status
-    =< -2)
-
-  * `tasks_doing`: a non-negative integer for the number of tasks in this queue
-    with status `-1` or `0`
-
-  * `tasks_done`: a non-negative integer for the tasks done (status >= 1)
-
 Each node can also contain:
 
 * `maxthreads`: a non-negative integer or null. If set to an integer, this
@@ -142,17 +116,6 @@ MongoDB will create an `ObjectId` for the node's `_id`.
         "_id" : ObjectId("56fc05087aa3a33942e42a6a"),
         "node" : "mig01.example.com",
         "timestamp" : ISODate("2016-04-26T19:26:33.649Z"),
-        "queues" : [
-            {
-                "maxthreads" : 0,
-                "plugin" : "Disbatch::Plugin::Demo",
-                "name" : "demo",
-                "tasks_doing" : 0,
-                "tasks_done" : 0,
-                "id" : "571f8951b75bf335634ec271",
-                "tasks_todo" : 0,
-            }
-        ],
         "maxthreads": 5,
     }
 
