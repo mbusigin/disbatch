@@ -14,6 +14,7 @@ use Limper;
 use Log::Log4perl;
 use MongoDB::OID 1.0.0;
 use Safe::Isa;
+use Time::Moment;
 use Try::Tiny::Retry;
 use URL::Encode qw/url_params_mixed/;
 
@@ -213,8 +214,8 @@ sub create_tasks {
         stderr     => undef,
         node       => undef,
         parameters => $_,
-        ctime      => time,
-        mtime      => 0,
+        ctime      => Time::Moment->now_utc,
+        mtime      => Time::Moment->now_utc,
     }, @$tasks;
 
     my $res = try { $disbatch->tasks->insert_many(\@tasks) } catch { Limper::warning "Could not create tasks: $_"; $_ };
@@ -355,18 +356,27 @@ post '/search-tasks-json' => sub {
             $task->{stderr} = try { $disbatch->get_gfs($task->{stderr}) } catch { Limper::warning "Could not get task $task->{_id} stderr: $_"; $task->{stderr} } if $task->{stderr}->$_isa('MongoDB::OID');
         }
 
-        if ($task->{mtime}) {
-            try {
-                my $dt = DateTime->from_epoch(epoch => $task->{mtime});
-                $task->{mtime_str} = $dt->ymd . ' ' . $dt->hms;
-            };
-        }
-
-        if ($task->{ctime}) {
-            try {
-                my $dt = DateTime->from_epoch(epoch => $task->{ctime});
-                $task->{ctime_str} = $dt->ymd . ' ' . $dt->hms;
-            };
+        for my $type (qw/ctime mtime/) {
+            if ($task->{$type}) {
+                if (ref $task->{$type}) {
+                    if (ref $task->{$type} eq 'Time::Moment' or ref $task->{$type} eq 'DateTime') {
+                        $task->{"${type}_str"} = "$task->{$type}";
+                        $task->{$type} = $task->{$type}->epoch;
+                    } else {
+                        # Unknown ref, force to string
+                        $task->{"${type}_str"} = "$task->{$type}";
+                        $task->{$type} = undef;
+                    }
+                } else {
+                    try {
+                        my $dt = DateTime->from_epoch(epoch => $task->{$type});
+                        $task->{"${type}_str"} = "$dt";
+                    } catch {
+                        $task->{"${type}_str"} = "$task->{$type}";
+                        $task->{$type} = undef;
+                    };
+                }
+            }
         }
     }
 
