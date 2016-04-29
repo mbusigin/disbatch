@@ -284,7 +284,7 @@ sub claim_task {
     $self->{sort} //= 'default';
 
     my $query  = { '$or' => [{node => undef}, {node => -1}], status => -2, queue => $queue->{_id} };
-    my $update = { '$set' => {node => $self->{node}, status => -1, mtime => time} };
+    my $update = { '$set' => {node => $self->{node}, status => -1, mtime => Time::Moment->now_utc} };
 
     my $options;
     if ($self->{sort} eq 'fifo') {
@@ -301,14 +301,24 @@ sub claim_task {
 sub unclaim_task {
     my ($self, $task_id) = @_;
     my $query  = { _id => $task_id, node => $self->{node}, status => -1 };
-    my $update = { '$set' => {node => undef, status => -2, mtime => 0} };
+    my $update = { '$set' => {node => undef, status => -2, mtime => Time::Moment->now_utc} };
     $self->logger->warn("Unclaliming task $task_id");
     retry { $self->tasks->find_one_and_update($query, $update) } catch { $self->logger->error("Could not unclaim task $task_id: $_"); undef };
 }
 
 sub orphaned_tasks {
     my ($self) = @_;
-    try { $self->tasks->update_many({node => $self->{node}, status => -1, mtime => {'$lt' => time - 300} }, {'$set' => {status => -6}}) }
+    try { $self->tasks->update_many(
+        {
+            node => $self->{node},
+            status => -1,
+            '$or' => [
+                { '$and' => [{mtime => {'$type' => 9}}, {mtime => {'$lt' => Time::Moment->now_utc->(5)}}] },
+                { '$and' => [{mtime => {'$not' => {'$type' => 9}}}, {mtime => {'$lt' => time - 300}}] },
+            ],
+        },
+        {'$set' => {status => -6, mtime => Time::Moment->now_utc}}
+    ) }
     catch { $self->logger->error("Could not find orphaned_tasks: $_") };
 }
 
@@ -618,7 +628,7 @@ Returns a task document, or undef if no queued task found.
 
 Parameters: L<MongoDB::OID> object for a task
 
-Sets the task's node to null, status to -2, and mtime to 0 if it has status -1 and this node's hostname.
+Sets the task's node to null, status to -2, and update mtime if it has status -1 and this node's hostname.
 
 Returns a task document, or undef if a matching task is not found.
 
