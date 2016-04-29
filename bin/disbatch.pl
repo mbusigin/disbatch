@@ -239,7 +239,7 @@ sub status {
                 $queue->{id},
                 $queue->{plugin},
                 $queue->{name},
-                $queue->{maxthreads},
+                $queue->{threads},
                 $queue->{tasks_done},
                 $queue->{tasks_todo},
                 $queue->{tasks_doing},
@@ -456,9 +456,9 @@ List all queues this disbatch server processes.
 =item queue set <queue> <key> <value>
 
 Change a field's value in a queue.
-The only valid field is C<maxthreads>.
+The only valid field is C<threads>.
 
-  $ disbatch.pl queue set 56eade3aeb6af81e0123ed21 maxthreads 10
+  $ disbatch.pl queue set 56eade3aeb6af81e0123ed21 threads 10
 
 =item queue start <type> <name>
 

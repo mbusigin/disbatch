@@ -49,7 +49,7 @@ sub new {
             privileges => [
                 # FIXME: make this read a config file, as different plugins will have different needs
                 { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
-                { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },	# used to set maxthreads to 0 in case of serious error
+                { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },	# used to set threads to 0 in case of serious error
                 { resource => { db => $self->{db}{name}, collection => 'users' },  actions => [ 'update' ] },
                 { resource => { db => $self->{db}{name}, collection => 'reports' },  actions => [ 'insert' ] },
                 { resource => { db => $self->{db}{name}, collection => 'complete' },  actions => [ 'update' ] },

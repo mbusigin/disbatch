@@ -82,7 +82,7 @@ window.onload = function() {
     { name: "id", label: "ID", datatype: "string", editable: false},
     { name: "plugin", label: "Type", datatype: "string", editable: true},
     { name: "name", label: "Name", datatype: "string", editable: true},
-    { name: "maxthreads", label: "Threads", datatype: "integer", editable: true},
+    { name: "threads", label: "Threads", datatype: "integer", editable: true},
     { name: "tasks_done", label: "Done", datatype: "integer", editable: false},
     { name: "tasks_todo", label: "Queued", datatype: "integer", editable: false},
     { name: "tasks_doing", label: "Running", datatype: "integer", editable: false},

@@ -48,7 +48,7 @@ get '/scheduler-json' => sub {
 post '/set-queue-attr-json' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
-    my @valid_attributes = qw/maxthreads/;
+    my @valid_attributes = qw/threads/;
     unless (grep $_ eq $params->{attr}, @valid_attributes) {
         status 400;
         return send_json { success => 0, error => 'Invalid attr'};
@@ -461,13 +461,13 @@ Parameters: none.
 
 Returns array of queues.
 
-Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, maxthreads, name, plugin
+Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, threads, name, plugin
 
 =item POST /set-queue-attr-json
 
 Parameters: C<< { "queueid": queueid, "attr": attr, "value": value } >>
 
-"attr" must be "maxthreads". "value" should be an integer, but no checking is done.
+"attr" must be "threads". "value" should be an integer, but no checking is done.
 
 Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
 
