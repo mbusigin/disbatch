@@ -138,7 +138,7 @@ if ($webpid == 0) {
     my $object;	# array of task parameter objects
     my $collection;	# name of the MongoDB collection to query
     my $filter;	# query. If you want to query by OID, use the key "id" and not "_id"
-    my $parameters;	# object of task parameters. To insert a document value from a query into the parameters, prefix the desired key name with "document." as a value.
+    my $params;	# object of task params. To insert a document value from a query into the params, prefix the desired key name with "document." as a value.
     my $limit;	# integer
     my $skip;	# integer
     my $count;	# boolean
@@ -210,7 +210,7 @@ if ($webpid == 0) {
     is $content->[0], 1, 'success';
     is $content->[1], 3, 'count';
 
-    $data = { queue => $queueid, count => 1, filter => { 'parameters.commands' => 'b' } };
+    $data = { queue => $queueid, count => 1, filter => { 'params.commands' => 'b' } };
     $res = Net::HTTP::Client->request(POST => "$uri/search-tasks-json", 'Content-Type' => 'application/json', encode_json($data));
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
@@ -235,11 +235,11 @@ if ($webpid == 0) {
     # Returns array: C<< [ success, count_inserted ] >> or C<< [ 0, $error_string ] >>
     # "collection" is the name of the MongoDB collection to query.
     # "jsonfilter" is the query.
-    # "parameters" is an object of task parameters. To insert a document value from a query into the parameters, prefix the desired key name with C<document.> as a value.
+    # "params" is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
     $collection = 'users';
     $filter = { migration => 'test' };
-    $parameters = { user1 => 'document.username', migration => 'document.migration', commands => '*' };
-    $data =  { queueid => $queueid, collection => $collection, jsonfilter => $filter, parameters => $parameters };
+    $params = { user1 => 'document.username', migration => 'document.migration', commands => '*' };
+    $data =  { queueid => $queueid, collection => $collection, jsonfilter => $filter, params => $params };
     $res = Net::HTTP::Client->request(POST => "$uri/queue-create-tasks-from-query-json", 'Content-Type' => 'application/json', encode_json($data));
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';

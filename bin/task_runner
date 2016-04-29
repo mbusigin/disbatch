@@ -44,7 +44,7 @@ my $doc = retry {
 };
 
 $logger->logdie("No task found for $task_id") unless defined $doc;
-$logger->info("parameters for $task_id: ", $json->encode($doc->{parameters}));
+$logger->info("params for $task_id: ", $json->encode($doc->{params} // $doc->{parameters}));
 
 my $plugin = ($disbatch->queues->find_one({_id => $doc->{queue}}) // {})->{plugin};
 # FIXME: these will leave the task orphaned:

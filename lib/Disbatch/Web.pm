@@ -203,7 +203,7 @@ sub get_queue_oid {
     };
 }
 
-# creates a task for given queue _id and parameters, returning task _id
+# creates a task for given queue _id and params, returning task _id
 sub create_tasks {
     my ($queue_id, $tasks) = @_;
 
@@ -213,7 +213,7 @@ sub create_tasks {
         stdout     => undef,
         stderr     => undef,
         node       => undef,
-        parameters => $_,
+        params     => $_,
         ctime      => Time::Moment->now_utc,
         mtime      => Time::Moment->now_utc,
     }, @$tasks;
@@ -257,21 +257,21 @@ post '/queue-create-tasks-json' => sub {
 post '/queue-create-tasks-from-query-json' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
-    unless (defined $params->{queueid} and defined $params->{collection} and defined $params->{jsonfilter} and defined $params->{parameters}) {
+    unless (defined $params->{queueid} and defined $params->{collection} and defined $params->{jsonfilter} and defined $params->{params}) {
         status 400;
-        return send_json [ 0, 'queueid, collection, jsonfilter, and parameters required'];
+        return send_json [ 0, 'queueid, collection, jsonfilter, and params required'];
     }
 
     my $filter = try { ref $params->{jsonfilter} ? $params->{jsonfilter} : $json->decode($params->{jsonfilter}) } catch { $_ };	# {"migration":"foo"}
     return send_json [ 0, $filter ] unless ref $filter;
 
-    my $parameters = try { ref $params->{parameters} ? $params->{parameters} : $json->decode($params->{parameters}) } catch { $_ };	# {"migration":"document.migration","user1":"document.username"}
-    return send_json [ 0, $parameters ] unless ref $parameters;
+    my $task_params = try { ref $params->{params} ? $params->{params} : $json->decode($params->{params}) } catch { $_ };	# {"migration":"document.migration","user1":"document.username"}
+    return send_json [ 0, $task_params ] unless ref $task_params;
 
     my $queue_id = get_queue_oid($params->{queueid});
     return send_json [ 0, 'Queue not found' ] unless defined $queue_id;
 
-    my @fields = grep /^document\./, values %$parameters;
+    my @fields = grep /^document\./, values %$task_params;
     my %fields = map { s/^document\.//; $_ => 1 } @fields;
 
     my $cursor = $disbatch->mongo->coll($params->{collection})->find($filter)->fields(\%fields);
@@ -279,7 +279,7 @@ post '/queue-create-tasks-from-query-json' => sub {
     my $error;
     try {
         while (my $object = $cursor->next) {
-            my $task = { %$parameters };
+            my $task = { %$task_params };
             for my $key (keys %$task) {
                 if ($task->{$key} =~ /^document\./) {
                     for my $field (@fields) {
@@ -447,9 +447,9 @@ Returns a C<MongoDB::OID> object representing this queue's _id.
 
 =item create_tasks($queue_id, $tasks)
 
-Parameters: C<MongoDB::OID> object of the queue _id, C<ARRAY> of task parameters.
+Parameters: C<MongoDB::OID> object of the queue _id, C<ARRAY> of task params.
 
-Creates one queued task document for the given queue _id per C<$tasks> entry. Each C<$task> entry becomes the value of the C<parameters> field of the document.
+Creates one queued task document for the given queue _id per C<$tasks> entry. Each C<$task> entry becomes the value of the C<params> field of the document.
 
 Returns: the repsonse object from a C<MongoDB::Collection#insert_many> request.
 
@@ -519,13 +519,13 @@ Returns array: C<< [ success, count_inserted, array_of_inserted, reponse_object 
 
 =item POST /queue-create-tasks-from-query-json
 
-Parameters: C<< { "queueid": queueid, "collection": collection, "jsonfilter": jsonfilter, "parameters": parameters } >>
+Parameters: C<< { "queueid": queueid, "collection": collection, "jsonfilter": jsonfilter, "params": params } >>
 
 "collection" is the name of the MongoDB collection to query.
 
 "jsonfilter" is the query.
 
-"parameters" is an object of task parameters. To insert a document value from a query into the parameters, prefix the desired key name with C<document.> as a value.
+"params" is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
 
 Returns array: C<< [ success, count_inserted ] >> or C<< [ 0, error_string ] >>
 
