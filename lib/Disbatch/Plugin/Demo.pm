@@ -13,19 +13,20 @@ sub new {
     if (ref $_[0]) {
         my ($queue, $parameters) = @_;
         warn Dumper $parameters;
-        my %self = map { $_ => $parameters->{$_} } keys %$parameters;       # modifying $parameters breaks something in Disbatch 3.
+        my %self = map { $_ => $parameters->{$_} } keys %$parameters;	# modifying $parameters breaks something in Disbatch 3.
         $self{queue_id} = $queue->{id};
         return bless \%self, $class;
     }
 
     my $self = { @_ };
-    warn Dumper $self->{task}{parameters};
+    $self->{task}{params} //= $self->{task}{parameters} if defined $self->{task}{parameters};	# for deprecated Disbatch 3 format
+    warn Dumper $self->{task}{params};
 
     # back-compat, so as to not change Disbatch 3 plugins so much
     # stick all params in $self
-    for my $param (keys %{$self->{task}{parameters}}) {
+    for my $param (keys %{$self->{task}{params}}) {
         next if $param eq 'workerthread' or $param eq 'task';
-        $self->{$param} = $self->{task}{parameters}{$param};
+        $self->{$param} = $self->{task}{params}{$param};
     }
     $self->{queue_id} = $self->{task}{queue};
     $self->{id} = $self->{task}{_id};
@@ -107,8 +108,8 @@ Disbatch::Plugin::Demo - demo plugin for Disbatch
 
 A sample Disbatch plugin.
 
-Tasks for this plugin should have in C<parameters> the name C<commands> with a value of C<a>, C<b>, C<c>, or any combination, and optionally the name C<counter>.
-Any other characters in the C<commands> value are ignored, as well as any other names in C<parameters>.
+Tasks for this plugin should have in C<params> the name C<commands> with a value of C<a>, C<b>, C<c>, or any combination, and optionally the name C<counter>.
+Any other characters in the C<commands> value are ignored, as well as any other names in C<params>.
 
 Command C<a> will write to C<stdout> and succeed with status 1.
 
@@ -127,7 +128,7 @@ C<$doc> is the task document from MongoDB.
 
 Returns a C<Disbatch::Plugin::Demo> object.
 
-In this demo, the parameters passed become C<$self>, and all of the task's parameters are put into C<$self>, unless they are named C<workerthread> or C<task>.
+In this demo, the parameters passed become C<$self>, and all of the task's params are put into C<$self>, unless they are named C<workerthread> or C<task>.
 In addition, C<<$self->{queue_id}>> is set to the task's queue id, and C<<$self->{id}>> is set to the task's id.
 This allows minimal modification to Disbatch 3 plugins.
 

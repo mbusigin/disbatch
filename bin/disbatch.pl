@@ -185,7 +185,7 @@ sub parse_queue_tasks {
     }
 
     return 0, 'Parameters must be an even number of elements to comprise a key/value pair set' if $state == 1;
-    $params->{parameters} = $json->encode(\%parameters);
+    $params->{params} = $json->encode(\%parameters);
 
     return 1, undef;
 }
@@ -331,7 +331,7 @@ sub queue_tasks {
             queueid    => $params->{queueid},
             collection => $params->{collection},
             jsonfilter => $json->encode($params->{filter}),
-            parameters => $params->{parameters},
+            params     => $params->{params},
         ]
     );
 
@@ -469,17 +469,17 @@ Create a new queue.
 
 =item queue task <queue> [<key> <value> ...]
 
-Creates a task in the specified queue with the given parameters.
+Creates a task in the specified queue with the given params.
 
   $ ./bin/disbatch.pl queue task 5717f5edeb6af80362796221 user1 ashley user2 ashley
   [1,1,{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}},{"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}}],"write_concern_errors":[],"write_errors":[]},"success":1}]
 
-=item queue tasks <queue> <collection> [<filter key> <value> ...] -- -- [<parameter key> <value> ...]
+=item queue tasks <queue> <collection> [<filter key> <value> ...] -- -- [<param key> <value> ...]
 
-Creates multiple tasks in the specified queue with the given parameters, based off a filter from another collection.
+Creates multiple tasks in the specified queue with the given params, based off a filter from another collection.
 
 In the below example, the C<users> collection is queried for all documents matching C<{migration: "foo"}>.
-These documents are then used to set task parameters, and the values from the query collection are accessed by prepending C<document.>.
+These documents are then used to set task params, and the values from the query collection are accessed by prepending C<document.>.
 
   $ ./bin/disbatch.pl queue tasks 5717f5edeb6af80362796221 users migration foo -- -- user1 document.username user2 document.username migration document.migration
   [1,2]
@@ -488,8 +488,8 @@ These documents are then used to set task parameters, and the values from the qu
 
 Returns a JSON array of task documents matching the JSON query given. Note that blessed values may be munged to be proper JSON.
 
-$ ./bin/disbatch.pl queue search 5717f5edeb6af80362796221 '{"parameters.migration": "foo"}'
-[{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c72"},"node":null,"parameters":{"migration":"foo","user1":"ashley","user2":"ashley"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"},{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c73"},"node":null,"parameters":{"migration":"foo","user1":"matt","user2":"matt"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"}]
+$ ./bin/disbatch.pl queue search 5717f5edeb6af80362796221 '{"params.migration": "foo"}'
+[{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c72"},"node":null,"params":{"migration":"foo","user1":"ashley","user2":"ashley"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"},{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c73"},"node":null,"params":{"migration":"foo","user1":"matt","user2":"matt"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"}]
 
 =item queue types
 
