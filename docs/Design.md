@@ -63,9 +63,7 @@ per-queue maximum thread thresholds (`maxthreads`) are reached. The DEN then
 notifies the DTR of the task, and the DTR puts the task into a running state
 (setting the status to `0`). When the plugin has finished, it reports back the
 status, stdout, and stderr of the task to the DTR. The DTR then updates the
-task's document in MongoDB with these values.
-
-FIXME: should `mtime` be updated at completion as well?
+task's document in MongoDB with these values as well as the `mtime`.
 
 ###### `findOneAndUpdate(filter, update, options)`
 
