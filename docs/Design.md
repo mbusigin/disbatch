@@ -12,10 +12,10 @@ DENs, restricted from a subset of DENs, or available to all DENs.
 
 Each queue uses a specific Disbatch plugin for its tasks. If the plugin listed
 for a queue is not available, the queue is ignored. The queue sets the limit of
-tasks to run per DEN for that queue with the `maxthreads` field.
+tasks to run across all DENs for that queue with the `threads` field.
 
-DENs may also limit the number of tasks to run overall with the `maxthreads`
-field in their node's entry.
+A DEN may also limit the number of tasks to run overall on that DEN with the
+`maxthreads` field in its node's entry.
 
 Each task links to a single queue.
 
@@ -58,8 +58,8 @@ Each task is initialised with its node as `null` (unclaimed) and status as `-2`
 
 DENs claim tasks from queues using `findOneAndUpdate(filter, update, options)`,
 returning the task object, by putting them into a claimed state (setting the
-status to `-1` and the node to the hostname of the DEN) until the per-node and
-per-queue maximum thread thresholds (`maxthreads`) are reached. The DEN then
+status to `-1` and the node to the hostname of the DEN) until the per-node
+`maxthreads` and per-queue `theads` thresholds are reached. The DEN then
 notifies the DTR of the task, and the DTR puts the task into a running state
 (setting the status to `0`). When the plugin has finished, it reports back the
 status, stdout, and stderr of the task to the DTR. The DTR then updates the
@@ -136,8 +136,8 @@ The following elements must be included when creating a queue:
 
 The following elements may be included when creating a queue:
 
-* `maxthreads`: a non-negative integer for the maximum number of threads per
-  node for this queue, or null
+* `threads`: a non-negative integer for the maximum number of threads across all
+  nodes for this queue, or null
 
 * `sort`: a string on how to sort the query results when looking for the next
   task to run. Valid options are `fifo`, `lifo`, or `default`. The sort is on
@@ -152,7 +152,7 @@ MongoDB will create an `ObjectId` for the queue's `_id`.
         "_id" : ObjectId("571f8951b75bf335634ec271"),
         "plugin" : "Disbatch::Plugin::Demo",
         "name" : "demo",
-        "maxthreads" : 0,
+        "threads" : 0,
         "sort" : "fifo"
     }
 

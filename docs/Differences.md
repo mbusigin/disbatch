@@ -45,6 +45,9 @@
 - `count_todo` and `count_total` have been removed from the queue documents.
   These are now counted on demand.
 - `queues` has been removed from the node documents.
+- `maxthreads` (which applied per node) in queues has been replaced by `threads`
+  (which applies across all nodes).
+
 
 #### New:
 - can limit a node to a maximum number of tasks to run (value goes in the
