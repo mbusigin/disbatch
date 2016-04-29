@@ -39,6 +39,8 @@
   documents by default. This can be disabled in the config.
 - To define a queue via the JSON API, the type must already be used in another
   queue, or listed in `plugins` in the config
+- `ctime` and `mtime` are now `ISODate()` objects in MongoDB, and not unix
+  timestamps
 
 
 #### New:
