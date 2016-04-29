@@ -42,6 +42,9 @@
 - `ctime` and `mtime` are now `ISODate()` objects in MongoDB, and not unix
   timestamps.
 - `parameters` has been renamed to `params` in task documents.
+- `count_todo` and `count_total` have been removed from the queue documents.
+  These are now counted on demand.
+- `queues` has been removed from the node documents.
 
 #### New:
 - can limit a node to a maximum number of tasks to run (value goes in the

@@ -120,15 +120,13 @@ The following elements must be included when registering a node:
   * `maxthreads`: a non-negative integer for the maximum number of threads per
     node for this queue, or null
 
-  * `tasks_todo`: a non-negative integer for the number of tasks queued (this
-    queue's `count_todo` value minus any tasks in this queue with status `-1` or
-    `0`)
+  * `tasks_todo`: a non-negative integer for the number of tasks queued (status
+    =< -2)
 
   * `tasks_doing`: a non-negative integer for the number of tasks in this queue
     with status `-1` or `0`
 
-  * `tasks_done`: a non-negative integer for the tasks done (this queue's
-    `count_total` value minus this queue's `count_todo` value)
+  * `tasks_done`: a non-negative integer for the tasks done (status >= 1)
 
 Each node can also contain:
 
@@ -183,16 +181,6 @@ The following elements may be included when creating a queue:
   the tasks' `_id` values. If not used, the default order of the query returned
   by MongoDB will be used.
 
-The following elements should be created by the DEN automatically when they are
-`null` or missing, and should be managed by the DEN as tasks are created and
-complete:
-
-* `count_todo`: a non-negative integer for the number of tasks in this queue
-  with a status less than or equal to `0`
-
-* `count_total`: a non-negative integer for the total number of tasks in this
-  queue
-
 MongoDB will create an `ObjectId` for the queue's `_id`.
 
 ##### Example
@@ -201,8 +189,6 @@ MongoDB will create an `ObjectId` for the queue's `_id`.
         "_id" : ObjectId("571f8951b75bf335634ec271"),
         "plugin" : "Disbatch::Plugin::Demo",
         "name" : "demo",
-        "count_total" : 0,
-        "count_todo" : 0,
         "maxthreads" : 0,
         "sort" : "fifo"
     }
@@ -298,7 +284,7 @@ Formerly defined status codes that may be used for other needs:
 You may use additional integer values for status codes. As a postive integer
 indicates that a task has finished, your plugin must return a positive integer
 for the status. Any unused negative value may be set when a task is queued to
-prevent the DEN from claiming it, but it will still be counted in `count_todo`.
+prevent the DEN from claiming it.
 
 
 
