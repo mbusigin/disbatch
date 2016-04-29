@@ -251,7 +251,7 @@ sub scheduler_report {
             tasks_todo     => $self->count_queued($queue->{_id}),
             tasks_doing    => $self->count_running($queue->{_id}),
             tasks_done     => $self->count_done($queue->{_id}),
-            maxthreads     => $queue->{maxthreads},
+            threads        => $queue->{threads},
             name           => $queue->{name},
             plugin         => $queue->{plugin},
         };
@@ -333,7 +333,7 @@ sub start_task {
         unless (exec $command, @args) {
             $self->mongo->reconnect;
             $self->logger->error("Could not exec '$command', unclaiming task $task->{_id} and setting threads to 0 for $queue->{name}");
-            retry { $self->queues->update_one({_id => $queue->{_id}}, {'$set' => {maxthreads => 0}}) } catch { "Could not set queues to 0 for $queue->{name}: $_" };
+            retry { $self->queues->update_one({_id => $queue->{_id}}, {'$set' => {threads => 0}}) } catch { "Could not set queues to 0 for $queue->{name}: $_" };
             $self->unclaim_task($task->{_id});
             exit;
         }
@@ -399,12 +399,12 @@ sub process_queues {
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{plugin}} and $self->is_active_queue($queue->{_id})) {
-            my $queue_running = $self->count_node_running($queue->{_id});
-            while (defined $queue_running and ($queue->{maxthreads} // 0) > $queue_running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
+            my $queue_running = $self->count_running($queue->{_id});
+            while (defined $queue_running and ($queue->{threads} // 0) > $queue_running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
                 my $task = $self->claim_task($queue);
                 last unless defined $task;
                 $self->start_task($queue, $task);
-                $queue_running = $self->count_node_running($queue->{_id});
+                $queue_running = $self->count_running($queue->{_id});
                 $node_running = $self->count_node_running({'$exists' => 1}) // 0;
             }
         } else {
@@ -665,7 +665,7 @@ Returns 1 or 0.
 
 Parameters: none
 
-Will claim and start as many tasks for each queue as allowed by the current node's C<maxthreads> and each queue's C<maxthreads>.
+Will claim and start as many tasks for each queue as allowed by the current node's C<maxthreads> and each queue's C<threads>.
 
 Returns nothing.
 
