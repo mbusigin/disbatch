@@ -461,7 +461,7 @@ Parameters: none.
 
 Returns array of queues.
 
-Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, threads, name, plugin
+Each item has the following keys: id, plugin, name, threads, queued, running, completed
 
 =item POST /set-queue-attr-json
 

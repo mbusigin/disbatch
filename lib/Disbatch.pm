@@ -248,12 +248,12 @@ sub scheduler_report {
     for my $queue (@queues) {
         push @result, {
             id             => $queue->{_id}{value},
-            tasks_todo     => $self->count_queued($queue->{_id}),
-            tasks_doing    => $self->count_running($queue->{_id}),
-            tasks_done     => $self->count_done($queue->{_id}),
-            threads        => $queue->{threads},
-            name           => $queue->{name},
             plugin         => $queue->{plugin},
+            name           => $queue->{name},
+            threads        => $queue->{threads},
+            queued         => $self->count_queued($queue->{_id}),
+            running        => $self->count_running($queue->{_id}),
+            completed      => $self->count_completed($queue->{_id}),
         };
     }
     \@result;
@@ -367,7 +367,7 @@ sub count_node_running {
     $self->count_tasks($queue_id, {'$in' => [-1,0]}, $self->{node});
 }
 
-sub count_done {
+sub count_completed {
     my ($self, $queue_id) = @_;
     $self->count_tasks($queue_id, {'$gte' => 1});
 }
@@ -642,7 +642,7 @@ Returns: a non-negative integer, or undef if an error.
 
 =item count_node_running($queue_id)
 
-=item count_done($queue_id)
+=item count_completed($queue_id)
 
 =item count_total($queue_id)
 
