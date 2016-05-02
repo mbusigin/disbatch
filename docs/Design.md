@@ -230,11 +230,11 @@ These are the standard status codes in Disbatch 4:
 
 * `1`: Succeeded
 
-  A task that completed
+  A task that completed successfully
 
 * `2`: Failed
 
-  A task that wasn't 100% completed due to an error
+  A task that completed, but part failed due to an error
 
 Formerly defined status codes that may be used for other needs:
 

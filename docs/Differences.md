@@ -20,6 +20,9 @@
 - The `Preemptive` setting has been removed.
 - The `enclosure` command has been removed.
 - The `reloadqueues` command has been removed.
+- The API call `/scheduler-json` returns `queued`, `running`, and `completed`
+  instead of `tasks_todo`, `tasks_doing`, `tasks_done`, and the UIs have been
+  updated and reordered to match.
 - The main process, the web server, the task runner, and the plugin all have
   their own permission models if using authentication instead of sharing one
   account.
