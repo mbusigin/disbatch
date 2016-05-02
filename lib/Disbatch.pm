@@ -400,7 +400,7 @@ sub process_queues {
     for my $queue (@queues) {
         if ($self->{plugins}{$queue->{plugin}} and $self->is_active_queue($queue->{_id})) {
             my $queue_running = $self->count_running($queue->{_id});
-            while (defined $queue_running and ($queue->{threads} // 0) > $queue_running and (!defined $node->{maxthreads} or defined $node->{maxthreads} > $node_running)) {
+            while (defined $queue_running and ($queue->{threads} // 0) > $queue_running and (!defined $node->{maxthreads} or $node->{maxthreads} > $node_running)) {
                 my $task = $self->claim_task($queue);
                 last unless defined $task;
                 $self->start_task($queue, $task);
