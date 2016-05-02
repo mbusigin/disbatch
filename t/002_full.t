@@ -165,7 +165,7 @@ if ($webpid == 0) {
     ### GET JSON ROUTES ####
 
     # Returns array of queues.
-    # Each item has the following keys: id, tasks_todo, tasks_done, tasks_doing, threads, name, plugin
+    # Each item has the following keys: id, plugin, name, threads, queued, running, completed
     $res = Net::HTTP::Client->request(GET => "$uri/scheduler-json");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
@@ -254,13 +254,13 @@ if ($webpid == 0) {
     $content = decode_json($res->content);
     is ref $content, 'ARRAY', 'content is ARRAY';
     is scalar @$content, 1, 'size';
-    is $content->[0]{threads}, undef, 'threads';
-    is $content->[0]{tasks_doing}, 0, 'tasks_doing';
-    is $content->[0]{tasks_done}, 0, 'tasks_done';
-    is $content->[0]{tasks_todo}, 5, 'tasks_todo';
+    is $content->[0]{id}, $queueid, 'id';
     is $content->[0]{plugin}, $plugin, 'plugin';
     is $content->[0]{name}, 'test_queue', 'name';
-    is $content->[0]{id}, $queueid, 'id';
+    is $content->[0]{threads}, undef, 'threads';
+    is $content->[0]{queued}, 5, 'queued';
+    is $content->[0]{running}, 0, 'running';
+    is $content->[0]{completed}, 0, 'completed';
 
     # Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
     $data = { queueid => $queueid, attr => 'threads', value => 1 };

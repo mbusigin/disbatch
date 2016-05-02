@@ -229,9 +229,9 @@ sub status {
             {title => 'Plugin',     align => 'right'}, $sep,
             {title => 'Name',       align => 'right'}, $sep,
             {title => 'Threads',    align => 'right'}, $sep,
-            {title => 'Done',       align => 'right'}, $sep,
-            {title => 'To-Do',      align => 'right'}, $sep,
-            {title => 'Processing', align => 'right'}, #$sep,
+            {title => 'Queued',     align => 'right'}, $sep,
+            {title => 'Running',    align => 'right'}, $sep,
+            {title => 'Completed',  align => 'right'},
         );
 
         for my $queue (@$obj) {
@@ -240,9 +240,9 @@ sub status {
                 $queue->{plugin},
                 $queue->{name},
                 $queue->{threads},
-                $queue->{tasks_done},
-                $queue->{tasks_todo},
-                $queue->{tasks_doing},
+                $queue->{queued},
+                $queue->{running},
+                $queue->{completed},
             );
             $count++;
         }

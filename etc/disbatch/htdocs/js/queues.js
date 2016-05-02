@@ -83,9 +83,9 @@ window.onload = function() {
     { name: "plugin", label: "Type", datatype: "string", editable: true},
     { name: "name", label: "Name", datatype: "string", editable: true},
     { name: "threads", label: "Threads", datatype: "integer", editable: true},
-    { name: "tasks_done", label: "Done", datatype: "integer", editable: false},
-    { name: "tasks_todo", label: "Queued", datatype: "integer", editable: false},
-    { name: "tasks_doing", label: "Running", datatype: "integer", editable: false},
+    { name: "queued", label: "Queued", datatype: "integer", editable: false},
+    { name: "running", label: "Running", datatype: "integer", editable: false},
+    { name: "completed", label: "Completed", datatype: "integer", editable: false},
   ];
   // a small example of how you can manipulate the object in javascript
   queueLayout[1].values = {
