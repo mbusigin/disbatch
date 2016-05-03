@@ -202,6 +202,7 @@ sub ensure_indexes {
     try {
         $self->config->indexes->create_one([ active => 1 ], { unique => true, sparse => true });
         $self->config->indexes->create_one([ label => 1 ], { unique => true });
+        $self->nodes->indexes->create_one([ node => 1 ], { unique => true });
         $self->mongo->coll('tasks.chunks')->indexes->create_one([ files_id => 1, n => 1 ], { unique => true });
         $self->mongo->coll('tasks.files')->indexes->create_one([ filename => 1, 'metadata.task_id' => 1 ]);
     } catch {
