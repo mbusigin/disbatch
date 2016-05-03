@@ -13,10 +13,11 @@ use Safe::Isa;
 use Term::ReadKey;
 use Try::Tiny::Retry;
 
-my ($config_file, $root_user, $create_root, $drop_roles);
+my ($config_file, $plugin_perms_file, $root_user, $create_root, $drop_roles);
 
 GetOptions(
     'config=s' => \$config_file,
+    'plugin_perms=s' => \$plugin_perms_file,
     'root_user=s' => \$root_user,
     'create_root' => \$create_root,
     'drop_roles' => \$drop_roles,
@@ -24,7 +25,10 @@ GetOptions(
 
 die "Must pass --config and --root_user" unless $config_file and $root_user;
 
+$plugin_perms_file //= '/etc/disbatch/plugin-permissions.json';
+
 my $config = Cpanel::JSON::XS->new->relaxed->decode(scalar read_file $config_file);
+my $plugin_perms = Cpanel::JSON::XS->new->relaxed->decode(scalar read_file $plugin_perms_file);
 
 die "No mongohost name in $config_file" unless $config->{mongohost};
 die "No database name in $config_file" unless $config->{database};
@@ -48,7 +52,7 @@ $config->{attributes}{username} = $root_user;
 $config->{attributes}{password} = $root_password;
 
 my $test_db_root = MongoDB->connect($config->{mongohost}, $config->{attributes})->get_database($config->{database});
-my $roles = Disbatch::Roles->new(db => $test_db_root, %{$config->{auth}});
+my $roles = Disbatch::Roles->new(db => $test_db_root, plugin_perms => $plugin_perms, %{$config->{auth}});
 if ($drop_roles // 0) {
     say "Dropping the following roles and users in database '$config->{database}' on $config->{mongohost}: disbatchd, disbatch_web, task_runner";
     $roles->drop_roles_and_users;
@@ -89,6 +93,12 @@ It must also have the key C<auth> which is a hash with keys C<disbatchd>, C<disb
 =item --root_user <string>
 
 Username of the MongoDB root user.
+
+=item --plugin_perms <string>
+
+Path to the JSON config file for C<plugin> permissions. Default is C</etc/disbatch/plugin-permissions.json>.
+
+At a minimum, permission is needed to run C<find> on the C<config> collection.
 
 =item --create_root
 

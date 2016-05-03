@@ -46,16 +46,7 @@ sub new {
         },
         plugin => {
             password => $self->{plugin},
-            privileges => [
-                # FIXME: make this read a config file, as different plugins will have different needs
-                { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
-                { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },	# used to set threads to 0 in case of serious error
-                { resource => { db => $self->{db}{name}, collection => 'users' },  actions => [ 'update' ] },
-                { resource => { db => $self->{db}{name}, collection => 'reports' },  actions => [ 'insert' ] },
-                { resource => { db => $self->{db}{name}, collection => 'complete' },  actions => [ 'update' ] },
-                { resource => { db => $self->{db}{name}, collection => 'status' },  actions => [ 'update', 'createCollection', 'createIndex' ] },
-                { resource => { db => $self->{db}{name}, collection => 'nodeQueues' },  actions => [ 'update' ] },
-            ],
+            privileges => [ map { { resource => { db => $self->{db}{name}, collection => $_ }, actions => $self->{plugin_perms}{$_} } } keys %{$self->{plugin_perms}} ],
         },
     };
     bless $self, $class;
@@ -111,9 +102,10 @@ Disbatch::Roles - define and create MongoDB roles and users for Disbatch
 
 =item new
 
-Parameters: C<< db => $db, disbatchd => $disbatchd_pw, disbatch_web => $disbatch_web_pw, task_runner => $task_runner_pw, plugin => $plugin_pw >>
+Parameters: C<< db => $db, plugin_perms => $plugin_perms, disbatchd => $disbatchd_pw, disbatch_web => $disbatch_web_pw, task_runner => $task_runner_pw, plugin => $plugin_pw >>
 
   C<db> is a C<MongoDB::Database> object which must be authenticated with an accout having the C<root> role.
+  C<plugin_perms> is a C<HASH> in the format of C<< { collection_name => array_of_actions, ... } >>, to give the plugin the needed permissions for MongoDB.
   C<disbatchd>, C<disbatch_web>, C<task_runner>, and C<plugin> are roles and users to create, with their values being their respective passwords.
 
 Dies if invalid parameters.
