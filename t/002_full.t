@@ -92,7 +92,8 @@ if ($use_auth) {
 my $test_db_root = retry { MongoDB->connect($config->{mongohost}, $attributes)->get_database($config->{database}) } catch { die $_ };
 
 # Create roles and users for a database:
-Disbatch::Roles->new(db => $test_db_root, %{$config->{auth}})->create_roles_and_users if $use_auth;
+my $plugin_perms = { config => [ 'find' ], reports => [ 'insert' ] };	# minimal permissions for Disbatch::Plugin::Demo
+Disbatch::Roles->new(db => $test_db_root, plugin_perms => $plugin_perms, %{$config->{auth}})->create_roles_and_users if $use_auth;
 
 # Create users collection:
 for my $username (qw/ foo bar /) {
