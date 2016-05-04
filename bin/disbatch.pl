@@ -43,7 +43,7 @@ if (defined $ssl_ca_file) {
 } elsif ($disable_ssl_verification) {
     $options->{ssl_opts}{verify_hostname} = 0;
 } else {
-    # Note: the SSL settings are for MongoDB, but ideally if using SSL with MongoDB, it is also being used with the Disbatch API
+    # Note: the SSL settings are for MongoDB, but ideally if using SSL with MongoDB, it is also being used with the DCI
     # try loading the config file, but don't fail if it doesn't exist
     my $config = try { $json->relaxed->decode(scalar read_file $config_file) } catch { {} };
     if (defined $config->{attributes}{ssl}) {
@@ -395,7 +395,7 @@ __END__
 
 =head1 NAME
 
-disbatch - CLI interface to the Disbatch JSON API.
+disbatch - CLI to the Disbatch Command Interface (DCI).
 
 =head1 SYNOPSIS
 
@@ -407,15 +407,15 @@ disbatch - CLI interface to the Disbatch JSON API.
 
 =item --url <URL>
 
-URL for the Disbatch JSON API you wish to connect to. Default is C<http://localhost:8080>.
+URL for the DCI you wish to connect to. Default is C<http://localhost:8080>.
 
 =item --username <username>
 
-API username
+DCI username
 
 =item --password <password>
 
-API password
+DCI password
 
 =item --help
 
@@ -437,7 +437,7 @@ Path to Disbatch config file. Default is C</etc/disbatch/config.json>.
 
 Only used if neither C<--ssl_ca_file> nor C<--disable_ssl_verification> is used.
 
-Note: the SSL settings in the Disbatch config file are for MongoDB, but ideally if using SSL with MongoDB, then it is also being used with the Disbatch API.
+Note: the SSL settings in the Disbatch config file are for MongoDB, but ideally if using SSL with MongoDB, then it is also being used with the DCI.
 
 =back
 
