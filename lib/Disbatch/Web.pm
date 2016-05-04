@@ -395,7 +395,7 @@ __END__
 
 =head1 NAME
 
-Disbatch::Web - web browser and REST interface to Disbatch.
+Disbatch::Web - Disbatch Command Interface (JSON REST API and web browser interface to Disbatch).
 
 =head1 SUBROUTINES
 
