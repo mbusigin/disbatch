@@ -15,6 +15,9 @@
    6. Change `web_root` from `etc/disbatch/htdocs/` to `/etc/disbatch/htdocs/`
    7. Set `activequeues` or `ignorequeues` per node if used
 
+See also [Configuring and Using SSL with MongoDB](SSL_MongoDB.md) and
+[Configuring and Using SSL with the REST API](SSL_REST_API.md).
+
 
 #### Create MongoDB users for Disbatch if using authentication
 - Configure the permissions your plugin needs in
@@ -25,8 +28,10 @@
 
         disbatch-create-users --config /etc/disbatch/config.json --root_user root
 
+See also [Configuring and Using Authentication with MongoDB](Authentication_MongoDB.md).
 
-#### Setup the `config` collection (optional):
+
+#### Setup the `config` collection (optional)
 - this is done automatically if not defined: disbatchd creates 2 documents with
   labels `production` and `development`
 - each document must have a unique `label`

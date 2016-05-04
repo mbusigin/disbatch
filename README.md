@@ -57,6 +57,21 @@ See [Differences](docs/Differences.md)
 See [Upgrading](docs/Upgrading.md)
 
 
+#### Configuring and Using Authentication with MongoDB
+
+See [Authentication_MongoDB](docs/Authentication_MongoDB.md)
+
+
+#### Configuring and Using SSL with MongoDB
+
+See [SSL_MongoDB](docs/SSL_MongoDB.md)
+
+
+#### Configuring and Using SSL with the REST API
+
+See [SSL_REST_API](docs/SSL_REST_API.md)
+
+
 #### Authors
 
 Ashley Willis (<awillis@synacor.com>)
