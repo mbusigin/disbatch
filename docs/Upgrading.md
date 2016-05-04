@@ -13,13 +13,13 @@
 - Run one of the following on each database, as the `constructor` field has been
   renamed to `plugin`:
 
-    // for back-compat with Disbatch 3
-    db.queues.distinct("constructor").forEach(function(c){
-        db.queues.update({constructor: c}, {$set: {plugin: c}}, {multi: 1})
-    })
+        // for back-compat with Disbatch 3
+        db.queues.distinct("constructor").forEach(function(c){
+            db.queues.update({constructor: c}, {$set: {plugin: c}}, {multi: 1})
+        })
 
-    // or for no back-compat with Disbatch 3
-    db.queues.update({}, {$rename: {constructor: "plugin"}})
+        // or for no back-compat with Disbatch 3
+        db.queues.update({}, {$rename: {constructor: "plugin"}})
 
 - If there is already a collection `config`, rename it to something else
 

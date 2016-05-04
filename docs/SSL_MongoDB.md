@@ -1,4 +1,4 @@
-#### Using SSL with MongoDB
+#### Configuring and Using SSL with MongoDB
 
 ##### Configuring
 
@@ -7,9 +7,8 @@ This assumes you already have an SSL certificate.
 * Add the following to `/etc/mongod.conf`, making sure the cert is owned by and
   only readable by the `mongod` process:
 
-    sslMode=requireSSL
-
-    sslPEMKeyFile=/etc/ssl/certs/mongodb-cert.pem	# set the correct path
+        sslMode=requireSSL
+        sslPEMKeyFile=/etc/ssl/certs/mongodb-cert.pem	# set the correct path
 
 * Restart `mongod`.
 

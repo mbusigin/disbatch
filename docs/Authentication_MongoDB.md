@@ -1,19 +1,19 @@
-#### Using Authentication with MongoDB
+#### Configuring and Using Authentication with MongoDB
 
 ##### Configuring
 
 * Create a key file for multiple `mongod` processes to auth against each other,
   making sure it is owned by and only readable by the `mongod` process:
 
-    touch mongodb-keyfile
-    chmod 600 mongodb-keyfile
-    openssl rand -base64 741 > mongodb-keyfile
-    # copy to desired location and change owner
+        touch mongodb-keyfile
+        chmod 600 mongodb-keyfile
+        openssl rand -base64 741 > mongodb-keyfile
+        # copy to desired location and change owner
 
 * Add the following to `/etc/mongod.conf`:
 
-    auth=true
-    keyFile=/etc/mongodb-keyfile
+        auth=true
+        keyFile=/etc/mongodb-keyfile
 
 * Restart `mongod`
 
@@ -38,4 +38,4 @@ authentication database is different from the database you want to use.
 * In perl, connect with the following (`db_name` is the optional authentication
   database and defaults to `admin`):
 
-    my $mongo = MongoDB->connect($host, {username => $username, password => $password, db_name => $auth_database});
+        my $mongo = MongoDB->connect($host, {username => $username, password => $password, db_name => $auth_database});

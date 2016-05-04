@@ -1,4 +1,4 @@
-#### Using SSL with the REST API
+#### Configuring and Using SSL with the REST API
 
 ##### Configuring
 
@@ -25,4 +25,4 @@ To use the CLI on another host, pass `--url https://$FQDN` and either
 `--disable_ssl_verification` to disable verification.
 
 Alternately, if the process has read access to `/etc/disbatch/config.json`, it
-can determine the proper SSL settings.
+can use the same SSL settings as MongoDB.
