@@ -43,6 +43,7 @@ if (defined $ssl_ca_file) {
 } elsif ($disable_ssl_verification) {
     $options->{ssl_opts}{verify_hostname} = 0;
 } else {
+    # Note: the SSL settings are for MongoDB, but ideally if using SSL with MongoDB, it is also being used with the Disbatch API
     # try loading the config file, but don't fail if it doesn't exist
     my $config = try { $json->relaxed->decode(scalar read_file $config_file) } catch { {} };
     if (defined $config->{attributes}{ssl}) {
@@ -435,6 +436,8 @@ Only used if C<--ssl_ca_file> is not used.
 Path to Disbatch config file. Default is C</etc/disbatch/config.json>.
 
 Only used if neither C<--ssl_ca_file> nor C<--disable_ssl_verification> is used.
+
+Note: the SSL settings in the Disbatch config file are for MongoDB, but ideally if using SSL with MongoDB, then it is also being used with the Disbatch API.
 
 =back
 
