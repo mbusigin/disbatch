@@ -1,3 +1,5 @@
+### Design of Disbatch 4
+
 This document outlines the protocol which a Disbatch Execution Node (DEN) must
 follow to correctly operate with a Disbatch Command Interface (DCI), as well as
 other DENs operating under the same network/database.
