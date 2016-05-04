@@ -10,7 +10,8 @@ Disbatch 4 can be updated and restarted as needed to deploy changes without
 interrupting currently running tasks.
 
 The Disbatch 4 daemon starts independent tasks using the specified plugin, and a
-separate process provides the JSON API for the browser and CLI front ends.
+separate process provides the Disbatch Command Interface for the JSON REST API
+and web browser interface.
 
 This is almost a complete rewrite of Disbatch 3, written by Matt Busigin.
 
@@ -67,9 +68,9 @@ See [Authentication_MongoDB](docs/Authentication_MongoDB.md)
 See [SSL_MongoDB](docs/SSL_MongoDB.md)
 
 
-#### Configuring and Using SSL with the REST API
+#### Configuring and Using SSL with the Disbatch Command Interface
 
-See [SSL_REST_API](docs/SSL_REST_API.md)
+See [SSL_DCI](docs/SSL_DCI.md)
 
 
 #### Authors

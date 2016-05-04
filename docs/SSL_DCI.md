@@ -1,8 +1,8 @@
-### Configuring and Using SSL with the REST API
+### Configuring and Using SSL with the Disbatch Command Interface
 
 #### Configuring
 
-This will put the REST API and web interface on port 443 using SSL, as well as
+This will run the Disbatch Command Interface on port 443 using SSL, as well as
 create 301 redirects for ports 80 and 8080.
 
 * Modify `/etc/disbatch/disbatch-web-init` to listen on `127.0.0.1:8080` to

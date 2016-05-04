@@ -8,7 +8,7 @@
 
             /etc/init.d/disbatchd [start|stop|restart]
 
-  * On each server you want the Disbatch JSON API and web server running:
+  * On each server you want the Disbatch Command Interface running:
 
             /etc/init.d/disbatch-webd [start|stop|restart]
 
@@ -42,5 +42,5 @@
 
   * For a full description, run `perldoc disbatch.pl`
 
-  * If the JSON API is not running on `http://localhost:8080`, pass the URL with
-    the `--url` option.
+  * If the Disbatch Command Interface is not running on `http://localhost:8080`,
+    pass the URL with the `--url` option.

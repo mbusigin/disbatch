@@ -15,8 +15,7 @@
    7. Set `activequeues` or `ignorequeues` per node if used
 
 See also [Configuring and Using SSL with MongoDB](SSL_MongoDB.md) and
-[Configuring and Using SSL with the REST API](SSL_REST_API.md).
-
+[Configuring and Using SSL with the Disbatch Command Interface](SSL_DCI.md).
 
 #### Create MongoDB users for Disbatch if using authentication
 - Configure the permissions your plugin needs in
