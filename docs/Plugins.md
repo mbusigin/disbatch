@@ -1,4 +1,4 @@
-### This documents writing Perl plugins for Disbatch 4.
+### Writing Perl plugins for Disbatch 4
 
 For a simple example, see `lib/Disbatch/Plugin/Demo.pm`.
 

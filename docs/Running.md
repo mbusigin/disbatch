@@ -1,4 +1,4 @@
-### This documents running Disbatch 4.
+### Running Disbatch 4
 
 * [Configure](Configuring.md) Disbatch before running
 

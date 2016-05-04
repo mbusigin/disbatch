@@ -1,4 +1,4 @@
-### This documents the differences in Disbatch 4 compared to Disbatch 3.
+### Differences in Disbatch 4 compared to Disbatch 3
 
 #### Goals achieved with rewrite:
 - No more memory leak in main process.

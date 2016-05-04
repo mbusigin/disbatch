@@ -1,5 +1,4 @@
-### This documents upgrading from Disbatch 3 to Disbatch 4.
-
+### Upgrading from Disbatch 3 to Disbatch 4
 
 #### Preliminary steps
 

@@ -1,6 +1,6 @@
-#### Configuring and Using SSL with the REST API
+### Configuring and Using SSL with the REST API
 
-##### Configuring
+#### Configuring
 
 This will put the REST API and web interface on port 443 using SSL, as well as
 create 301 redirects for ports 80 and 8080.
@@ -15,7 +15,7 @@ create 301 redirects for ports 80 and 8080.
   change the paths for the certficate files in `ssl_certificate` and
   `ssl_certificate_key` to the appropriate values.
 
-##### Using the CLI
+#### Using the CLI
 
 To use the `disbatch.pl` CLI on the same server as nginx is running, no changes
 are needed.

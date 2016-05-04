@@ -1,6 +1,6 @@
-#### Configuring and Using SSL with MongoDB
+### Configuring and Using SSL with MongoDB
 
-##### Configuring
+#### Configuring
 
 This assumes you already have an SSL certificate.
 
@@ -12,7 +12,7 @@ This assumes you already have an SSL certificate.
 
 * Restart `mongod`.
 
-##### Connecting with the MongoDB shell
+#### Connecting with the MongoDB shell
 
 To connect using the `mongo` shell, you must include the `--ssl` option.
 
@@ -30,7 +30,7 @@ instead pass `--sslAllowInvalidCertificates` and omit the host.
 
     mongo --ssl --sslAllowInvalidCertificates $DATABASE
 
-##### Connecting with the MongoDB perl driver
+#### Connecting with the MongoDB perl driver
 
 In perl, you connect with the following:
 

@@ -1,5 +1,4 @@
-### This documents configuring Disbatch 4.
-
+### Configuring Disbatch 4
 
 #### Configure `/etc/disbatch/config.json`
 1. Copy `/etc/disbatch/config.json-example` to `/etc/disbatch/config.json`

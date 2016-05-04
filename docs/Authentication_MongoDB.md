@@ -1,6 +1,6 @@
-#### Configuring and Using Authentication with MongoDB
+### Configuring and Using Authentication with MongoDB
 
-##### Configuring
+#### Configuring
 
 * Create a key file for multiple `mongod` processes to auth against each other,
   making sure it is owned by and only readable by the `mongod` process:
@@ -19,7 +19,7 @@
 
 * Create needed users
 
-##### Connecting with the MongoDB shell
+#### Connecting with the MongoDB shell
 
 After connecting with the `mongo` shell, you can authenticate against the
 authentication database via:
@@ -33,7 +33,7 @@ authentication database is different from the database you want to use.
 
     mongo -u $USER -p --authenticationDatabase $AUTH_DB $HOST/$DATABASE
 
-##### Connecting with the MongoDB perl driver
+#### Connecting with the MongoDB perl driver
 
 * In perl, connect with the following (`db_name` is the optional authentication
   database and defaults to `admin`):
