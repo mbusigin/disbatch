@@ -78,7 +78,7 @@ my @mongo_args = (
 push @mongo_args, $use_auth ? '--auth' : '--noauth';
 push @mongo_args, '--sslMode' => 'requireSSL', '--sslPEMKeyFile' => 't/test-cert.pem', if $use_ssl;
 my $mongo_args = join ' ', @mongo_args;
-say `mongod $mongo_args`;	# FIXME: blegh
+say `mongod $mongo_args`;	# FIXME: use system or IPC::Open3 instead
 
 # Get test database, authed as root:
 my $attributes = {};

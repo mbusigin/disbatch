@@ -183,7 +183,7 @@ sub load_config {
         }
     }
 
-    # FIXME: test that certain config values are defined and are valid
+    # FIXME: verify that certain config values are defined and are valid
     if (!defined $self->{config}{task_runner}) {
         $self->logger->logdie("No 'task_runner' defined in config");
     }
