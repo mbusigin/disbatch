@@ -582,7 +582,7 @@ Returns nothing.
 
 Parameters: none
 
-Used by the CLI tool and the web interface to get queue information.
+Used by the Disbatch Command Interface to get queue information.
 
 Returns an C<ARRAY> containing C<HASH>es of queue information.
 
