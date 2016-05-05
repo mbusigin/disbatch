@@ -15,7 +15,7 @@ Daemon::Control->new({
     lsb_start    => '$syslog $remote_fs',
     lsb_stop     => '$syslog',
     lsb_sdesc    => 'disbatchd',
-    lsb_desc     => 'Daemonized disbatchd',
+    lsb_desc     => 'Disbatch Execution Node daemon',
 
     pid_file     => '/var/run/disbatchd.pid',
     stdout_file  => '/var/log/disbatchd.out',
