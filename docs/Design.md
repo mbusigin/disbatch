@@ -265,28 +265,23 @@ indicates that a task has finished, your plugin must return a positive integer
 for the status. Any unused negative value may be set when a task is queued to
 prevent the DEN from claiming it.
 
+-------------------------------------------------------
 
+* FIXME: put this in the right spot...
 
-
-
-
-
-### FIXMEs
-
-* FIXME: UPDATE IT for `activequeues` and `ignorequeues`:
-
-  The `nodes_pin` and `nodes_ignore` attributes are mutually exclusive. If using
-  pin, it is exclusive to the specified DENs. If using ignore, it will run on
-  all DENs except for those specified. If both are erroneously provided,
-  nodes_pin takes precedence over nodes_ignore.
+Each DEN can be configured to only monitor specific queues, or to monitor all
+but specific queues. This is done by setting `activequeues` or `ignorequeues` to
+an array of queue _id string values in the DEN's config *file* (not in the
+`config` collection, which applies to all DENs). If both are set, only
+`activequeues` is used. To change these values, the config file must be updated
+and the DEN restarted.
 
 * FIXME: custom GridFS info:
 
-  Collections are `tasks.files` and `tasks.chunks`, written to ensure the data
-  is of type `String` and not `BinData`. Each file contains `metadata: {
-  task_id: ObjectId() }`, and the filenames are `stdout` or `stderr`.
+Collections are `tasks.files` and `tasks.chunks`, written to ensure the data is
+of type `String` and not `BinData`. Each file contains `metadata: { task_id:
+ObjectId() }`, and the filenames are `stdout` or `stderr`.
 
-* FIXME: define DTR, document DCI
 
 collections:
 config - log4perl, label, task_runner, active (plugins, web_root, activequeues, ignorequeues)
