@@ -171,6 +171,7 @@ sub load_config {
 
         for my $key (keys %$config_doc) {
             next if $key eq 'active' or $key eq '_id';
+            next if $key eq 'activequeues' or $key eq 'ignorequeues';	# these are per-node settings
             if (grep { $key eq $_ } @{$self->{config_keys_at_startup}}) {
                 if (!exists $self->{config_quiet}{$key} or !Compare($self->{config_quiet}{$key},$config_doc->{$key})) {
                     $self->logger->warn("Not overwriting hardcoded value for '$key' in $self->{config_file}: ", $json->allow_nonref->encode($self->{config}{$key}));
