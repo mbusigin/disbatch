@@ -15,7 +15,7 @@ Daemon::Control->new({
     lsb_start    => '$syslog $remote_fs',
     lsb_stop     => '$syslog',
     lsb_sdesc    => 'disbatch-web',
-    lsb_desc     => 'Disbatch web server',
+    lsb_desc     => 'Disbatch Command Interface daemon',
 
     pid_file     => '/var/run/disbatch-web.pid',
     stdout_file  => '/var/log/disbatch-web.out',

@@ -24,8 +24,8 @@ GetOptions('config=s' => \$config_file);
 
 my $disbatch = Disbatch->new(class => 'Disbatch', config_file => $config_file);
 $disbatch->load_config;
-my $logger = $disbatch->logger('daemon');
-$logger->info("Starting disbatch daemon");
+my $logger = $disbatch->logger('DEN');
+$logger->info('Starting Disbatch Execution Node');
 
 $disbatch->ensure_indexes;
 $disbatch->validate_plugins;
@@ -54,7 +54,7 @@ __END__
 
 =head1 NAME
 
-disbatchd - the Disbatch Daemon
+disbatchd - Disbatch Execution Node (DEN)
 
 =head1 DESCRIPTION
 
