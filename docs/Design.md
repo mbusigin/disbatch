@@ -1,13 +1,25 @@
 ### Design of Disbatch 4
 
-This document outlines the protocol which a Disbatch Execution Node (DEN) must
-follow to correctly operate with a Disbatch Command Interface (DCI), as well as
-other DENs operating under the same network/database.
+This documents the Disbatch Execution Node (DEN) protocol and schema. All nodes
+using the same MongoDB database must follow this, as well as the Disbatch Task
+Runners (DTR) used by the DENs and any Disbatch Command Interfaces (DCI) using
+the database.
 
 #### Overview
 
-The core components of Disbatch 4 are one or more DENs, potentially one or more
-DCIs, and MongoDB which is used as its data store and for all message passing.
+The core components of Disbatch 4 are one or more DENs, the DTRs, one or more
+DCIs, and MongoDB which is used as the data store and for all message passing.
+
+The DEN ensures the database is set up correctly and runs the appropriate number
+of tasks for each queue.
+
+The DTR is called by the DEN when it claims a task. The DTR is responsible for
+loading the plugin and running the task, as well as updating the task document
+when the task completes.
+
+The DCI provides a JSON REST API for the DENs, as well as a web browser
+interface to the API. An additional CLI tool interacts with this API.
+
 
 Each DEN monitors one or more queues, which may be restricted to a subset of
 DENs, restricted from a subset of DENs, or available to all DENs.
