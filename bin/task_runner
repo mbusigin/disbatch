@@ -48,7 +48,7 @@ $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("params for $task_id: ", $json->encode($doc->{params} // $doc->{parameters}));
 
 my $plugin = ($disbatch->queues->find_one({_id => $doc->{queue}}) // {})->{plugin};
-# FIXME: these will leave the task orphaned:
+# FIXME: these will leave the task orphaned, so add an END or DESTROY block to task_runner to prevent orphaned status 0 tasks
 $logger->logdie("No plugin defined for task $task_id in queue $doc->{queue}") unless defined $plugin;
 $logger->logdie("plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
 $logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
