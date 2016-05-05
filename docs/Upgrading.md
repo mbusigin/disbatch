@@ -6,8 +6,8 @@
   different names
 
 - Set each queue's `threads` to how many maximum concurrent threads should be
-  ran for that queue across all nodes. The queue field `maxthreads`, which
-  applied per node, is no longer used.
+  ran for that queue across all DENs. The queue field `maxthreads`, which
+  applied per DEN, is no longer used.
 
 - Run one of the following on each database, as the `constructor` field has been
   renamed to `plugin`:

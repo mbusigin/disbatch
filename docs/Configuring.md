@@ -12,7 +12,7 @@
    4. Ensure proper SSL settings in `attributes`, or remove it if not using SSL
    5. Change `default_config` from `development` to `production`
    6. Change `web_root` from `etc/disbatch/htdocs/` to `/etc/disbatch/htdocs/`
-   7. Set `activequeues` or `ignorequeues` per node if used
+   7. Set `activequeues` or `ignorequeues` per DEN if used
 
 See also [Configuring and Using SSL with MongoDB](SSL_MongoDB.md) and
 [Configuring and Using SSL with the Disbatch Command Interface](SSL_DCI.md).

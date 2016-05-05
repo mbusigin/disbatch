@@ -17,11 +17,11 @@ for a queue is not available, the queue is ignored. The queue sets the limit of
 tasks to run across all DENs for that queue with the `threads` field.
 
 A DEN may also limit the number of tasks to run overall on that DEN with the
-`maxthreads` field in its node's entry.
+`maxthreads` field in its `nodes` collection's document.
 
 Each task links to a single queue.
 
-On DEN startup, each node:
+On startup, each DEN:
 
 * Optionally loads additional configuration information from the `config`
   collection
@@ -31,9 +31,9 @@ On DEN startup, each node:
 * Optionally validates that all plugins listed in defined queues have a proper
   name and can be used
 
-At a set interval (1 second), each node:
+At a set interval (1 second), each DEN:
 
-* Updates or inserts an entry for itself in the `nodes` collection
+* Updates or inserts a document for itself in the `nodes` collection
 
 * Cleans up any orphaned tasks
 
@@ -55,15 +55,15 @@ status of `-1` and an `mtime` of older than 5 minutes.
 
 ##### Task Lifecycle
 
-Each task is initialised with its node as `null` (unclaimed) and status as `-2`
-(queued).
+Each task is initialised with its `node` as `null` (unclaimed) and `status` as
+`-2` (queued).
 
 DENs claim tasks from queues using `findOneAndUpdate(filter, update, options)`,
-returning the task object, by putting them into a claimed state (setting the
-status to `-1` and the node to the hostname of the DEN) until the per-node
+(which returns the task object), by putting them into a claimed state (setting
+`status` to `-1` and `node` to the hostname of the DEN) until the per-DEN
 `maxthreads` and per-queue `theads` thresholds are reached. The DEN then
 notifies the DTR of the task, and the DTR puts the task into a running state
-(setting the status to `0`). When the plugin has finished, it reports back the
+(setting `status` to `0`). When the plugin has finished, it reports back the
 status, stdout, and stderr of the task to the DTR. The DTR then updates the
 task's document in MongoDB with these values as well as the `mtime`.
 
@@ -92,13 +92,15 @@ This ensures that there will be no race conditions amongst DENs, even in a
 sharded or replicated MongoDB cluster.
 
 
-#### Nodes
+#### Database Collections
 
-Node documents are in the `nodes` collection.
+##### Nodes
 
-##### Specification
+DEN documents are in the `nodes` collection.
 
-The following elements must be included when registering a node:
+###### Specification
+
+The following elements must be included when registering a DEN:
 
 * `node`: hostname (unique)
 
@@ -107,12 +109,12 @@ The following elements must be included when registering a node:
 Each node can also contain:
 
 * `maxthreads`: a non-negative integer or null. If set to an integer, this
-  entire node is limited to running that number of concurrent tasks across all
+  entire DEN is limited to running that number of concurrent tasks across all
   queues.
 
 MongoDB will create an `ObjectId` for the node's `_id`.
 
-##### Example
+###### Example
 
     {
         "_id" : ObjectId("56fc05087aa3a33942e42a6a"),
@@ -122,11 +124,11 @@ MongoDB will create an `ObjectId` for the node's `_id`.
     }
 
 
-#### Queues
+##### Queues
 
 Queue documents are in the `queues` collection.
 
-##### Specification
+###### Specification
 
 The following elements must be included when creating a queue:
 
@@ -139,7 +141,7 @@ The following elements must be included when creating a queue:
 The following elements may be included when creating a queue:
 
 * `threads`: a non-negative integer for the maximum number of threads across all
-  nodes for this queue, or null
+  DENs for this queue, or null
 
 * `sort`: a string on how to sort the query results when looking for the next
   task to run. Valid options are `fifo`, `lifo`, or `default`. The sort is on
@@ -148,7 +150,7 @@ The following elements may be included when creating a queue:
 
 MongoDB will create an `ObjectId` for the queue's `_id`.
 
-##### Example
+###### Example
 
     {
         "_id" : ObjectId("571f8951b75bf335634ec271"),
@@ -159,11 +161,11 @@ MongoDB will create an `ObjectId` for the queue's `_id`.
     }
 
 
-#### Tasks
+##### Tasks
 
 Task documents are in the `tasks` collection.
 
-##### Specification
+###### Specification
 
 The following elements must be included when creating a task:
 
@@ -173,7 +175,7 @@ The following elements must be included when creating a task:
 
 * `mtime`: an `ISODate` of the modification time
 
-* `node`: the node this task is running or ran on, or `null` if queued
+* `node`: the DEN this task is running or ran on, or `null` if queued
 
 * `status`: an integer for the task status code
 
@@ -189,7 +191,7 @@ should be set to `null` when created:
 
 MongoDB will create an `ObjectId` for the task's `_id`.
 
-##### Example
+###### Example
 
     {
         "_id" : ObjectId("571fac85ee63413233049fbd"),
@@ -209,7 +211,7 @@ MongoDB will create an `ObjectId` for the task's `_id`.
     }
 
 
-##### Status Codes
+#### Task Status Codes
 
 These are the standard status codes in Disbatch 4:
 
@@ -262,8 +264,8 @@ prevent the DEN from claiming it.
 * FIXME: UPDATE IT for `activequeues` and `ignorequeues`:
 
   The `nodes_pin` and `nodes_ignore` attributes are mutually exclusive. If using
-  pin, it is exclusive to the specified nodes. If using ignore, it will run on
-  all nodes except for those specified. If both are erroneously provided,
+  pin, it is exclusive to the specified DENs. If using ignore, it will run on
+  all DENs except for those specified. If both are erroneously provided,
   nodes_pin takes precedence over nodes_ignore.
 
 * FIXME: custom GridFS info:

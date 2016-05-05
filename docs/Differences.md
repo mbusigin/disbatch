@@ -30,7 +30,9 @@
 
 #### Changes:
 - To keep the code simple, as much as possible is by convention instead of
-  config (collection names, node name, etc).
+  config (collection names, DEN name, etc).
+- As the DEN name is the hostname the DEN is running on, only one instance is
+  allowed per server.
 - No need to have a file in `etc/disbatch/disbatch.d/` to define a plugin.
 - Only the `::Task` part of the plugin is needed. Its parent is unused.
 - `bin/disbatchd` instead of `bin/disbatchd.pl`
@@ -47,11 +49,11 @@
 - `parameters` has been renamed to `params` in task documents.
 - `count_todo` and `count_total` have been removed from the queue documents.
   These are now counted on demand.
-- `queues` has been removed from the node documents.
-- `maxthreads` (which applied per node) in queues has been replaced by `threads`
-  (which applies across all nodes).
+- `queues` has been removed from the node documents in the `nodes` collection.
+- `maxthreads` (which applied per DEN) in queues has been replaced by `threads`
+  (which applies across all DENs).
 
 
 #### New:
-- can limit a node to a maximum number of tasks to run (value goes in the
+- can limit a DEN to a maximum number of tasks to run (value goes in the
   `nodes` collection documents)
