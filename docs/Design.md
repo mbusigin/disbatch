@@ -261,28 +261,98 @@ indicates that a task has finished, your plugin must return a positive integer
 for the status. Any unused negative value may be set when a task is queued to
 prevent the DEN from claiming it.
 
--------------------------------------------------------
+#### GridFS for Task stdout and stderr
 
-* FIXME: put this in the right spot...
+Task `stdout` and `stderr` can be stored in the task as strings or by using
+MongoDB's [GridFS](https://docs.mongodb.com/manual/core/gridfs/) specification.
 
-Each DEN can be configured to only monitor specific queues, or to monitor all
-but specific queues. This is done by setting `activequeues` or `ignorequeues` to
-an array of queue _id string values in the DEN's config *file* (not in the
-`config` collection, which applies to all DENs). If both are set, only
-`activequeues` is used. To change these values, the config file must be updated
-and the DEN restarted.
+As a document cannot be more than 16MB, GridFS will be needed to store `stdout`
+and `stderr` if they can cause the task document to exceed this size.
 
-* FIXME: custom GridFS info:
+Disbatch uses the collections `tasks.files` and `tasks.chunks` instead of the
+default `fs.files` and `fs.chunks`, and the chunks are stored to ensure `data`
+is of type `String` and not `BinData`. Each file contains `metadata: { task_id:
+task._id }`, and the filenames are `stdout` or `stderr`.
 
-Collections are `tasks.files` and `tasks.chunks`, written to ensure the data is
-of type `String` and not `BinData`. Each file contains `metadata: { task_id:
-ObjectId() }`, and the filenames are `stdout` or `stderr`.
+
+#### Config file
 
+On startup, the DEN, DCI, and DTR read a JSON format configuration file.
 
-collections:
-config - log4perl, label, task_runner, active (plugins, web_root, activequeues, ignorequeues)
-nodes - covered by `Node Document Specification`
-queues - covered by `Queue Document Specification`
-tasks - covered by `Task Document Specification`
-tasks.files
-tasks.chunks
+##### Mandatory settings are:
+
+* `mongohost`
+
+  A MongoDB URI, such as `"mongodb://mongodb01.example.com:27017"`.
+
+* `database`
+
+  The MongoDB database to use.
+
+##### Optional MongoDB settings are:
+
+* `attributes`
+
+  A hash of connection attributes for
+  [MongoDB::MongoClient](https://metacpan.org/pod/MongoDB::MongoClient).
+  For SSL, it will contain the key `ssl` with a value of `1` if using a public
+  certificate, a value of `{"SSL_ca_file": PATH_TO_CERTIFICATE_AUTHORITY }` if
+  using an internally-signed certificate, or a value of `{"SSL_verify_mode": 0}`
+  if using a self-signed certificate.
+
+* `auth`
+
+  A hash of usernames and passwords for MongoDB authentication. It must contain
+  keys of `disbatchd`, `disbatch_web`, `task_runner`, and `plugin`, with the
+  values their respective passwords.
+
+##### Additional settings that may be specified are:
+
+* `task_runner`
+
+  Path to the DTR. Future support will allow task runners for plugins in
+  languages other than Perl. Default is `"/usr/bin/task_runner"`.
+
+* `gfs`
+
+  Set this to `false` to store `stdout` and `stderr` in the task document
+  instead of using GridFS. Default is `true`.
+
+* `web_root`
+
+  The path to the html, js, and other web documents for the web interface.
+  Default is `"/etc/disbatch/htdocs/"`.
+
+* `plugins`
+
+   An array of default allowed plugin names for queues, such as
+  `"Disbatch::Plugin::Demo"`. Default is `[]`.
+
+* `log4perl`
+
+  A hash of [Log::Log4perl](https://metacpan.org/pod/Log::Log4perl) settings.
+  The default `level` is `DEBUG`, and the default log file is
+  `/var/log/disbatchd.log`. The full default is below:
+
+        "log4perl": {
+            "level": "DEBUG",
+            "appenders": {
+                "filelog": {
+                    "type": "Log::Log4perl::Appender::File",
+                    "layout": "[%p] %d %F{1} %L %C %c> %m %n",
+                    "args": { "filename": "/var/log/disbatchd.log" },
+                },
+                "screenlog": {
+                    "type": "Log::Log4perl::Appender::ScreenColoredLevels",
+                    "layout": "[%p] %d %F{1} %L %C %c> %m %n",
+                    "args": { },
+                }
+            }
+        },
+
+* `activequeues` and `ignorequeues`
+
+   An array of queue _id string values. Default is `[]`.
+
+   Each DEN can be configured to only monitor specific queues, or to monitor all
+   but specific queues. If both are set, only `activequeues` is used.
