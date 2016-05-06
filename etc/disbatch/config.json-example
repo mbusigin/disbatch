@@ -14,6 +14,7 @@
         "disbatchd": "qwerty1",
         "disbatch_web": "qwerty2",
         "task_runner": "qwerty3",
+        "plugin": "qwerty4",
     },
 
     # Everthing below here is optional, and is set up for development, not production
