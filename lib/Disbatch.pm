@@ -5,7 +5,6 @@ use warnings;
 
 use boolean 0.25;
 use Cpanel::JSON::XS;
-use Data::Compare;
 use Data::Dumper;
 use Encode;
 use File::Slurp;
@@ -19,45 +18,20 @@ use Try::Tiny::Retry;
 
 my $json = Cpanel::JSON::XS->new->utf8;
 
-my $default_configs = {
-    development => {
-        label => 'development',
-        log4perl => {
-            level => 'TRACE',
-            appenders => {
-                filelog => {
-                    type => 'Log::Log4perl::Appender::File',
-                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
-                    args => { filename => 'disbatchd.log' }
-                },
-                screenlog => {
-                    type => 'Log::Log4perl::Appender::ScreenColoredLevels',
-                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
-                    args => { },
-                }
-            }
+my $default_log4perl = {
+    level => 'DEBUG',	# 'TRACE'
+    appenders => {
+        filelog => {
+            type => 'Log::Log4perl::Appender::File',
+            layout => '[%p] %d %F{1} %L %C %c> %m %n',
+            args => { filename => '/var/log/disbatchd.log' },	# 'disbatchd.log'
         },
-        task_runner => './bin/task_runner',
-    },
-    production => {
-        label => 'production',
-        log4perl => {
-            level => 'DEBUG',
-            appenders => {
-                filelog => {
-                    type => 'Log::Log4perl::Appender::File',
-                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
-                    args => { filename => '/var/log/disbatchd.log' },
-                },
-                screenlog => {
-                    type => 'Log::Log4perl::Appender::ScreenColoredLevels',
-                    layout => '[%p] %d %F{1} %L %C %c> %m %n',
-                    args => { },
-                }
-            }
-        },
-        task_runner => '/usr/bin/task_runner',
-    },
+        screenlog => {
+            type => 'Log::Log4perl::Appender::ScreenColoredLevels',
+            layout => '[%p] %d %F{1} %L %C %c> %m %n',
+            args => { },
+        }
+    }
 };
 
 sub new {
@@ -88,9 +62,8 @@ sub logger {
 sub mongo {
     my ($self) = @_;
     return $self->{mongo} if defined $self->{mongo};
-    $self->{config}{attributes} //= {};
-    my %attributes = %{ $self->{config}{attributes} // {} };
-    if (defined $self->{config}{auth}) {
+    my %attributes = %{$self->{config}{attributes}};
+    if (keys %{$self->{config}{auth}}) {
         my $username = 'plugin';
         $username = 'disbatchd' if $self->{class} eq 'disbatch';
         $username = 'disbatch_web' if $self->{class} eq 'disbatch::web';
@@ -105,88 +78,32 @@ sub mongo {
 sub nodes  { $_[0]->mongo->coll('nodes') }
 sub queues { $_[0]->mongo->coll('queues') }
 sub tasks  { $_[0]->mongo->coll('tasks') }
-sub config { $_[0]->mongo->coll('config') }
 
-# ensures that 'production' and 'development' config documents exist, and that $self->{config}{default_config} // 'production' is active
-sub ensure_config {
-    my ($self) = @_;
-    my $config_doc = try { $self->config->find_one({active => true}) } catch { $_ };
-    if (!defined $config_doc or ref $config_doc ne 'HASH') {
-        my $err = $config_doc // 'no {"active":true} config doc';
-        warn "$err\n";
-        $self->ensure_indexes if $self->{class} eq 'disbatch';
-        for my $label (keys %$default_configs) {
-            if (!$self->config->find_one({ label => $label })) {
-                try { $self->config->insert($default_configs->{$label}) } catch { warn "Could not insert $label config document: $_\n" };
-            }
-        }
-        my $set_active = $self->{config}{default_config} // 'production';
-        my $res = $self->config->update({ label => $set_active }, { '$set' => { active => true } });
-        die "Could not set config document $set_active to active\n" unless $res->{n} == 1;
-    }
-}
-
-sub load_config_file {
-    my ($self) = @_;
-    if (!defined $self->{config}) {
-        $self->{config} = try { $json->relaxed->decode(scalar read_file($self->{config_file})) } catch { die "Could not parse $self->{config_file}: $_" };	# FIXME: log4perl the error
-        @{$self->{config_keys_at_startup}} = keys %{$self->{config}};
-        $self->ensure_config;
-        if (!defined $self->{config}{mongohost} or !defined $self->{config}{database}) {
-            my $error = "Both 'mongohost' and 'database' must be defined in file $self->{config_file}";
-            my $label = $self->{config}{default_config} // 'production';
-            $self->{config}{log4perl} //= $default_configs->{$label}{log4perl};
-            $self->logger->logdie($error);
-        }
-    }
-}
-
-# loads the config file at startup and (re)loads the current active config collection document
+# loads the config file at startup.
 # anything in the config file at startup is static and cannot be changed without restarting disbatchd
 sub load_config {
     my ($self) = @_;
-    $self->load_config_file;
-    my $config_doc = try { $self->config->find_one({active => true}) } catch { $_ };
-    if (!defined $config_doc or ref $config_doc ne 'HASH') {
-        my $error = defined $config_doc ? $config_doc : 'no {"active":true} config doc';
-        if (!defined $self->{config}{log4perl}) {
-            $self->{config}{log4perl} = {
-                level => 'TRACE',
-                appenders => {
-                    screenlog => { type => 'Log::Log4perl::Appender::ScreenColoredLevels' },
-                    filelog => { type => 'Log::Log4perl::Appender::File', args => { filename => "/tmp/disbatchd.log" } },
-                },
-            };
-            $self->logger->warn("No log4perl setting found – logging to /tmp/disbatchd.log");
-        }
-        $self->logger->error("Could not find config doc: $error");
-        undef;
-    } else {
-        # need to initialize Log::Log4perl, but want to log its settings below, so we do this:
-        if (!defined $self->{config}{log4perl}) {
-            $self->{config}{log4perl} = $config_doc->{log4perl};
-            $self->logger;
-            $self->{config}{log4perl} = undef;
-        }
+    if (!defined $self->{config}) {
+        $self->{config} = try {
+            $json->relaxed->decode(scalar read_file($self->{config_file}));
+        } catch {
+            $self->{config}{log4perl} = $default_log4perl;
+            $self->logger->logdie("Could not parse $self->{config_file}: $_");
+        };
+        # Ensure defaults:
+        $self->{config}{attributes} //= {};
+        $self->{config}{auth} //= {};
+        $self->{config}{gfs} //= true;
+        $self->{config}{task_runner} //= '/usr/bin/task_runner';
+        $self->{config}{log4perl} //= $default_log4perl;
+        $self->{config}{activequeues} //= [];
+        $self->{config}{ignorequeues} //= [];
+        # FIXME: validate config values
 
-        for my $key (keys %$config_doc) {
-            next if $key eq 'active' or $key eq '_id';
-            next if $key eq 'activequeues' or $key eq 'ignorequeues';	# these are per-node settings
-            if (grep { $key eq $_ } @{$self->{config_keys_at_startup}}) {
-                if (!exists $self->{config_quiet}{$key} or !Compare($self->{config_quiet}{$key},$config_doc->{$key})) {
-                    $self->logger->warn("Not overwriting hardcoded value for '$key' in $self->{config_file}: ", $json->allow_nonref->encode($self->{config}{$key}));
-                }
-                $self->{config_quiet}{$key} = $config_doc->{$key};
-            } elsif (!Compare($self->{config}{$key},$config_doc->{$key})) {
-                $self->logger->info("Setting $key to ", $json->allow_nonref->encode($config_doc->{$key})) unless $key eq 'label';
-                $self->{config}{$key} = $config_doc->{$key};
-            }
+        if (!defined $self->{config}{mongohost} or !defined $self->{config}{database}) {
+            my $error = "Both 'mongohost' and 'database' must be defined in file $self->{config_file}";
+            $self->logger->logdie($error);
         }
-    }
-
-    # FIXME: test that certain config values are defined and are valid
-    if (!defined $self->{config}{task_runner}) {
-        $self->logger->logdie("No 'task_runner' defined in config");
     }
 }
 
@@ -201,8 +118,6 @@ sub ensure_indexes {
     );
     try { $self->tasks->indexes->create_many(@task_indexes) } catch { $self->logger->logdie("Could not ensure_indexes: $_") };
     try {
-        $self->config->indexes->create_one([ active => 1 ], { unique => true, sparse => true });
-        $self->config->indexes->create_one([ label => 1 ], { unique => true });
         $self->nodes->indexes->create_one([ node => 1 ], { unique => true });
         $self->mongo->coll('tasks.chunks')->indexes->create_one([ files_id => 1, n => 1 ], { unique => true });
         $self->mongo->coll('tasks.files')->indexes->create_one([ filename => 1, 'metadata.task_id' => 1 ]);
@@ -328,7 +243,7 @@ sub start_task {
         '--config' => $self->{config_file},
         '--task'   => $task->{_id},
     );
-    push @args, '--nogfs' unless ($self->{config}{gfs} // true);
+    push @args, '--nogfs' unless $self->{config}{gfs};
     $self->logger->info(join ' ', $command, @args);
     unless (fork) {
         setsid != -1 or die "Can't start a new session: $!";
@@ -382,9 +297,9 @@ sub count_total {
 # checks if this node will process (activequeues) or ignore (ignorequeues) a queue
 sub is_active_queue {
     my ($self, $queue_id) = @_;
-    if (@{$self->{config}{activequeues} // []}) {
+    if (@{$self->{config}{activequeues}}) {
         grep($queue_id->{value} eq $_, @{$self->{config}{activequeues}}) ? 1 : 0;
-    } elsif (@{$self->{config}{ignorequeues} // []}) {
+    } elsif (@{$self->{config}{ignorequeues}}) {
         grep($queue_id->{value} eq $_, @{$self->{config}{ignorequeues}}) ? 0 : 1;
     } else {
         1;
@@ -523,21 +438,7 @@ Parameters: none
 
 Returns a L<MongoDB::Collection> object for collection "tasks".
 
-=item config
-
-Parameters: none
-
-Returns a L<MongoDB::Collection> object for collection "config".
-
-=item ensure_config
-
-Parameters: none
-
-Ensures that C<production> and C<development> config documents exist, and that C<< $self->{config}{default_config} // 'production' >> is active.
-
-Returns nothing.
-
-=item load_config_file
+=item load_config
 
 Parameters: none
 
@@ -547,19 +448,11 @@ Anything in the config file at startup is static and cannot be changed without r
 
 Returns nothing.
 
-=item load_config
-
-Parameters: none
-
-Loads the config file at startup and (re)loads the current active config collection document.
-
-Returns nothing.
-
 =item ensure_indexes
 
 Parameters: none
 
-Ensures the proper MongoDB indexes are created for C<tasks>, C<config>, C<tasks.files>, and C<tasks.chunks> collections.
+Ensures the proper MongoDB indexes are created for C<tasks>, C<tasks.files>, and C<tasks.chunks> collections.
 
 Returns nothing.
 

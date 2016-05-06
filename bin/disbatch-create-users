@@ -98,7 +98,7 @@ Username of the MongoDB root user.
 
 Path to the JSON config file for C<plugin> permissions. Default is C</etc/disbatch/plugin-permissions.json>.
 
-At a minimum, permission is needed to run C<find> on the C<config> collection.
+No permissions are required, but note that L<Disbatch::Plugin::Demo> must be able to do C<insert> on the C<reports> collection.
 
 =item --create_root
 

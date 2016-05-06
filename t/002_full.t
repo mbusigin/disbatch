@@ -53,9 +53,23 @@ my $config = {
         plugin => 'qwerty4',		# { username => 'plugin', password => 'qwerty3' },
     },
     plugins => [ 'Disbatch::Plugin::Demo' ],
-    default_config => 'development',
     web_root => 'etc/disbatch/htdocs/',
     task_runner => './bin/task_runner',
+    log4perl => {
+        level => 'TRACE',
+        appenders => {
+            filelog => {
+                type => 'Log::Log4perl::Appender::File',
+                layout => '[%p] %d %F{1} %L %C %c> %m %n',
+                args => { filename => 'disbatchd.log' },
+            },
+            screenlog => {
+                type => 'Log::Log4perl::Appender::ScreenColoredLevels',
+                layout => '[%p] %d %F{1} %L %C %c> %m %n',
+                args => { },
+            }
+        }
+    },
 };
 delete $config->{auth} unless $use_auth;
 delete $config->{attributes} unless $use_ssl;
@@ -92,7 +106,7 @@ if ($use_auth) {
 my $test_db_root = retry { MongoDB->connect($config->{mongohost}, $attributes)->get_database($config->{database}) } catch { die $_ };
 
 # Create roles and users for a database:
-my $plugin_perms = { config => [ 'find' ], reports => [ 'insert' ] };	# minimal permissions for Disbatch::Plugin::Demo
+my $plugin_perms = { reports => [ 'insert' ] };	# minimal permissions for Disbatch::Plugin::Demo
 Disbatch::Roles->new(db => $test_db_root, plugin_perms => $plugin_perms, %{$config->{auth}})->create_roles_and_users if $use_auth;
 
 # Create users collection:

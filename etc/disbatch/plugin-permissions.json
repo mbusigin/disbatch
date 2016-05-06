@@ -2,9 +2,9 @@
 # Format is { collection_name: array_of_actions, ... }
 # See https://docs.mongodb.org/manual/reference/built-in-roles/ for built-in roles.
 
-# At a minimum, the plugin must be able to do 'find' on the 'config' collection.
-# Note that Disbatch::Plugin::Demo must be able to do 'insert' on the 'reports' collection.
+# No permissions are required, but note that Disbatch::Plugin::Demo must be
+# able to do 'insert' on the 'reports' collection.
 
 {
-    "config": [ "find" ],
+#    "reports": [ "insert" ],
 }
