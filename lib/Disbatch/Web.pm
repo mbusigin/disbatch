@@ -24,7 +24,7 @@ my $disbatch;
 sub init {
     my $args = { @_ };
     $disbatch = Disbatch->new(class => 'Disbatch::Web', config_file => ($args->{config_file} // '/etc/disbatch/config.json'));
-    $disbatch->load_config_file;
+    $disbatch->load_config;
     public ($disbatch->{config}{web_root} // '/etc/disbatch/htdocs/');
 }
 

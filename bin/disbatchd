@@ -34,7 +34,6 @@ do {
     $disbatch->orphaned_tasks;
     $disbatch->process_queues;
     $disbatch->update_node_status;
-    $disbatch->load_config;
 } while sleep 1;
 
 END {
