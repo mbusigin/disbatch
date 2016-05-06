@@ -7,12 +7,13 @@
 3. Edit `/etc/disbatch/config.json`
    1. Change `mongohost` to the URI of your MongoDB servers
    2. Change `database` to the MongoDB database name you are using for Disbatch
-   3. Change passwords in `auth` for the respective MongoDB users, or delete
+   3. Ensure proper SSL settings in `attributes`, or remove it if not using SSL
+   4. Change passwords in `auth` for the respective MongoDB users, or delete
       the field or set its value to `null` if not using MongoDB authentication
-   4. Ensure proper SSL settings in `attributes`, or remove it if not using SSL
-   5. Change `default_config` from `development` to `production`
-   6. Change `web_root` from `etc/disbatch/htdocs/` to `/etc/disbatch/htdocs/`
-   7. Set `activequeues` or `ignorequeues` per DEN if used
+   5. Set `plugins` to the name(s) of the plugins you want accessible for queue
+      creation.
+   6. Set `activequeues` or `ignorequeues` per DEN if used
+   7. Remove the rest, which is optional and configured for development.
 
 See also [Configuring and Using SSL with MongoDB](SSL_MongoDB.md) and
 [Configuring and Using SSL with the Disbatch Command Interface](SSL_DCI.md).
@@ -27,16 +28,3 @@ See also [Configuring and Using SSL with MongoDB](SSL_MongoDB.md) and
         disbatch-create-users --config /etc/disbatch/config.json --root_user root
 
 See also [Configuring and Using Authentication with MongoDB](Authentication_MongoDB.md).
-
-
-#### Setup the `config` collection (optional)
-- this is done automatically if not defined: disbatchd creates 2 documents with
-  labels `production` and `development`
-- each document must have a unique `label`
-- `production` will be set to active unless the config file has a
-  `default_config` value of something else
-- only one document in this collection can have `active` set to `true` (a unique
-  and sparse index)
-- the document can be changed while disbatchd is running, and even a different
-  document can be set to active (but be careful because it searches for the
-  active document every second)

@@ -10,8 +10,8 @@ For a simple example, see `lib/Disbatch/Plugin/Demo.pm`.
 
     `$workerthread` is a `Disbatch` object using the `plugin` MongoDB user and
     role. This gives access to the Disbatch subroutines, such as `logger`,
-    `mongo`, and the various collection helper subs (`nodes`, `queues`, `tasks`,
-    `config`), with whatever MongoDB access permissions `plugin` has.
+    `mongo`, and the various collection helper subs (`nodes`, `queues`,
+    `tasks`), with whatever MongoDB access permissions `plugin` has.
 
     `$doc` is the task's full document from MongoDB, where `$doc->{_id}` and
     `$doc->{queue}` are `MongoDB::OID` objects.

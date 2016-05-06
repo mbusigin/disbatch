@@ -37,7 +37,6 @@
 - Only the `::Task` part of the plugin is needed. Its parent is unused.
 - `bin/disbatchd` instead of `bin/disbatchd.pl`
 - `etc/disbatch/config.json` instead of `etc/disbatch/disbatch.ini`
-  - most config will go into the `config` collection.
 - The `disbatch-log4perl.conf` file is no longer used (automatically generated
   settings, can be overwritten in the config file)
 - Task `stdout` and `stderr` are now written to (mostly-compatible) GridFS

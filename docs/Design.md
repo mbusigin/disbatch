@@ -35,8 +35,7 @@ Each task links to a single queue.
 
 On startup, each DEN:
 
-* Optionally loads additional configuration information from the `config`
-  collection
+* Reads the config file to get MongoDB settings and possibly other settings
 
 * Ensures the collections have the proper indexes
 
@@ -53,9 +52,6 @@ At a set interval (1 second), each DEN:
 
 * Optionally revalidates that all plugins listed in defined queues have a proper
   name and can be used if needed
-
-* Optionally reloads additional configuration information from the `config`
-  collection
 
 #### Orphaned Tasks
 
