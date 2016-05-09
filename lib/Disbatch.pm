@@ -93,7 +93,7 @@ sub load_config {
         # Ensure defaults:
         $self->{config}{attributes} //= {};
         $self->{config}{auth} //= {};
-        $self->{config}{gfs} //= true;
+        $self->{config}{gfs} //= 'auto';
         $self->{config}{task_runner} //= '/usr/bin/task_runner';
         $self->{config}{log4perl} //= $default_log4perl;
         $self->{config}{activequeues} //= [];
@@ -243,7 +243,7 @@ sub start_task {
         '--config' => $self->{config_file},
         '--task'   => $task->{_id},
     );
-    push @args, '--nogfs' unless $self->{config}{gfs};
+    push @args, '--gfs', $self->{config}{gfs} if $self->{config}{gfs};
     $self->logger->info(join ' ', $command, @args);
     unless (fork) {
         setsid != -1 or die "Can't start a new session: $!";
@@ -568,7 +568,7 @@ Returns nothing.
 
 Parameters: UTF-8 content to store, optional filename to store it as, optional metadata C<HASH>
 
-Stores UTF-8 content in a custom GridFS format that does not store it as BinData.
+Stores UTF-8 content in a custom GridFS format that stores data as strings instead of as BinData.
 
 Returns a C<MongoDB::OID> object for the ID inserted in the C<tasks.files> collection.
 

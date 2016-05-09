@@ -17,11 +17,12 @@ my ($task_id, $gfs, $config_file);
 
 GetOptions(
     'task=s'     => \$task_id,
-    'gfs!'       => \$gfs,
+    'gfs:s'      => \$gfs,
     'config=s'   => \$config_file,
 );
 
-$gfs //= 1;	# use GridFS by default
+$gfs //= 0;		# default is disabled
+$gfs = 1 if $gfs eq '';	# '--gfs' was passed with no value
 
 my $json = Cpanel::JSON::XS->new->utf8->convert_blessed;
 
@@ -95,17 +96,33 @@ catch { $logger->logdie("Could not update task $task_id status to $result->{stat
 
 # set rest of result:
 if ($gfs) {
-    my $stdout_doc = retry { $disbatch->put_gfs($result->{stdout}, 'stdout', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stdout: $_"); $result->{warning} = "$_"; undef; };
-    my $stderr_doc = retry { $disbatch->put_gfs($result->{stderr}, 'stderr', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stderr: $_"); $result->{warning} = "$_"; undef; };
-    $result->{stdout} = $stdout_doc if defined $stdout_doc;
-    $result->{stderr} = $stderr_doc if defined $stderr_doc;
-    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => {stdout => $result->{stdout}, stderr => $result->{stderr}}}) }
-    catch { $logger->logdie("Could not update task $task_id stdout/stderr file ids after completion: $_") };
-} else {
-    retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => {stdout => $result->{stdout}, stderr => $result->{stderr}}}) }
-    on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }	# MongoDB::DocumentError: Document exceeds maximum size 16777216
-    catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };
+    my $stdout_gfs = 1;
+    my $stderr_gfs = 1;
+    if ($gfs eq 'auto') {
+        my $stdout_size = length encode_utf8($result->{stdout});
+        my $stderr_size = length encode_utf8($result->{stderr});
+        if ($stdout_size + $stderr_size <= 1024*1024*15) {
+            # store both in the task document
+            $stdout_gfs = 0;
+            $stderr_gfs = 0;
+        } elsif ($stderr_size <= 1024*1024*15) {
+            # store stdout in GridFS and stderr in the task document
+            $stdout_gfs = 1;
+            $stderr_gfs = 0;
+        }
+    }
+    if ($stdout_gfs) {
+        my $stdout_doc = retry { $disbatch->put_gfs($result->{stdout}, 'stdout', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stdout: $_"); $result->{warning} = "$_"; undef; };
+        $result->{stdout} = $stdout_doc;
+    }
+    if ($stderr_gfs) {
+        my $stderr_doc = retry { $disbatch->put_gfs($result->{stderr}, 'stderr', { task_id => $oid }) } retry_if { !/^MongoDB::DatabaseError: not authorized on / } catch { $logger->error("Could not create GridFS content for task $oid stderr: $_"); $result->{warning} = "$_"; undef; };
+        $result->{stderr} = $stderr_doc;
+    }
 }
+retry { $disbatch->tasks->update_one({_id => $oid, status => $result->{status}, node => $disbatch->{node}}, {'$set' => {stdout => $result->{stdout}, stderr => $result->{stderr}}}) }
+on_retry { $result->{stdout} = $_ if $_->$_isa('MongoDB::DocumentError') }  # MongoDB::DocumentError: Document exceeds maximum size 16777216
+catch { $logger->logdie("Could not update task $task_id stdout/stderr after completion: $_") };
 
 __END__
 
@@ -135,13 +152,17 @@ The task's _id. Mandatory.
 
 The name of the plugin to use. Mandatory.
 
-=item --nogfs
+=item --gfs [<string>]
 
-Do not use the custom GridFS implementation to store task stderr and stdout. Store them directly in the task like in previous versions.
+Use the custom GridFS implementation to store task C<stderr> and C<stdout>. Default is to store them directly in the task document.
 
 While using GridFS can make analysing task output more complicated, we periodically have output that exceeds the maximum MongoDB document size.
 
-If you are sure you won't need this, or can accept the loss of stdout and potentially stderr, you can disable this by adding C<"gfs": false> to the config file.
+To turn this on for all tasks, add the argument C<--gfs> with no value. To turn it on for tasks with large C<stdout> and C<stderr>, use C<--gfs auto>.
+Both C<stdout> and C<stderr> will be stored in the task document if they will fit, otherwise C<stderr> will be stored in the task document if it will fit
+and C<stdout> in GridFS, and finally both with be stored in GridFS if C<stderr> will not fit.
+
+In the config file, this is disabled with C<"gfs": false>, enabled with C<"gfs": true>, and automatic with C<"gfs": "auto"> (Note that automatic is the Disbatch default).
 
 =back
 
