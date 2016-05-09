@@ -40,7 +40,8 @@
 - The `disbatch-log4perl.conf` file is no longer used (automatically generated
   settings, can be overwritten in the config file)
 - Task `stdout` and `stderr` are now written to (mostly-compatible) GridFS
-  documents by default. This can be disabled in the config.
+  documents if needed due to size. This can be disabled in the config, or always
+  enabled for all tasks.
 - To define a queue via the Disbatch Command Interface, the type must already be
   used in another queue, or listed in `plugins` in the config.
 - `ctime` and `mtime` are now `ISODate()` objects in MongoDB, and not unix

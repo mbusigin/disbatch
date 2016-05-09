@@ -316,7 +316,9 @@ On startup, the DEN, DCI, and DTR read a JSON format configuration file.
 * `gfs`
 
   Set this to `false` to store `stdout` and `stderr` in the task document
-  instead of using GridFS. Default is `true`.
+  instead of using GridFS. Set this to `true` to always use GridFS. Set this to
+  `"auto"` to only store `stdout` and `stderr` in GridFS if needed due to size.
+  Default is `"auto"`.
 
 * `web_root`
 
