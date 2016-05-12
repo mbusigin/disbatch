@@ -98,6 +98,7 @@ sub load_config {
         $self->{config}{log4perl} //= $default_log4perl;
         $self->{config}{activequeues} //= [];
         $self->{config}{ignorequeues} //= [];
+        $self->{config}{plugins} //= [];
         # FIXME: validate config values
 
         if (!defined $self->{config}{mongohost} or !defined $self->{config}{database}) {
@@ -118,6 +119,7 @@ sub ensure_indexes {
     );
     try { $self->tasks->indexes->create_many(@task_indexes) } catch { $self->logger->logdie("Could not ensure_indexes: $_") };
     try {
+        $self->queues->indexes->create_one([ name => 1 ], { unique => true });
         $self->nodes->indexes->create_one([ node => 1 ], { unique => true });
         $self->mongo->coll('tasks.chunks')->indexes->create_one([ files_id => 1, n => 1 ], { unique => true });
         $self->mongo->coll('tasks.files')->indexes->create_one([ filename => 1, 'metadata.task_id' => 1 ]);
