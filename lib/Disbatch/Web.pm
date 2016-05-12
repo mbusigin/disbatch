@@ -38,7 +38,542 @@ sub parse_params {
     }
 }
 
-######################
+################
+#### NEW API ###
+################
+
+sub datetime_to_millisecond_epoch {
+    int($_[0]->hires_epoch * 1000);
+}
+
+# will throw errors
+sub get_nodes {
+    my ($query) = @_;
+    $query //= {};
+    my @nodes = $disbatch->nodes->find($query)->sort({node => 1})->all;
+    for my $node (@nodes) {
+        $node->{id} = "$node->{_id}";
+        $node->{timestamp} = datetime_to_millisecond_epoch($node->{timestamp}) if ref $node->{timestamp} eq 'DateTime';
+    }
+    \@nodes;
+}
+
+=item GET /nodes
+
+Parameters: none.
+
+Returns an array of node objects defined, with C<id> the stringified C<_id>.
+
+=cut
+
+get '/nodes' => sub {
+    undef $disbatch->{mongo};
+    my $nodes = try { get_nodes } catch { status 400; "Could not get current nodes: $_" };
+    if (status == 400) {
+        Limper::warning $nodes;
+        return send_json { success => 0, error => $nodes };
+    }
+    send_json { success => 1, nodes => $nodes }, convert_blessed => 1;
+};
+
+=item GET /nodes/:node
+
+URL: C<:node> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<node> name if it does not.
+
+Parameters: none.
+
+Returns an array of node objects defined, with C<id> the stringified C<_id>.
+
+=cut
+
+get qr'^/nodes/(?<node>.+)' => sub {
+    undef $disbatch->{mongo};
+    my $query = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
+    my $node = try { get_nodes($query) } catch { status 400; "Could not get node $+{node}: $_" };
+    if (status == 400) {
+        Limper::warning $node;
+        return send_json { success => 0, error => $node };
+    }
+    send_json { success => 1, node => $node->[0] }, convert_blessed => 1;
+};
+
+=item POST /nodes/:node
+
+URL: C<:node> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<node> name if it does not.
+
+Parameters: C<< { "maxthreads": maxthreads } >>
+
+"maxthreads" is a non-negative integer or null
+
+Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $res: Object, "error": error_string_or_reponse_object } >>
+
+=cut
+
+#  postJSON('/nodes/' + row.rowId , { maxthreads: newValue}, loadQueues);
+post qr'^/nodes/(?<node>.+)' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+
+    unless (keys %$params) {
+        status 400;
+        return send_json {success => 0, error => 'No params'};
+    }
+    my @valid_params = qw/maxthreads/;
+    for my $param (keys %$params) {
+        unless (grep $_ eq $param, @valid_params) {
+            status 400;
+            return send_json { success => 0, error => 'Invalid param', param => $param};
+        }
+    }
+    if (exists $params->{maxthreads} and defined $params->{maxthreads} and $params->{maxthreads} !~ /^\d+$/) {
+        status 400;
+        return send_json {success => 0, error => 'maxthreads must be a non-negative integer or null'};
+    }
+    my $query = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
+    my $res = try {
+        $disbatch->nodes->update_one($query, {'$set' => $params});
+    } catch {
+        Limper::warning "Could not update node $+{node}: $_";
+        $_;
+    };
+    my $reponse = {
+        success => $res->{matched_count} == 1 ? 1 : 0,
+        ref $res => {%$res},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        if ($res->$_isa('MongoDB::UpdateResult')) {
+            $reponse->{error} = $reponse->{'MongoDB::UpdateResult'};
+        } else {
+            $reponse->{error} = "$res";
+        }
+    }
+    send_json $reponse;
+};
+
+=item GET /plugins
+
+Parameters: none.
+
+Returns an array of allowed plugin names.
+
+Note: replaces /queue-prototypes-json
+
+=cut
+
+# This is needed at least to create queues in the web interface.
+get '/plugins' => sub {
+    send_json $disbatch->{config}{plugins};
+};
+
+=item GET /queues
+
+Parameters: none.
+
+Returns array of queues.
+
+Each item has the following keys: id, plugin, name, threads, queued, running, completed
+
+Note: replaces /scheduler-json
+
+=cut
+
+get '/queues' => sub {
+    undef $disbatch->{mongo};
+    send_json { success => 1, queues => $disbatch->scheduler_report };
+};
+
+sub map_plugins {
+    my %plugins = map { $_ => 1 } @{$disbatch->{config}{plugins}};
+    \%plugins;
+}
+
+=item POST /queues
+
+Parameters: C<< { "name": name, "type": type } >>
+
+"type" is a plugin value.
+
+Returns: C<< { FIXME } >>
+
+Note: replaces /start-queue-json
+
+=cut
+
+post '/queues' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+    unless (defined $params->{name} and defined $params->{plugin}) {
+        status 400;
+        return send_json { success => 0, error => 'name and plugin required' };
+    }
+    my @valid_params = qw/threads name plugin/;
+    for my $param (keys %$params) {
+        unless (grep $_ eq $param, @valid_params) {
+            status 400;
+            return send_json { success => 0, error => 'Invalid param', param => $param};
+        }
+    }
+    unless (map_plugins->{$params->{plugin}}) {
+        status 400;
+        return send_json { success => 0, error => 'unknown plugin', plugin => $params->{plugin} };
+    }
+
+    my $res = try { $disbatch->queues->insert_one($params) } catch { Limper::warning "Could not create queue $params->{name}: $_"; $_ };
+    my $reponse = {
+        success => defined $res->{inserted_id} ? 1 : 0,
+        ref $res => {%$res},
+        id => $res->{inserted_id},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        $reponse->{error} = "$res";
+    }
+    send_json $reponse, convert_blessed => 1;
+};
+
+=item POST /queues/:queue
+
+URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
+
+Parameters: C<< { "threads": threads, "name": name, "plugin": plugin } >>
+
+C<threads> must be a non-negative integer, C<plugin> must be defined in the config file, C<name> must be a string.
+Only one is required, but any combination is allowed.
+
+Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
+
+Note: replaces /set-queue-attr-json
+
+=cut
+
+post qr'^/queues/(?<queue>.+)$' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+    my @valid_params = qw/threads name plugin/;
+
+    unless (keys %$params) {
+        status 400;
+        return send_json {success => 0, error => 'no params'};
+    }
+    for my $param (keys %$params) {
+        unless (grep $_ eq $param, @valid_params) {
+            status 400;
+            return send_json { success => 0, error => 'unknown param', param => $param};
+        }
+    }
+    if (exists $params->{plugin} and !map_plugins()->{$params->{plugin}}) {
+        status 400;
+        return send_json { success => 0, error => 'unknown plugin', plugin => $params->{plugin} };
+    }
+    if (exists $params->{threads} and $params->{threads} !~ /^\d+$/) {
+        status 400;
+        return send_json {success => 0, error => 'threads must be a non-negative integer'};
+    }
+    if (exists $params->{name} and (ref $params->{name} or !defined $params->{name})){
+        status 400;
+        return send_json {success => 0, error => 'name must be a string'};
+    }
+
+    my $query = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
+    my $res = try {
+        $disbatch->queues->update_one($query, {'$set' => $params});
+    } catch {
+        Limper::warning "Could not update queue $+{queue}: $_";
+        $_;
+    };
+    my $reponse = {
+        success => $res->{matched_count} == 1 ? 1 : 0,
+        ref $res => {%$res},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        $reponse->{error} = "$res";
+    }
+    send_json $reponse;
+};
+
+=item DELETE /queues/:queue
+
+URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
+
+Parameters: none
+
+Deletes the specified queue.
+
+Returns: C<< FIXME >>
+
+Note: replaces /delete-queue-json
+=cut
+
+del qr'^/queues/(?<queue>.+)$' => sub {
+    undef $disbatch->{mongo};
+
+    my $query = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
+    my $res = try { $disbatch->queues->delete_one($query) } catch { Limper::warning "Could not delete queue '$+{queue}': $_"; $_ };
+    my $reponse = {
+        success => $res->{deleted_count} ? 1 : 0,
+        ref $res => {%$res},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        $reponse->{error} = "$res";
+    }
+    send_json $reponse;
+};
+
+# returns an MongoDB::OID object of either a simple string representation of the OID or a queue name, or undef if queue not found/valid
+sub get_queue_oid {
+    my ($queue) = @_;
+    my $queue_id = try {
+        MongoDB::OID->new(value => $queue);
+    } catch {
+        my $q = try { $disbatch->queues->find_one({name => $queue}) } catch { Limper::warning "Could not find queue $queue: $_"; undef };
+        defined $q ? $q->{_id} : undef;
+    };
+}
+
+# creates a task for given queue _id and params, returning task _id
+sub create_tasks {
+    my ($queue_id, $tasks) = @_;
+
+    my @tasks = map {
+        queue      => $queue_id,
+        status     => -2,
+        stdout     => undef,
+        stderr     => undef,
+        node       => undef,
+        params     => $_,
+        ctime      => Time::Moment->now_utc,
+        mtime      => Time::Moment->now_utc,
+    }, @$tasks;
+
+    my $res = try { $disbatch->tasks->insert_many(\@tasks) } catch { Limper::warning "Could not create tasks: $_"; $_ };
+    $res;
+}
+
+=item POST /tasks/:queue
+
+URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
+
+Parameters: an array of task params objects
+
+Returns: C<< { FIXME } >>
+
+Note: replaces /queue-create-tasks-json
+
+=cut
+
+post qr'^/tasks/(?<queue>.+)$' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+    unless (defined $params and ref $params eq 'ARRAY') {
+        status 400;
+        return send_json { success => 0, error => 'params must be a JSON array of task params' };
+    }
+
+    my $queue_id = get_queue_oid($+{queue});
+    unless (defined $queue_id) {
+        status 400;
+        return send_json { success => 0, error => 'queue not found' };
+    }
+
+    my $res = create_tasks($queue_id, $params);
+
+    my $reponse = {
+        success => @{$res->{inserted}} ? 1 : 0,
+        ref $res => {%$res},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        $reponse->{error} = 'Unknown error';
+    }
+    send_json $reponse, convert_blessed => 1;
+};
+
+=item POST /tasks/:queue/:collection
+
+URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not. C<:collection> is a MongoDB collection name.
+
+Parameters: C<< { "query": query, "params": params } >>
+
+C<query> is a query object for the C<:collection> collection.
+
+C<params> is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
+
+Returns: C<< { FIXME } >>
+
+Note: replaces /queue-create-tasks-from-query-json
+
+=cut
+
+post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+    # {"migration":"foo"}
+    # {"migration":"document.migration","user1":"document.username"}
+    unless (defined $params->{query} and ref $params->{query} eq 'HASH' and defined $params->{params} and ref $params->{params} eq 'HASH') {
+        status 400;
+        return send_json { success => 0, error => 'query and params required and must be name/value objects' };
+    }
+
+    my $queue_id = get_queue_oid($+{queue});
+    unless (defined $queue_id) {
+        status 400;
+        return send_json { success => 0, error => 'queue not found' };
+    }
+
+    my @fields = grep /^document\./, values %{$params->{params}};
+    my %fields = map { s/^document\.//; $_ => 1 } @fields;
+
+    my $cursor = $disbatch->mongo->coll($+{collection})->find($params->{query})->fields(\%fields);
+    my @tasks;
+    my $error;
+    try {
+        while (my $doc = $cursor->next) {
+            my $task = { %{$params->{params}} };	# copy it
+            for my $key (keys %$task) {
+                if ($task->{$key} =~ /^document\./) {
+                    for my $field (@fields) {
+                        my $f = quotemeta $field;
+                        if ($task->{$key} =~ /^document\.$f$/) {
+                            $task->{$key} = $doc->{$field};
+                        }
+                    }
+                }
+            }
+            push @tasks, $task;
+        }
+    } catch {
+        Limper::warning "Could not iterate on collection $+{collection}: $_";
+        $error = "$_";
+    };
+
+    return send_json { success => 0, error => $error } if defined $error;
+
+    my $res = create_tasks($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
+
+    my $reponse = {
+        success => @{$res->{inserted}} ? 1 : 0,
+        ref $res => {%$res},
+    };
+    unless ($reponse->{success}) {
+        status 400;
+        $reponse->{error} = 'Unknown error';
+    }
+    send_json $reponse, convert_blessed => 1;
+};
+
+sub deserialize_oid {
+    my ($object) = @_;
+    if (ref $object eq 'HASH') {
+        return MongoDB::OID->new(value => $object->{'$oid'}) if exists $object->{'$oid'};
+        $object->{$_} = deserialize_oid($object->{$_}) for keys %$object;
+    } elsif (ref $object eq 'ARRAY') {
+        $_ = deserialize_oid($_) for @$object;
+    }
+    $object;
+}
+
+=item POST /tasks/search
+
+Parameters: C<< { "filter": filter, "options": options, "count": count, "terse": terse } >>
+
+All parameters are optional.
+
+C<filter> is a query object.
+
+C<options> is an object of desired options to L<MongoDB::Collection#find>.
+
+If not set, C<options.limit> will be C<100>. This will fail if you try to set it above C<100>.
+
+C<count> is a boolean. Instead of an array of task documents, the count of task documents matching the query will be returned.
+
+C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
+If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
+
+Returns: C<< { FIXME } >>
+
+Note: replaces /search-tasks-json
+
+=cut
+
+# FIXME: I don't like this URL. And should it be a POST?
+# see https://metacpan.org/pod/MongoDB::Collection#find
+post '/tasks/search' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+
+    my $LIMIT = 100;
+
+    $params->{filter} //= {};
+    $params->{options} //= {};
+    $params->{count} // 0;
+    $params->{terse} // 1;
+    unless (ref $params->{filter} eq 'HASH' and ref $params->{options} eq 'HASH') {
+        status 400;
+        return send_json { success => 0, error => 'filter and options must be name/value objects' };
+    }
+    $params->{options}{limit} //= $LIMIT;
+    if ($params->{options}{limit} > $LIMIT) {
+        status 400;
+        return send_json { success => 0, error => "limit cannot exceed $LIMIT" };
+    }
+
+    my $oid_error = try { $params->{filter} = deserialize_oid($params->{filter}); undef } catch { "Bad OID passed: $_" };
+    if (defined $oid_error) {
+        Limper::warning $oid_error;
+        status 400;
+        return send_json { success => 0, error => $oid_error };
+    }
+
+    # Turn value into a Time::Moment object if it looks like it includes milliseconds. Will break in the year 2286.
+    for my $type (qw/ctime mtime/) {
+        $params->{filter}{$type} = Time::Moment->from_epoch($params->{filter}{$type} / 1000) if ($params->{filter}{$type} // 0) > 9999999999;
+    }
+
+    if ($params->{count}) {
+        my $count = try { $disbatch->tasks->count($params->{filter}) } catch { Limper::warning $_; $_; };
+        if (ref $count) {
+            status 400;
+            return send_json { success => 0, error => "$count" };
+        }
+        return send_json { success => 1, count => $count };
+    }
+    my ($error, @tasks) = try { undef, $disbatch->tasks->find($params->{filter}, $params->{options})->all } catch { Limper::warning "Could not find tasks: $_"; $_ };
+    if (defined $error) {
+        Limper::warning $error;
+        status 400;
+        return send_json { success => 0, error => $error };
+    }
+
+    for my $task (@tasks) {
+        for my $type (qw/stdout stderr/) {
+            if ($params->{terse}) {
+                $task->{$type} = '[terse mode]' unless $task->{$type}->$_isa('MongoDB::OID');
+            } elsif ($task->{$type}->$_isa('MongoDB::OID')) {
+                $task->{$type} = try { $disbatch->get_gfs($task->{$type}) } catch { Limper::warning "Could not get task $task->{_id} $type: $_"; $task->{$type} };
+            }
+        }
+        for my $type (qw/ctime mtime/) {
+            $task->{$type} = $task->{$type}->hires_epoch if ref $task->{$type} eq 'DateTime';
+        }
+    }
+
+    send_json { success => 1, tasks => \@tasks }, convert_blessed => 1;
+};
+
+get '/' => sub {
+    send_file '/index.html';
+};
+
+get qr{^/} => sub {
+    send_file request->{path};        # sends request->{uri} by default
+};
+
+################
+#### OLD API ###
+################
 
 get '/scheduler-json' => sub {
     undef $disbatch->{mongo};
@@ -78,64 +613,8 @@ post '/set-queue-attr-json' => sub {
     send_json $reponse;
 };
 
-sub get_nodes {
-    my @nodes = try { $disbatch->nodes->find->sort({node => 1})->all } catch { Limper::warning "Could not get current nodes: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
-    for my $node (@nodes) {
-        $node->{id} = "$node->{_id}";
-        delete $node->{_id};
-        $node->{timestamp} = "$node->{timestamp}";
-    }
-    \@nodes;
-}
-
-get '/nodes' => sub {
-    undef $disbatch->{mongo};
-    send_json get_nodes;
-};
-
-#  postJSON('/nodes/' + row.rowId , { maxthreads: newValue}, loadQueues);
-post qr'^/nodes/(.+)' => sub {
-    undef $disbatch->{mongo};
-    my $node = $1;
-    my $params = parse_params;
-    my @valid_params = qw/maxthreads/;
-    unless (keys %$params) {
-        status 400;
-        return send_json {success => 0, error => 'No keys'};
-    }
-    for my $key (keys %$params) {
-        unless (grep $_ eq $key, @valid_params) {
-            status 400;
-            return send_json {success => 0, error => 'Invalid key', key => $key};
-        }
-    }
-    if (exists $params->{maxthreads} and defined $params->{maxthreads} and $params->{maxthreads} !~ /^\d+$/) {
-        status 400;
-        return send_json {success => 0, error => 'maxthreads must be a non-negative integer or null'};
-    }
-    my $res = try {
-        $disbatch->nodes->update_one({node => $node}, {'$set' => $params });
-    } catch {
-        Limper::warning "Could not update node $node: $_";
-        $_;
-    };
-    my $reponse = {
-        success => $res->{matched_count} == 1 ? 1 : 0,
-        ref $res => {%$res},
-    };
-    unless ($reponse->{success}) {
-        status 400;
-        if ($res->$_isa('MongoDB::UpdateResult')) {
-            $reponse->{error} = $reponse->{'MongoDB::UpdateResult'};
-        } else {
-            $reponse->{error} = "$res";
-        }
-    }
-    send_json $reponse;
-};
-
 sub get_plugins {
-    my @plugins = try { $disbatch->queues->distinct('plugin')->all } catch { Limper::warning "Could not get current plugins: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    my @plugins = try { $disbatch->queues->distinct('plugin')->all } catch { Limper::warning "Could not get current plugins: $_"; () };
     my $plugins = $disbatch->{config}{plugins} // [];
     my %plugins = map { $_ => $_ } @plugins, @$plugins;
     \%plugins;
@@ -193,7 +672,7 @@ get '/queue-prototypes-json' => sub {
     send_json get_plugins;
 };
 
-sub get_queue_oid {
+sub get_queue_oid_old {
     my ($queue) = @_;
     my $queue_id = try {
         MongoDB::OID->new(value => $queue);
@@ -204,7 +683,7 @@ sub get_queue_oid {
 }
 
 # creates a task for given queue _id and params, returning task _id
-sub create_tasks {
+sub create_tasks_old {
     my ($queue_id, $tasks) = @_;
 
     my @tasks = map {
@@ -234,10 +713,10 @@ post '/queue-create-tasks-json' => sub {
     return send_json [ 0, $tasks ] unless ref $tasks;
     return send_json [ 0, 'object param must be a JSON array' ] unless ref $tasks eq 'ARRAY';
 
-    my $queue_id = get_queue_oid($params->{queueid});
+    my $queue_id = get_queue_oid_old($params->{queueid});
     return send_json [ 0, 'Queue not found' ] unless defined $queue_id;
 
-    my $res = create_tasks($queue_id, $tasks);
+    my $res = create_tasks_old($queue_id, $tasks);
 
     my $reponse = {
         success => @{$res->{inserted}} ? 1 : 0,
@@ -264,7 +743,7 @@ post '/queue-create-tasks-from-query-json' => sub {
     my $task_params = try { ref $params->{params} ? $params->{params} : $json->decode($params->{params}) } catch { $_ };	# {"migration":"document.migration","user1":"document.username"}
     return send_json [ 0, $task_params ] unless ref $task_params;
 
-    my $queue_id = get_queue_oid($params->{queueid});
+    my $queue_id = get_queue_oid_old($params->{queueid});
     return send_json [ 0, 'Queue not found' ] unless defined $queue_id;
 
     my @fields = grep /^document\./, values %$task_params;
@@ -295,7 +774,7 @@ post '/queue-create-tasks-from-query-json' => sub {
 
     return send_json [ 0, $error ] if defined $error;
 
-    my $res = create_tasks($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
+    my $res = create_tasks_old($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
 
     my $reponse = {
         success => @{$res->{inserted}} ? 1 : 0,
@@ -341,7 +820,7 @@ post '/search-tasks-json' => sub {
         return send_json [ 0, "$count" ] if ref $count;
         return send_json [ 1, $count ];
     }
-    my @tasks = try { $disbatch->tasks->find($filter, $attrs)->all } catch { Limper::warning "Could not find tasks: $_"; () };	# FIXME: on error, this returns an empty list in order to not break current API
+    my @tasks = try { $disbatch->tasks->find($filter, $attrs)->all } catch { Limper::warning "Could not find tasks: $_"; () };
 
     for my $task (@tasks) {
         if ($params->{terse}) {
@@ -377,14 +856,6 @@ post '/search-tasks-json' => sub {
     }
 
     send_json \@tasks, convert_blessed => 1;
-};
-
-get '/' => sub {
-    send_file '/index.html';
-};
-
-get qr{^/} => sub {
-    send_file request->{path};        # sends request->{uri} by default
 };
 
 1;
@@ -454,90 +925,6 @@ Returns: the repsonse object from a C<MongoDB::Collection#insert_many> request.
 =head1 JSON ROUTES
 
 =over 2
-
-=item GET /scheduler-json
-
-Parameters: none.
-
-Returns array of queues.
-
-Each item has the following keys: id, plugin, name, threads, queued, running, completed
-
-=item POST /set-queue-attr-json
-
-Parameters: C<< { "queueid": queueid, "attr": attr, "value": value } >>
-
-"attr" must be "threads". "value" should be an integer, but no checking is done.
-
-Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
-
-=item GET /nodes
-
-Returns an array of node objects defined, with C<timestamp> stringified and C<id> the stringified C<_id>.
-
-=item POST /nodes/$node
-
-Parameters: C<< { "maxthreads": maxthreads } >>
-
-"maxthreads" is a non-negative integer or null
-
-Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $res: Object, "error": error_string_or_reponse_object } >>
-
-=item POST /start-queue-json
-
-Parameters: C<< { "name": name, "type": type } >>
-
-"type" is a plugin value.
-
-Returns array: C<< [ success, inserted_id, reponse_object ] >>
-
-=item POST /delete-queue-json
-
-Parameters: C<< { "id": id } >>
-
-Returns array: C<< [ success, error_string_or_reponse_object ] >>
-
-=item GET /queue-prototypes-json
-
-Parameters: none.
-
-Note: You currently can't create a queue for a plugin in the web UI unless there is already a queue with that plugin that this returns.
-
-Returns an object where both keys and values are values of currently defined plugins in queues.
-
-=item POST /queue-create-tasks-json
-
-Parameters: C<< { "queueid": queueid, "object": object } >>
-
-"object" is an array of task parameter objects.
-
-Returns array: C<< [ success, count_inserted, array_of_inserted, reponse_object ] >> or C<< [ 0, error_string ] >>
-
-=item POST /queue-create-tasks-from-query-json
-
-Parameters: C<< { "queueid": queueid, "collection": collection, "jsonfilter": jsonfilter, "params": params } >>
-
-"collection" is the name of the MongoDB collection to query.
-
-"jsonfilter" is the query.
-
-"params" is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
-
-Returns array: C<< [ success, count_inserted ] >> or C<< [ 0, error_string ] >>
-
-=item POST /search-tasks-json
-
-Parameters: C<< { "queue": queue, "filter": filter, "limit": limit, "skip": skip, "count": count, "terse": terse } >>
-
-All parameters are optional.
-
-"filter" is the query. If you want to query by Object ID, use the key "id" and not "_id".
-
-"limit" and "skip" are integers.
-
-"count" and "terse" are booleans.
-
-Returns array of tasks (empty if there is an error in the query), C<< [ status, count_or_error ] >> if "count" is true, or C<< [ 0, error ] >> if other error.
 
 =back
 
