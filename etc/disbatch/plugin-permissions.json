@@ -8,3 +8,14 @@
 {
 #    "reports": [ "insert" ],
 }
+
+# My plugins typically need the following permissions:
+#{
+#    "": [ "find" ],		# allow reading of all collections in the database
+#    "queues": [ "update" ],	# used to set threads to 0 in case of serious error
+#    "users": [ "update" ],
+#    "reports": [ "insert" ],
+#    "complete": [ "update" ],
+#    "status": [ "update", "createIndex" ],
+#    "nodeQueues": [ "update" ],
+#}
