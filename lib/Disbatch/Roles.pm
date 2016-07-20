@@ -18,7 +18,7 @@ sub new {
             privileges => [
                 { resource => { db => $self->{db}{name}, collection => '' }, actions => [ 'find' ] },
                 { resource => { db => $self->{db}{name}, collection => 'nodes' },  actions => [ 'find', 'insert', 'update', 'createIndex' ] },
-                { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update' ] },
+                { resource => { db => $self->{db}{name}, collection => 'queues' },  actions => [ 'update', 'createIndex' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks' },  actions => [ 'update', 'createIndex' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks.chunks' },  actions => [ 'createIndex' ] },
                 { resource => { db => $self->{db}{name}, collection => 'tasks.files' },  actions => [ 'createIndex' ] },
