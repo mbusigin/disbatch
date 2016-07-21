@@ -64,6 +64,8 @@ Parameters: none.
 
 Returns an array of node objects defined, with C<id> the stringified C<_id>.
 
+Note: new in Disbatch 4
+
 =cut
 
 get '/nodes' => sub {
@@ -83,6 +85,8 @@ URL: C<:node> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<node> name
 Parameters: none.
 
 Returns an array of node objects defined, with C<id> the stringified C<_id>.
+
+Note: new in Disbatch 4
 
 =cut
 
@@ -106,6 +110,8 @@ Parameters: C<< { "maxthreads": maxthreads } >>
 "maxthreads" is a non-negative integer or null
 
 Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $res: Object, "error": error_string_or_reponse_object } >>
+
+Note: new in Disbatch 4
 
 =cut
 
@@ -190,11 +196,17 @@ sub map_plugins {
 
 =item POST /queues
 
+Create a new queue.
+
 Parameters: C<< { "name": name, "type": type } >>
 
-"type" is a plugin value.
+C<name> is the desired name for the queue (must be unique), C<type> is the plugin name for the queue.
 
-Returns: C<< { FIXME } >>
+Returns: C<< { success: 1, ref $res: Object, id: $inserted_id } >> on success; C<< { success: 0, error: "name and plugin required" } >>,
+C<< { success: 0, error: "Invalid param", param: $param } >>, or C<< { success: 0, error: "Unknown plugin", plugin: $plugin } >> on input error; or
+C<< { success: 0, ref $res: Object, id: null, error: "$res" } >> on MongoDB error.
+
+Sets HTTP status to C<400> on error.
 
 Note: replaces /start-queue-json
 
@@ -207,7 +219,7 @@ post '/queues' => sub {
         status 400;
         return send_json { success => 0, error => 'name and plugin required' };
     }
-    my @valid_params = qw/threads name plugin/;
+    my @valid_params = qw/threads name/;
     for my $param (keys %$params) {
         unless (grep $_ eq $param, @valid_params) {
             status 400;
@@ -216,7 +228,7 @@ post '/queues' => sub {
     }
     unless (map_plugins->{$params->{plugin}}) {
         status 400;
-        return send_json { success => 0, error => 'unknown plugin', plugin => $params->{plugin} };
+        return send_json { success => 0, error => 'Unknown plugin', plugin => $params->{plugin} };
     }
 
     my $res = try { $disbatch->queues->insert_one($params) } catch { Limper::warning "Could not create queue $params->{name}: $_"; $_ };
@@ -301,9 +313,12 @@ Parameters: none
 
 Deletes the specified queue.
 
-Returns: C<< FIXME >>
+Returns: C<< { success: 1, ref $res: Object } >> on success, or C<< { success: 0, ref $res: Object, error: "$res" } >> on error.
+
+Sets HTTP status to C<400> on error.
 
 Note: replaces /delete-queue-json
+
 =cut
 
 del qr'^/queues/(?<queue>.+)$' => sub {
@@ -358,7 +373,10 @@ URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if 
 
 Parameters: an array of task params objects
 
-Returns: C<< { FIXME } >>
+Returns: C<< { success: 1, ref $res: Object } >> on success; C<< { success: 0, error: "params must be a JSON array of task params" } >>
+or C<< { success: 0, error: "queue not found" } >> on input error;  or C<< { success: 0, ref $res: Object, error: 'Unknown error' } >> on MongoDB error.
+
+Sets HTTP status to C<400> on error.
 
 Note: replaces /queue-create-tasks-json
 
@@ -401,7 +419,11 @@ C<query> is a query object for the C<:collection> collection.
 
 C<params> is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
 
-Returns: C<< { FIXME } >>
+Returns: C<< { success: 1, ref $res: Object } >> on success; C<< { success: 0, error: "query and params required and must be name/value objects" } >>
+or C<< { success: 0, error: "queue not found" } >> on input error; C<< { success: 0, error: "Could not iterate on collection $collection: $error" } >> on query error,
+or C<< { success: 0, ref $res: Object, error: 'Unknown error' } >> on MongoDB error.
+
+Sets HTTP status to C<400> on error.
 
 Note: replaces /queue-create-tasks-from-query-json
 
@@ -449,7 +471,10 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
         $error = "$_";
     };
 
-    return send_json { success => 0, error => $error } if defined $error;
+    if (defined $error) {
+        status 400;
+        return send_json { success => 0, error => $error };
+    }
 
     my $res = create_tasks($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
 
@@ -492,13 +517,17 @@ C<count> is a boolean. Instead of an array of task documents, the count of task 
 C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
 If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
 
-Returns: C<< { FIXME } >>
+Returns: C<< { success: 1, tasks: Array } >> on success; C<< { success: 0, error: "filter and options must be name/value objects" } >>,
+C<< { success: 0, error: "limit cannot exceed 100" } >>, or C<< { success: 0, error: "Bad OID passed: $error" } >> on input error;
+or C<< { success => 0, error => "$error" } >> on count or search error.
+
+Sets HTTP status to C<400> on error.
 
 Note: replaces /search-tasks-json
 
 =cut
 
-# FIXME: I don't like this URL. And should it be a POST?
+# FIXME: I don't like this URL.
 # see https://metacpan.org/pod/MongoDB::Collection#find
 post '/tasks/search' => sub {
     undef $disbatch->{mongo};
