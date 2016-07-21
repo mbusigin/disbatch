@@ -592,14 +592,6 @@ post '/tasks/search' => sub {
     send_json { success => 1, tasks => \@tasks }, convert_blessed => 1;
 };
 
-get '/' => sub {
-    send_file '/index.html';
-};
-
-get qr{^/} => sub {
-    send_file request->{path};        # sends request->{uri} by default
-};
-
 ################
 #### OLD API ###
 ################
@@ -885,6 +877,16 @@ post '/search-tasks-json' => sub {
     }
 
     send_json \@tasks, convert_blessed => 1;
+};
+
+# MUST BE AT END
+
+get '/' => sub {
+    send_file '/index.html';
+};
+
+get qr{^/} => sub {
+    send_file request->{path};        # sends request->{uri} by default
 };
 
 1;
