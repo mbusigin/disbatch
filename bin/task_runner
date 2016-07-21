@@ -49,26 +49,33 @@ $logger->logdie("No task found for $task_id") unless defined $doc;
 $logger->info("params for $task_id: ", $json->encode($doc->{params} // $doc->{parameters}));
 
 my $plugin = ($disbatch->queues->find_one({_id => $doc->{queue}}) // {})->{plugin};
-# FIXME: these will leave the task orphaned, so add an END or DESTROY block to task_runner to prevent orphaned status 0 tasks
-$logger->logdie("No plugin defined for task $task_id in queue $doc->{queue}") unless defined $plugin;
-$logger->logdie("plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/") unless $plugin =~ /^[\w:]+$/;
-$logger->logdie("$plugin not found for task $task_id") unless eval "use $plugin; 1";
 
-my $queue = MongoDB::OID->new($doc->{queue});
-my $task = try {
-    my $workerthread = Disbatch->new(class => $plugin, config_file => $config_file);
-    $workerthread->load_config;
-    $plugin->new(workerthread => $workerthread, task => $doc);
-} catch {
-    $logger->logdie($_);
-};
+my $result;
+if (!defined $plugin) {
+    my $error = "No plugin defined for task $task_id in queue $doc->{queue}";
+    $logger->error($error);
+    $result = { status => 2, stdout => 'Unable to start', stderr => $error };
+} elsif ($plugin !~ /^[\w:]+$/) {
+    my $error = "plugin value '$plugin' must be a valid perl package name, matching /^[\\w:]+\$/";
+    $logger->error($error);
+    $result = { status => 2, stdout => 'Unable to start', stderr => $error };
+} elsif (!eval "use $plugin; 1") {
+    my $error = "$plugin not found for task $task_id";
+    $logger->error($error);
+    $result = { status => 2, stdout => 'Unable to start', stderr => $error };
+}
 
-my ($result) = try {
-    $task->run;
-} catch {
-    $logger->error("Thread has uncaught exception: $_");
-    {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
-};
+if (!defined $result) {
+    try {
+        my $workerthread = Disbatch->new(class => $plugin, config_file => $config_file);
+        $workerthread->load_config;
+        my $task = $plugin->new(workerthread => $workerthread, task => $doc);
+        $result = $task->run;
+    } catch {
+        $logger->error("Thread has uncaught exception: $_");
+        $result = {status => 2, stdout => 'Unable to complete', stderr => "Thread has uncaught exception: $_"};
+    };
+}
 
 # verify $result is a HASH and $result->{status} is a postive integer, and if not fail task
 if (ref $result ne 'HASH') {
