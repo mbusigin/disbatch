@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# FIXME: test gfs true, false, and auto (with things that fit and things that don't)
+
 use Test::More;
 
 use 5.12.0;
