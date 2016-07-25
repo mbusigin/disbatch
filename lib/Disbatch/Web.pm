@@ -64,6 +64,8 @@ Parameters: none.
 
 Returns an array of node objects defined, with C<id> the stringified C<_id>.
 
+Sets HTTP status to C<400> on error.
+
 Note: new in Disbatch 4
 
 =cut
@@ -85,6 +87,8 @@ URL: C<:node> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<node> name
 Parameters: none.
 
 Returns an array of node objects defined, with C<id> the stringified C<_id>.
+
+Sets HTTP status to C<400> on error.
 
 Note: new in Disbatch 4
 
@@ -110,6 +114,8 @@ Parameters: C<< { "maxthreads": maxthreads } >>
 "maxthreads" is a non-negative integer or null
 
 Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $res: Object, "error": error_string_or_reponse_object } >>
+
+Sets HTTP status to C<400> on error.
 
 Note: new in Disbatch 4
 
@@ -163,6 +169,8 @@ Parameters: none.
 
 Returns an array of allowed plugin names.
 
+Should never fail.
+
 Note: replaces /queue-prototypes-json
 
 =cut
@@ -182,10 +190,13 @@ Each item has the following keys: id, plugin, name, threads, queued, running, co
 
 Note: replaces /scheduler-json
 
+FIXME: calls scheduler_report, which silently ignores some errors while throwing other ones
+
 =cut
 
 get '/queues' => sub {
     undef $disbatch->{mongo};
+    # FIXME: calls scheduler_report, which silently ignores some errors while throwing other ones
     send_json { success => 1, queues => $disbatch->scheduler_report };
 };
 
@@ -254,6 +265,8 @@ C<threads> must be a non-negative integer, C<plugin> must be defined in the conf
 Only one of C<threads>, C<plugin>, and C<name> is required, but any combination is allowed.
 
 Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
+
+Sets HTTP status to C<400> on error.
 
 Note: replaces /set-queue-attr-json
 
