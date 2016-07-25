@@ -62,7 +62,7 @@ sub get_nodes {
 
 Parameters: none.
 
-Returns an array of node objects defined, with C<id> the stringified C<_id>.
+Returns an array of node objects defined (with C<id> the stringified C<_id>) on success, C<< { "success": 0, "error": "Could not get current nodes: $_" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -87,6 +87,8 @@ URL: C<:node> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<node> name
 Parameters: none.
 
 Returns an array of node objects defined, with C<id> the stringified C<_id>.
+
+Returns C<< { "success": 1, "node": Object } >> (with C<id> the stringified C<_id>) on success, C<< { "success": 0, "error": "Could not get node $node: $_" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
