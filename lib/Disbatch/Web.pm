@@ -209,9 +209,9 @@ sub map_plugins {
 
 Create a new queue.
 
-Parameters: C<< { "name": name, "type": type } >>
+Parameters: C<< { "name": name, "plugin": plugin } >>
 
-C<name> is the desired name for the queue (must be unique), C<type> is the plugin name for the queue.
+C<name> is the desired name for the queue (must be unique), C<plugin> is the plugin name for the queue.
 
 Returns: C<< { "success": 1, ref $res: Object, "id": $inserted_id } >> on success; C<< { "success": 0, "error": "name and plugin required" } >>,
 C<< { "success": 0, "error": "Invalid param", "param": $param } >>, or C<< { "success": 0, "error": "Unknown plugin", "plugin": $plugin } >> on input error; or
@@ -230,7 +230,7 @@ post '/queues' => sub {
         status 400;
         return send_json { success => 0, error => 'name and plugin required' };
     }
-    my @valid_params = qw/threads name/;
+    my @valid_params = qw/name plugin/;
     for my $param (keys %$params) {
         unless (grep $_ eq $param, @valid_params) {
             status 400;
