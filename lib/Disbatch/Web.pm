@@ -271,6 +271,7 @@ Note: replaces /set-queue-attr-json
 =cut
 
 post qr'^/queues/(?<queue>.+)$' => sub {
+    my $queue = $+{queue};
     undef $disbatch->{mongo};
     my $params = parse_params;
     my @valid_params = qw/threads name plugin/;
@@ -298,11 +299,11 @@ post qr'^/queues/(?<queue>.+)$' => sub {
         return send_json {error => 'name must be a string'};
     }
 
-    my $filter = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
+    my $filter = try { {_id => MongoDB::OID->new(value => $queue)} } catch { {name => $queue} };
     my $res = try {
         $disbatch->queues->update_one($filter, {'$set' => $params});
     } catch {
-        Limper::warning "Could not update queue $+{queue}: $_";
+        Limper::warning "Could not update queue $queue: $_";
         $_;
     };
     my $reponse = {
@@ -391,7 +392,7 @@ Note: replaces /queue-create-tasks-json
 
 =cut
 
-post qr'^/tasks/(?<queue>.+)$' => sub {
+post qr'^/tasks/(?<queue>[^/]+)$' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
     unless (defined $params and ref $params eq 'ARRAY') {
@@ -447,6 +448,7 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
         return send_json { error => 'filter and params required and must be name/value objects' };
     }
 
+    my $collection = $+{collection};
     my $queue_id = get_queue_oid($+{queue});
     unless (defined $queue_id) {
         status 400;
@@ -456,7 +458,7 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
     my @fields = grep /^document\./, values %{$params->{params}};
     my %fields = map { s/^document\.//; $_ => 1 } @fields;
 
-    my $cursor = $disbatch->mongo->coll($+{collection})->find($params->{filter})->fields(\%fields);
+    my $cursor = $disbatch->mongo->coll($collection)->find($params->{filter})->fields(\%fields);
     my @tasks;
     my $error;
     try {
@@ -475,7 +477,7 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
             push @tasks, $task;
         }
     } catch {
-        Limper::warning "Could not iterate on collection $+{collection}: $_";
+        Limper::warning "Could not iterate on collection $collection: $_";
         $error = "$_";
     };
 
@@ -554,6 +556,15 @@ post '/tasks/search' => sub {
     if ($params->{options}{limit} > $LIMIT) {
         status 400;
         return send_json { error => "limit cannot exceed $LIMIT" };
+    }
+
+    if (defined $params->{filter}{queue}) {
+        $params->{filter}{queue} = try { MongoDB::OID->new(value => $params->{filter}{queue}) } catch { "Bad queue passed: $_" };
+        if (ref $params->{filter}{queue} ne 'MongoDB::OID') {
+            Limper::warning $params->{filter}{queue};
+            status 400;
+            return send_json { error => $params->{filter}{queue} };
+        }
     }
 
     my $oid_error = try { $params->{filter} = deserialize_oid($params->{filter}); undef } catch { "Bad OID passed: $_" };
