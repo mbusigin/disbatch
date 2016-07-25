@@ -202,9 +202,9 @@ Parameters: C<< { "name": name, "type": type } >>
 
 C<name> is the desired name for the queue (must be unique), C<type> is the plugin name for the queue.
 
-Returns: C<< { success: 1, ref $res: Object, id: $inserted_id } >> on success; C<< { success: 0, error: "name and plugin required" } >>,
-C<< { success: 0, error: "Invalid param", param: $param } >>, or C<< { success: 0, error: "Unknown plugin", plugin: $plugin } >> on input error; or
-C<< { success: 0, ref $res: Object, id: null, error: "$res" } >> on MongoDB error.
+Returns: C<< { "success": 1, ref $res: Object, "id": $inserted_id } >> on success; C<< { "success": 0, "error": "name and plugin required" } >>,
+C<< { "success": 0, "error": "Invalid param", "param": $param } >>, or C<< { "success": 0, "error": "Unknown plugin", "plugin": $plugin } >> on input error; or
+C<< { "success": 0, ref $res: Object, "id": null, "error": "$res" } >> on MongoDB error.
 
 Sets HTTP status to C<400> on error.
 
@@ -251,7 +251,7 @@ URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if 
 Parameters: C<< { "threads": threads, "name": name, "plugin": plugin } >>
 
 C<threads> must be a non-negative integer, C<plugin> must be defined in the config file, C<name> must be a string.
-Only one is required, but any combination is allowed.
+Only one of C<threads>, C<plugin>, and C<name> is required, but any combination is allowed.
 
 Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
 
@@ -307,13 +307,13 @@ post qr'^/queues/(?<queue>.+)$' => sub {
 
 =item DELETE /queues/:queue
 
+Deletes the specified queue.
+
 URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
 
 Parameters: none
 
-Deletes the specified queue.
-
-Returns: C<< { success: 1, ref $res: Object } >> on success, or C<< { success: 0, ref $res: Object, error: "$res" } >> on error.
+Returns: C<< { "success": 1, ref $res: Object } >> on success, or C<< { "success": 0, ref $res: Object, "error": "$res" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -373,8 +373,8 @@ URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if 
 
 Parameters: an array of task params objects
 
-Returns: C<< { success: 1, ref $res: Object } >> on success; C<< { success: 0, error: "params must be a JSON array of task params" } >>
-or C<< { success: 0, error: "queue not found" } >> on input error;  or C<< { success: 0, ref $res: Object, error: 'Unknown error' } >> on MongoDB error.
+Returns: C<< { "success": 1, ref $res: Object } >> on success; C<< { "success": 0, "error": "params must be a JSON array of task params" } >>
+or C<< { "success": 0, "error": "queue not found" } >> on input error;  or C<< { "success": 0, ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
 
 Sets HTTP status to C<400> on error.
 
@@ -419,9 +419,9 @@ C<query> is a query object for the C<:collection> collection.
 
 C<params> is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
 
-Returns: C<< { success: 1, ref $res: Object } >> on success; C<< { success: 0, error: "query and params required and must be name/value objects" } >>
-or C<< { success: 0, error: "queue not found" } >> on input error; C<< { success: 0, error: "Could not iterate on collection $collection: $error" } >> on query error,
-or C<< { success: 0, ref $res: Object, error: 'Unknown error' } >> on MongoDB error.
+Returns: C<< { "success": 1, ref $res: Object } >> on success; C<< { "success": 0, "error": "query and params required and must be name/value objects" } >>
+or C<< { "success": 0, "error": "queue not found" } >> on input error; C<< { "success": 0, "error": "Could not iterate on collection $collection: $error" } >> on query error,
+or C<< { "success": 0, ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
 
 Sets HTTP status to C<400> on error.
 
@@ -517,9 +517,9 @@ C<count> is a boolean. Instead of an array of task documents, the count of task 
 C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
 If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
 
-Returns: C<< { success: 1, tasks: Array } >> on success; C<< { success: 0, error: "filter and options must be name/value objects" } >>,
-C<< { success: 0, error: "limit cannot exceed 100" } >>, or C<< { success: 0, error: "Bad OID passed: $error" } >> on input error;
-or C<< { success => 0, error => "$error" } >> on count or search error.
+Returns: C<< { "success": 1, "tasks": Array } >> on success; C<< { "success": 0, "error": "filter and options must be name/value objects" } >>,
+C<< { "success": 0, "error": "limit cannot exceed 100" } >>, or C<< { "success": 0, "error": "Bad OID passed: $error" } >> on input error;
+or C<< { "success": 0, "error": "$error" } >> on count or search error.
 
 Sets HTTP status to C<400> on error.
 
