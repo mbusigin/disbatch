@@ -259,10 +259,10 @@ post '/queues' => sub {
 
 URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
 
-Parameters: C<< { "threads": threads, "name": name, "plugin": plugin } >>
+Parameters: C<< { "name": name, "plugin": plugin, "threads": threads } >>
 
-C<threads> must be a non-negative integer, C<plugin> must be defined in the config file, C<name> must be a string.
-Only one of C<threads>, C<plugin>, and C<name> is required, but any combination is allowed.
+C<name> is the new name for the queue (must be unique), C<plugin> is the new plugin name for the queue (must be defined in the config file), 
+C<threads> must be a non-negative integer. Only one of C<name>, C<plugin>, and  C<threads> is required, but any combination is allowed.
 
 Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
 
