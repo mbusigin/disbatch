@@ -48,9 +48,9 @@ sub datetime_to_millisecond_epoch {
 
 # will throw errors
 sub get_nodes {
-    my ($query) = @_;
-    $query //= {};
-    my @nodes = $disbatch->nodes->find($query)->sort({node => 1})->all;
+    my ($filter) = @_;
+    $filter //= {};
+    my @nodes = $disbatch->nodes->find($filter)->sort({node => 1})->all;
     for my $node (@nodes) {
         $node->{id} = "$node->{_id}";
         $node->{timestamp} = datetime_to_millisecond_epoch($node->{timestamp}) if ref $node->{timestamp} eq 'DateTime';
@@ -96,8 +96,8 @@ Note: new in Disbatch 4
 
 get qr'^/nodes/(?<node>.+)' => sub {
     undef $disbatch->{mongo};
-    my $query = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
-    my $node = try { get_nodes($query) } catch { status 400; "Could not get node $+{node}: $_" };
+    my $filter = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
+    my $node = try { get_nodes($filter) } catch { status 400; "Could not get node $+{node}: $_" };
     if (status == 400) {
         Limper::warning $node;
         return send_json { success => 0, error => $node };
@@ -141,9 +141,9 @@ post qr'^/nodes/(?<node>.+)' => sub {
         status 400;
         return send_json {success => 0, error => 'maxthreads must be a non-negative integer or null'};
     }
-    my $query = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
+    my $filter = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
     my $res = try {
-        $disbatch->nodes->update_one($query, {'$set' => $params});
+        $disbatch->nodes->update_one($filter, {'$set' => $params});
     } catch {
         Limper::warning "Could not update node $+{node}: $_";
         $_;
@@ -300,9 +300,9 @@ post qr'^/queues/(?<queue>.+)$' => sub {
         return send_json {success => 0, error => 'name must be a string'};
     }
 
-    my $query = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
+    my $filter = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
     my $res = try {
-        $disbatch->queues->update_one($query, {'$set' => $params});
+        $disbatch->queues->update_one($filter, {'$set' => $params});
     } catch {
         Limper::warning "Could not update queue $+{queue}: $_";
         $_;
@@ -337,8 +337,8 @@ Note: replaces /delete-queue-json
 del qr'^/queues/(?<queue>.+)$' => sub {
     undef $disbatch->{mongo};
 
-    my $query = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
-    my $res = try { $disbatch->queues->delete_one($query) } catch { Limper::warning "Could not delete queue '$+{queue}': $_"; $_ };
+    my $filter = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
+    my $res = try { $disbatch->queues->delete_one($filter) } catch { Limper::warning "Could not delete queue '$+{queue}': $_"; $_ };
     my $reponse = {
         success => $res->{deleted_count} ? 1 : 0,
         ref $res => {%$res},
@@ -426,13 +426,13 @@ post qr'^/tasks/(?<queue>.+)$' => sub {
 
 URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not. C<:collection> is a MongoDB collection name.
 
-Parameters: C<< { "query": query, "params": params } >>
+Parameters: C<< { "filter": filter, "params": params } >>
 
-C<query> is a query object for the C<:collection> collection.
+C<filter> is a filter expression (query) object for the C<:collection> collection.
 
 C<params> is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
 
-Returns: C<< { "success": 1, ref $res: Object } >> on success; C<< { "success": 0, "error": "query and params required and must be name/value objects" } >>
+Returns: C<< { "success": 1, ref $res: Object } >> on success; C<< { "success": 0, "error": "filter and params required and must be name/value objects" } >>
 or C<< { "success": 0, "error": "queue not found" } >> on input error; C<< { "success": 0, "error": "Could not iterate on collection $collection: $error" } >> on query error,
 or C<< { "success": 0, ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
 
@@ -447,9 +447,9 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
     my $params = parse_params;
     # {"migration":"foo"}
     # {"migration":"document.migration","user1":"document.username"}
-    unless (defined $params->{query} and ref $params->{query} eq 'HASH' and defined $params->{params} and ref $params->{params} eq 'HASH') {
+    unless (defined $params->{filter} and ref $params->{filter} eq 'HASH' and defined $params->{params} and ref $params->{params} eq 'HASH') {
         status 400;
-        return send_json { success => 0, error => 'query and params required and must be name/value objects' };
+        return send_json { success => 0, error => 'filter and params required and must be name/value objects' };
     }
 
     my $queue_id = get_queue_oid($+{queue});
@@ -461,7 +461,7 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
     my @fields = grep /^document\./, values %{$params->{params}};
     my %fields = map { s/^document\.//; $_ => 1 } @fields;
 
-    my $cursor = $disbatch->mongo->coll($+{collection})->find($params->{query})->fields(\%fields);
+    my $cursor = $disbatch->mongo->coll($+{collection})->find($params->{filter})->fields(\%fields);
     my @tasks;
     my $error;
     try {
@@ -519,7 +519,7 @@ Parameters: C<< { "filter": filter, "options": options, "count": count, "terse":
 
 All parameters are optional.
 
-C<filter> is a query object.
+C<filter> is a filter expression (query) object.
 
 C<options> is an object of desired options to L<MongoDB::Collection#find>.
 
