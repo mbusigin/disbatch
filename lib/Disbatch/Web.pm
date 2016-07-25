@@ -377,6 +377,107 @@ sub create_tasks {
     $res;
 }
 
+=item POST /tasks/search
+
+Parameters: C<< { "filter": filter, "options": options, "count": count, "terse": terse } >>
+
+All parameters are optional.
+
+C<filter> is a filter expression (query) object.
+
+C<options> is an object of desired options to L<MongoDB::Collection#find>.
+
+If not set, C<options.limit> will be C<100>. This will fail if you try to set it above C<100>.
+
+C<count> is a boolean. Instead of an array of task documents, the count of task documents matching the query will be returned.
+
+C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
+If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
+
+Returns: Array of task Objects or C<< { "count": $count } >> on success; C<< { "error": "filter and options must be name/value objects" } >>,
+C<< { "error": "limit cannot exceed 100" } >>, or C<< { "error": "Bad OID passed: $error" } >> on input error;
+or C<< { "error": "$error" } >> on count or search error.
+
+Sets HTTP status to C<400> on error.
+
+Note: replaces /search-tasks-json
+
+=cut
+
+# FIXME: I don't like this URL.
+# see https://metacpan.org/pod/MongoDB::Collection#find
+post '/tasks/search' => sub {
+    undef $disbatch->{mongo};
+    my $params = parse_params;
+
+    my $LIMIT = 100;
+
+    $params->{filter} //= {};
+    $params->{options} //= {};
+    $params->{count} // 0;
+    $params->{terse} // 1;
+    unless (ref $params->{filter} eq 'HASH' and ref $params->{options} eq 'HASH') {
+        status 400;
+        return send_json { error => 'filter and options must be name/value objects' };
+    }
+    $params->{options}{limit} //= $LIMIT;
+    if ($params->{options}{limit} > $LIMIT) {
+        status 400;
+        return send_json { error => "limit cannot exceed $LIMIT" };
+    }
+
+    if (defined $params->{filter}{queue}) {
+        $params->{filter}{queue} = try { MongoDB::OID->new(value => $params->{filter}{queue}) } catch { "Bad queue passed: $_" };
+        if (ref $params->{filter}{queue} ne 'MongoDB::OID') {
+            Limper::warning $params->{filter}{queue};
+            status 400;
+            return send_json { error => $params->{filter}{queue} };
+        }
+    }
+
+    my $oid_error = try { $params->{filter} = deserialize_oid($params->{filter}); undef } catch { "Bad OID passed: $_" };
+    if (defined $oid_error) {
+        Limper::warning $oid_error;
+        status 400;
+        return send_json { error => $oid_error };
+    }
+
+    # Turn value into a Time::Moment object if it looks like it includes milliseconds. Will break in the year 2286.
+    for my $type (qw/ctime mtime/) {
+        $params->{filter}{$type} = Time::Moment->from_epoch($params->{filter}{$type} / 1000) if ($params->{filter}{$type} // 0) > 9999999999;
+    }
+
+    if ($params->{count}) {
+        my $count = try { $disbatch->tasks->count($params->{filter}) } catch { Limper::warning $_; $_; };
+        if (ref $count) {
+            status 400;
+            return send_json { error => "$count" };
+        }
+        return send_json { count => $count };
+    }
+    my ($error, @tasks) = try { undef, $disbatch->tasks->find($params->{filter}, $params->{options})->all } catch { Limper::warning "Could not find tasks: $_"; $_ };
+    if (defined $error) {
+        Limper::warning $error;
+        status 400;
+        return send_json { error => $error };
+    }
+
+    for my $task (@tasks) {
+        for my $type (qw/stdout stderr/) {
+            if ($params->{terse}) {
+                $task->{$type} = '[terse mode]' unless $task->{$type}->$_isa('MongoDB::OID');
+            } elsif ($task->{$type}->$_isa('MongoDB::OID')) {
+                $task->{$type} = try { $disbatch->get_gfs($task->{$type}) } catch { Limper::warning "Could not get task $task->{_id} $type: $_"; $task->{$type} };
+            }
+        }
+        for my $type (qw/ctime mtime/) {
+            $task->{$type} = $task->{$type}->hires_epoch if ref $task->{$type} eq 'DateTime';
+        }
+    }
+
+    send_json \@tasks, convert_blessed => 1;
+};
+
 =item POST /tasks/:queue
 
 URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
@@ -508,107 +609,6 @@ sub deserialize_oid {
     }
     $object;
 }
-
-=item POST /tasks/search
-
-Parameters: C<< { "filter": filter, "options": options, "count": count, "terse": terse } >>
-
-All parameters are optional.
-
-C<filter> is a filter expression (query) object.
-
-C<options> is an object of desired options to L<MongoDB::Collection#find>.
-
-If not set, C<options.limit> will be C<100>. This will fail if you try to set it above C<100>.
-
-C<count> is a boolean. Instead of an array of task documents, the count of task documents matching the query will be returned.
-
-C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
-If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
-
-Returns: Array of task Objects or C<< { "count": $count } >> on success; C<< { "error": "filter and options must be name/value objects" } >>,
-C<< { "error": "limit cannot exceed 100" } >>, or C<< { "error": "Bad OID passed: $error" } >> on input error;
-or C<< { "error": "$error" } >> on count or search error.
-
-Sets HTTP status to C<400> on error.
-
-Note: replaces /search-tasks-json
-
-=cut
-
-# FIXME: I don't like this URL.
-# see https://metacpan.org/pod/MongoDB::Collection#find
-post '/tasks/search' => sub {
-    undef $disbatch->{mongo};
-    my $params = parse_params;
-
-    my $LIMIT = 100;
-
-    $params->{filter} //= {};
-    $params->{options} //= {};
-    $params->{count} // 0;
-    $params->{terse} // 1;
-    unless (ref $params->{filter} eq 'HASH' and ref $params->{options} eq 'HASH') {
-        status 400;
-        return send_json { error => 'filter and options must be name/value objects' };
-    }
-    $params->{options}{limit} //= $LIMIT;
-    if ($params->{options}{limit} > $LIMIT) {
-        status 400;
-        return send_json { error => "limit cannot exceed $LIMIT" };
-    }
-
-    if (defined $params->{filter}{queue}) {
-        $params->{filter}{queue} = try { MongoDB::OID->new(value => $params->{filter}{queue}) } catch { "Bad queue passed: $_" };
-        if (ref $params->{filter}{queue} ne 'MongoDB::OID') {
-            Limper::warning $params->{filter}{queue};
-            status 400;
-            return send_json { error => $params->{filter}{queue} };
-        }
-    }
-
-    my $oid_error = try { $params->{filter} = deserialize_oid($params->{filter}); undef } catch { "Bad OID passed: $_" };
-    if (defined $oid_error) {
-        Limper::warning $oid_error;
-        status 400;
-        return send_json { error => $oid_error };
-    }
-
-    # Turn value into a Time::Moment object if it looks like it includes milliseconds. Will break in the year 2286.
-    for my $type (qw/ctime mtime/) {
-        $params->{filter}{$type} = Time::Moment->from_epoch($params->{filter}{$type} / 1000) if ($params->{filter}{$type} // 0) > 9999999999;
-    }
-
-    if ($params->{count}) {
-        my $count = try { $disbatch->tasks->count($params->{filter}) } catch { Limper::warning $_; $_; };
-        if (ref $count) {
-            status 400;
-            return send_json { error => "$count" };
-        }
-        return send_json { count => $count };
-    }
-    my ($error, @tasks) = try { undef, $disbatch->tasks->find($params->{filter}, $params->{options})->all } catch { Limper::warning "Could not find tasks: $_"; $_ };
-    if (defined $error) {
-        Limper::warning $error;
-        status 400;
-        return send_json { error => $error };
-    }
-
-    for my $task (@tasks) {
-        for my $type (qw/stdout stderr/) {
-            if ($params->{terse}) {
-                $task->{$type} = '[terse mode]' unless $task->{$type}->$_isa('MongoDB::OID');
-            } elsif ($task->{$type}->$_isa('MongoDB::OID')) {
-                $task->{$type} = try { $disbatch->get_gfs($task->{$type}) } catch { Limper::warning "Could not get task $task->{_id} $type: $_"; $task->{$type} };
-            }
-        }
-        for my $type (qw/ctime mtime/) {
-            $task->{$type} = $task->{$type}->hires_epoch if ref $task->{$type} eq 'DateTime';
-        }
-    }
-
-    send_json \@tasks, convert_blessed => 1;
-};
 
 ################
 #### OLD API ###
