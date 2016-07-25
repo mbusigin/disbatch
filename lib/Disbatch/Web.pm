@@ -62,7 +62,7 @@ sub get_nodes {
 
 Parameters: none.
 
-Returns an array of node objects defined (with C<id> the stringified C<_id>) on success, C<< { "error": "Could not get current nodes: $_" } >> on error.
+Returns an Array of node Objects defined (with C<id> the stringified C<_id>) on success, C<< { "error": "Could not get current nodes: $_" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -86,9 +86,7 @@ URL: C<:node> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<node> name
 
 Parameters: none.
 
-Returns an array of node objects defined, with C<id> the stringified C<_id>.
-
-Returns C<< { "node": Object } >> (with C<id> the stringified C<_id>) on success, C<< { "error": "Could not get node $node: $_" } >> on error.
+Returns node Object (with C<id> the stringified C<_id>) on success, C<< { "error": "Could not get node $node: $_" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -104,7 +102,7 @@ get qr'^/nodes/(?<node>.+)' => sub {
         Limper::warning $node;
         return send_json { error => $node };
     }
-    send_json { node => $node->[0] }, convert_blessed => 1;
+    send_json $node->[0], convert_blessed => 1;
 };
 
 =item POST /nodes/:node
@@ -168,7 +166,7 @@ post qr'^/nodes/(?<node>.+)' => sub {
 
 Parameters: none.
 
-Returns an array of allowed plugin names.
+Returns an Array of allowed plugin names.
 
 Should never fail.
 
@@ -185,7 +183,7 @@ get '/plugins' => sub {
 
 Parameters: none.
 
-Returns array of queues.
+Returns an Array of queue Objects.
 
 Each item has the following keys: id, plugin, name, threads, queued, running, completed
 
@@ -197,8 +195,8 @@ FIXME: calls scheduler_report, which silently ignores some errors while throwing
 
 get '/queues' => sub {
     undef $disbatch->{mongo};
-    # FIXME: calls scheduler_report, which silently ignores some errors while throwing other ones
-    send_json { queues => $disbatch->scheduler_report };
+    # FIXME: scheduler_report silently ignores some errors while throwing other ones
+    send_json $disbatch->scheduler_report;
 };
 
 sub map_plugins {
@@ -526,7 +524,7 @@ C<count> is a boolean. Instead of an array of task documents, the count of task 
 C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
 If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
 
-Returns: C<< { "tasks": Array } >> on success; C<< { "error": "filter and options must be name/value objects" } >>,
+Returns: Array of task Objects or C<< { "count": $count } >> on success; C<< { "error": "filter and options must be name/value objects" } >>,
 C<< { "error": "limit cannot exceed 100" } >>, or C<< { "error": "Bad OID passed: $error" } >> on input error;
 or C<< { "error": "$error" } >> on count or search error.
 
@@ -598,7 +596,7 @@ post '/tasks/search' => sub {
         }
     }
 
-    send_json { tasks => \@tasks }, convert_blessed => 1;
+    send_json \@tasks, convert_blessed => 1;
 };
 
 ################
