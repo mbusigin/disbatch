@@ -62,7 +62,7 @@ sub get_nodes {
 
 Parameters: none.
 
-Returns an array of node objects defined (with C<id> the stringified C<_id>) on success, C<< { "success": 0, "error": "Could not get current nodes: $_" } >> on error.
+Returns an array of node objects defined (with C<id> the stringified C<_id>) on success, C<< { "error": "Could not get current nodes: $_" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -75,9 +75,9 @@ get '/nodes' => sub {
     my $nodes = try { get_nodes } catch { status 400; "Could not get current nodes: $_" };
     if (status == 400) {
         Limper::warning $nodes;
-        return send_json { success => 0, error => $nodes };
+        return send_json { error => $nodes };
     }
-    send_json { success => 1, nodes => $nodes }, convert_blessed => 1;
+    send_json { nodes => $nodes }, convert_blessed => 1;
 };
 
 =item GET /nodes/:node
@@ -88,7 +88,7 @@ Parameters: none.
 
 Returns an array of node objects defined, with C<id> the stringified C<_id>.
 
-Returns C<< { "success": 1, "node": Object } >> (with C<id> the stringified C<_id>) on success, C<< { "success": 0, "error": "Could not get node $node: $_" } >> on error.
+Returns C<< { "node": Object } >> (with C<id> the stringified C<_id>) on success, C<< { "error": "Could not get node $node: $_" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -102,9 +102,9 @@ get qr'^/nodes/(?<node>.+)' => sub {
     my $node = try { get_nodes($filter) } catch { status 400; "Could not get node $+{node}: $_" };
     if (status == 400) {
         Limper::warning $node;
-        return send_json { success => 0, error => $node };
+        return send_json { error => $node };
     }
-    send_json { success => 1, node => $node->[0] }, convert_blessed => 1;
+    send_json { node => $node->[0] }, convert_blessed => 1;
 };
 
 =item POST /nodes/:node
@@ -115,7 +115,7 @@ Parameters: C<< { "maxthreads": maxthreads } >>
 
 "maxthreads" is a non-negative integer or null
 
-Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, ref $res: Object, "error": error_string_or_reponse_object } >>
+Returns C<< { ref $res: Object } >> or C<< { ref $res: Object, "error": error_string_or_reponse_object } >>
 
 Sets HTTP status to C<400> on error.
 
@@ -130,18 +130,18 @@ post qr'^/nodes/(?<node>.+)' => sub {
 
     unless (keys %$params) {
         status 400;
-        return send_json {success => 0, error => 'No params'};
+        return send_json {error => 'No params'};
     }
     my @valid_params = qw/maxthreads/;
     for my $param (keys %$params) {
         unless (grep $_ eq $param, @valid_params) {
             status 400;
-            return send_json { success => 0, error => 'Invalid param', param => $param};
+            return send_json { error => 'Invalid param', param => $param};
         }
     }
     if (exists $params->{maxthreads} and defined $params->{maxthreads} and $params->{maxthreads} !~ /^\d+$/) {
         status 400;
-        return send_json {success => 0, error => 'maxthreads must be a non-negative integer or null'};
+        return send_json {error => 'maxthreads must be a non-negative integer or null'};
     }
     my $filter = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
     my $res = try {
@@ -151,10 +151,9 @@ post qr'^/nodes/(?<node>.+)' => sub {
         $_;
     };
     my $reponse = {
-        success => $res->{matched_count} == 1 ? 1 : 0,
         ref $res => {%$res},
     };
-    unless ($reponse->{success}) {
+    unless ($res->{matched_count} == 1) {
         status 400;
         if ($res->$_isa('MongoDB::UpdateResult')) {
             $reponse->{error} = $reponse->{'MongoDB::UpdateResult'};
@@ -199,7 +198,7 @@ FIXME: calls scheduler_report, which silently ignores some errors while throwing
 get '/queues' => sub {
     undef $disbatch->{mongo};
     # FIXME: calls scheduler_report, which silently ignores some errors while throwing other ones
-    send_json { success => 1, queues => $disbatch->scheduler_report };
+    send_json { queues => $disbatch->scheduler_report };
 };
 
 sub map_plugins {
@@ -215,9 +214,9 @@ Parameters: C<< { "name": name, "plugin": plugin } >>
 
 C<name> is the desired name for the queue (must be unique), C<plugin> is the plugin name for the queue.
 
-Returns: C<< { "success": 1, ref $res: Object, "id": $inserted_id } >> on success; C<< { "success": 0, "error": "name and plugin required" } >>,
-C<< { "success": 0, "error": "Invalid param", "param": $param } >>, or C<< { "success": 0, "error": "Unknown plugin", "plugin": $plugin } >> on input error; or
-C<< { "success": 0, ref $res: Object, "id": null, "error": "$res" } >> on MongoDB error.
+Returns: C<< { ref $res: Object, "id": $inserted_id } >> on success; C<< { "error": "name and plugin required" } >>,
+C<< { "error": "Invalid param", "param": $param } >>, or C<< { "error": "Unknown plugin", "plugin": $plugin } >> on input error; or
+C<< { ref $res: Object, "id": null, "error": "$res" } >> on MongoDB error.
 
 Sets HTTP status to C<400> on error.
 
@@ -230,27 +229,26 @@ post '/queues' => sub {
     my $params = parse_params;
     unless (defined $params->{name} and defined $params->{plugin}) {
         status 400;
-        return send_json { success => 0, error => 'name and plugin required' };
+        return send_json { error => 'name and plugin required' };
     }
     my @valid_params = qw/name plugin/;
     for my $param (keys %$params) {
         unless (grep $_ eq $param, @valid_params) {
             status 400;
-            return send_json { success => 0, error => 'Invalid param', param => $param};
+            return send_json { error => 'Invalid param', param => $param};
         }
     }
     unless (map_plugins->{$params->{plugin}}) {
         status 400;
-        return send_json { success => 0, error => 'Unknown plugin', plugin => $params->{plugin} };
+        return send_json { error => 'Unknown plugin', plugin => $params->{plugin} };
     }
 
     my $res = try { $disbatch->queues->insert_one($params) } catch { Limper::warning "Could not create queue $params->{name}: $_"; $_ };
     my $reponse = {
-        success => defined $res->{inserted_id} ? 1 : 0,
         ref $res => {%$res},
         id => $res->{inserted_id},
     };
-    unless ($reponse->{success}) {
+    unless (defined $res->{inserted_id}) {
         status 400;
         $reponse->{error} = "$res";
     }
@@ -266,7 +264,7 @@ Parameters: C<< { "name": name, "plugin": plugin, "threads": threads } >>
 C<name> is the new name for the queue (must be unique), C<plugin> is the new plugin name for the queue (must be defined in the config file), 
 C<threads> must be a non-negative integer. Only one of C<name>, C<plugin>, and  C<threads> is required, but any combination is allowed.
 
-Returns C<< { "success": 1, ref $res: Object } >> or C<< { "success": 0, "error": error } >>
+Returns C<< { ref $res: Object } >> or C<< { "error": error } >>
 
 Sets HTTP status to C<400> on error.
 
@@ -281,25 +279,25 @@ post qr'^/queues/(?<queue>.+)$' => sub {
 
     unless (keys %$params) {
         status 400;
-        return send_json {success => 0, error => 'no params'};
+        return send_json {error => 'no params'};
     }
     for my $param (keys %$params) {
         unless (grep $_ eq $param, @valid_params) {
             status 400;
-            return send_json { success => 0, error => 'unknown param', param => $param};
+            return send_json { error => 'unknown param', param => $param};
         }
     }
     if (exists $params->{plugin} and !map_plugins()->{$params->{plugin}}) {
         status 400;
-        return send_json { success => 0, error => 'unknown plugin', plugin => $params->{plugin} };
+        return send_json { error => 'unknown plugin', plugin => $params->{plugin} };
     }
     if (exists $params->{threads} and $params->{threads} !~ /^\d+$/) {
         status 400;
-        return send_json {success => 0, error => 'threads must be a non-negative integer'};
+        return send_json {error => 'threads must be a non-negative integer'};
     }
     if (exists $params->{name} and (ref $params->{name} or !defined $params->{name})){
         status 400;
-        return send_json {success => 0, error => 'name must be a string'};
+        return send_json {error => 'name must be a string'};
     }
 
     my $filter = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
@@ -310,10 +308,9 @@ post qr'^/queues/(?<queue>.+)$' => sub {
         $_;
     };
     my $reponse = {
-        success => $res->{matched_count} == 1 ? 1 : 0,
         ref $res => {%$res},
     };
-    unless ($reponse->{success}) {
+    unless ($res->{matched_count} == 1) {
         status 400;
         $reponse->{error} = "$res";
     }
@@ -328,7 +325,7 @@ URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if 
 
 Parameters: none
 
-Returns: C<< { "success": 1, ref $res: Object } >> on success, or C<< { "success": 0, ref $res: Object, "error": "$res" } >> on error.
+Returns: C<< { ref $res: Object } >> on success, or C<< { ref $res: Object, "error": "$res" } >> on error.
 
 Sets HTTP status to C<400> on error.
 
@@ -342,10 +339,9 @@ del qr'^/queues/(?<queue>.+)$' => sub {
     my $filter = try { {_id => MongoDB::OID->new(value => $+{queue})} } catch { {name => $+{queue}} };
     my $res = try { $disbatch->queues->delete_one($filter) } catch { Limper::warning "Could not delete queue '$+{queue}': $_"; $_ };
     my $reponse = {
-        success => $res->{deleted_count} ? 1 : 0,
         ref $res => {%$res},
     };
-    unless ($reponse->{success}) {
+    unless ($res->{deleted_count}) {
         status 400;
         $reponse->{error} = "$res";
     }
@@ -388,8 +384,8 @@ URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if 
 
 Parameters: an array of task params objects
 
-Returns: C<< { "success": 1, ref $res: Object } >> on success; C<< { "success": 0, "error": "params must be a JSON array of task params" } >>
-or C<< { "success": 0, "error": "queue not found" } >> on input error;  or C<< { "success": 0, ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
+Returns: C<< { ref $res: Object } >> on success; C<< { "error": "params must be a JSON array of task params" } >>
+or C<< { "error": "queue not found" } >> on input error;  or C<< { ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
 
 Sets HTTP status to C<400> on error.
 
@@ -402,22 +398,21 @@ post qr'^/tasks/(?<queue>.+)$' => sub {
     my $params = parse_params;
     unless (defined $params and ref $params eq 'ARRAY') {
         status 400;
-        return send_json { success => 0, error => 'params must be a JSON array of task params' };
+        return send_json { error => 'params must be a JSON array of task params' };
     }
 
     my $queue_id = get_queue_oid($+{queue});
     unless (defined $queue_id) {
         status 400;
-        return send_json { success => 0, error => 'queue not found' };
+        return send_json { error => 'queue not found' };
     }
 
     my $res = create_tasks($queue_id, $params);
 
     my $reponse = {
-        success => @{$res->{inserted}} ? 1 : 0,
         ref $res => {%$res},
     };
-    unless ($reponse->{success}) {
+    unless (@{$res->{inserted}}) {
         status 400;
         $reponse->{error} = 'Unknown error';
     }
@@ -434,9 +429,9 @@ C<filter> is a filter expression (query) object for the C<:collection> collectio
 
 C<params> is an object of task params. To insert a document value from a query into the params, prefix the desired key name with C<document.> as a value.
 
-Returns: C<< { "success": 1, ref $res: Object } >> on success; C<< { "success": 0, "error": "filter and params required and must be name/value objects" } >>
-or C<< { "success": 0, "error": "queue not found" } >> on input error; C<< { "success": 0, "error": "Could not iterate on collection $collection: $error" } >> on query error,
-or C<< { "success": 0, ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
+Returns: C<< { ref $res: Object } >> on success; C<< { "error": "filter and params required and must be name/value objects" } >>
+or C<< { "error": "queue not found" } >> on input error; C<< { "error": "Could not iterate on collection $collection: $error" } >> on query error,
+or C<< { ref $res: Object, "error": "Unknown error" } >> on MongoDB error.
 
 Sets HTTP status to C<400> on error.
 
@@ -451,13 +446,13 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
     # {"migration":"document.migration","user1":"document.username"}
     unless (defined $params->{filter} and ref $params->{filter} eq 'HASH' and defined $params->{params} and ref $params->{params} eq 'HASH') {
         status 400;
-        return send_json { success => 0, error => 'filter and params required and must be name/value objects' };
+        return send_json { error => 'filter and params required and must be name/value objects' };
     }
 
     my $queue_id = get_queue_oid($+{queue});
     unless (defined $queue_id) {
         status 400;
-        return send_json { success => 0, error => 'queue not found' };
+        return send_json { error => 'queue not found' };
     }
 
     my @fields = grep /^document\./, values %{$params->{params}};
@@ -488,16 +483,15 @@ post qr'^/tasks/(?<queue>.+?)/(?<collection>.+)$' => sub {
 
     if (defined $error) {
         status 400;
-        return send_json { success => 0, error => $error };
+        return send_json { error => $error };
     }
 
     my $res = create_tasks($queue_id, \@tasks);	# doing 100k at once only take 12 seconds on my 13" rMBP
 
     my $reponse = {
-        success => @{$res->{inserted}} ? 1 : 0,
         ref $res => {%$res},
     };
-    unless ($reponse->{success}) {
+    unless (@{$res->{inserted}}) {
         status 400;
         $reponse->{error} = 'Unknown error';
     }
@@ -532,9 +526,9 @@ C<count> is a boolean. Instead of an array of task documents, the count of task 
 C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
 If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
 
-Returns: C<< { "success": 1, "tasks": Array } >> on success; C<< { "success": 0, "error": "filter and options must be name/value objects" } >>,
-C<< { "success": 0, "error": "limit cannot exceed 100" } >>, or C<< { "success": 0, "error": "Bad OID passed: $error" } >> on input error;
-or C<< { "success": 0, "error": "$error" } >> on count or search error.
+Returns: C<< { "tasks": Array } >> on success; C<< { "error": "filter and options must be name/value objects" } >>,
+C<< { "error": "limit cannot exceed 100" } >>, or C<< { "error": "Bad OID passed: $error" } >> on input error;
+or C<< { "error": "$error" } >> on count or search error.
 
 Sets HTTP status to C<400> on error.
 
@@ -556,19 +550,19 @@ post '/tasks/search' => sub {
     $params->{terse} // 1;
     unless (ref $params->{filter} eq 'HASH' and ref $params->{options} eq 'HASH') {
         status 400;
-        return send_json { success => 0, error => 'filter and options must be name/value objects' };
+        return send_json { error => 'filter and options must be name/value objects' };
     }
     $params->{options}{limit} //= $LIMIT;
     if ($params->{options}{limit} > $LIMIT) {
         status 400;
-        return send_json { success => 0, error => "limit cannot exceed $LIMIT" };
+        return send_json { error => "limit cannot exceed $LIMIT" };
     }
 
     my $oid_error = try { $params->{filter} = deserialize_oid($params->{filter}); undef } catch { "Bad OID passed: $_" };
     if (defined $oid_error) {
         Limper::warning $oid_error;
         status 400;
-        return send_json { success => 0, error => $oid_error };
+        return send_json { error => $oid_error };
     }
 
     # Turn value into a Time::Moment object if it looks like it includes milliseconds. Will break in the year 2286.
@@ -580,15 +574,15 @@ post '/tasks/search' => sub {
         my $count = try { $disbatch->tasks->count($params->{filter}) } catch { Limper::warning $_; $_; };
         if (ref $count) {
             status 400;
-            return send_json { success => 0, error => "$count" };
+            return send_json { error => "$count" };
         }
-        return send_json { success => 1, count => $count };
+        return send_json { count => $count };
     }
     my ($error, @tasks) = try { undef, $disbatch->tasks->find($params->{filter}, $params->{options})->all } catch { Limper::warning "Could not find tasks: $_"; $_ };
     if (defined $error) {
         Limper::warning $error;
         status 400;
-        return send_json { success => 0, error => $error };
+        return send_json { error => $error };
     }
 
     for my $task (@tasks) {
@@ -604,7 +598,7 @@ post '/tasks/search' => sub {
         }
     }
 
-    send_json { success => 1, tasks => \@tasks }, convert_blessed => 1;
+    send_json { tasks => \@tasks }, convert_blessed => 1;
 };
 
 ################
