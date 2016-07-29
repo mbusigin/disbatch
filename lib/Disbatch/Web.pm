@@ -392,8 +392,8 @@ If not set, C<options.limit> will be C<100>. This will fail if you try to set it
 
 C<count> is a boolean. Instead of an array of task documents, the count of task documents matching the query will be returned.
 
-C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr>.
-If C<false>, the content of C<stdout> and C<stderr> will be returned. Default is C<true>.
+C<terse> is a boolean. If C<true>, the the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr> of each document.
+If C<false>, the full content of C<stdout> and C<stderr> will be returned. Default is C<true>.
 
 Returns: Array of task Objects or C<< { "count": $count } >> on success; C<< { "error": "filter and options must be name/value objects" } >>,
 C<< { "error": "limit cannot exceed 100" } >>, or C<< { "error": "Bad OID passed: $error" } >> on input error;
