@@ -467,7 +467,7 @@ post '/tasks/search' => sub {
     for my $task (@tasks) {
         for my $type (qw/stdout stderr/) {
             if ($params->{terse}) {
-                $task->{$type} = '[terse mode]' unless $task->{$type}->$_isa('MongoDB::OID');
+                $task->{$type} = '[terse mode]' if defined $task->{$type} and !$task->{$type}->$_isa('MongoDB::OID');
             } elsif ($task->{$type}->$_isa('MongoDB::OID')) {
                 $task->{$type} = try { $disbatch->get_gfs($task->{$type}) } catch { Limper::warning "Could not get task $task->{_id} $type: $_"; $task->{$type} };
             }
