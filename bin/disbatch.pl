@@ -389,13 +389,19 @@ pod2usage(-verbose => 2, -exitval => 0) if $ret == -1;
 
 $params->{execute}->($params);
 
+warn "DEPRECATION NOTICE: This is deprecated as of Disbatch 4.0 and will be removed in Disbatch 4.2. Use 'disbatch'.\n";
+
 __END__
 
 =encoding utf8
 
 =head1 NAME
 
-disbatch - CLI to the Disbatch Command Interface (DCI).
+disbatch.pl - CLI to the Disbatch Command Interface (DCI).
+
+=head1 DEPRECATION NOTICE
+
+This is deprecated as of Disbatch 4.0 and will be removed in Disbatch 4.2. Use L<disbatch>.
 
 =head1 SYNOPSIS
 
@@ -474,7 +480,7 @@ Create a new queue.
 
 Creates a task in the specified queue with the given params.
 
-  $ ./bin/disbatch.pl queue task 5717f5edeb6af80362796221 user1 ashley user2 ashley
+  $ disbatch.pl queue task 5717f5edeb6af80362796221 user1 ashley user2 ashley
   [1,1,{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}},{"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}}],"write_concern_errors":[],"write_errors":[]},"success":1}]
 
 =item queue tasks <queue> <collection> [<filter key> <value> ...] -- -- [<param key> <value> ...]
@@ -484,24 +490,26 @@ Creates multiple tasks in the specified queue with the given params, based off a
 In the below example, the C<users> collection is queried for all documents matching C<{migration: "foo"}>.
 These documents are then used to set task params, and the values from the query collection are accessed by prepending C<document.>.
 
-  $ ./bin/disbatch.pl queue tasks 5717f5edeb6af80362796221 users migration foo -- -- user1 document.username user2 document.username migration document.migration
+  $ disbatch.pl queue tasks 5717f5edeb6af80362796221 users migration foo -- -- user1 document.username user2 document.username migration document.migration
   [1,2]
 
 =item queue search <queue> <json_query>
 
 Returns a JSON array of task documents matching the JSON query given. Note that blessed values may be munged to be proper JSON.
 
-$ ./bin/disbatch.pl queue search 5717f5edeb6af80362796221 '{"params.migration": "foo"}'
+$ disbatch.pl queue search 5717f5edeb6af80362796221 '{"params.migration": "foo"}'
 [{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c72"},"node":null,"params":{"migration":"foo","user1":"ashley","user2":"ashley"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"},{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c73"},"node":null,"params":{"migration":"foo","user1":"matt","user2":"matt"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"}]
 
 =item queue types
 
-  $ ./bin/disbatch.pl queue types
+  $ disbatch.pl queue types
   Disbatch::Plugin::Demo
 
 =back
 
 =head1 SEE ALSO
+
+L<disbatch>
 
 L<Disbatch>
 
