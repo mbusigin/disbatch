@@ -10,7 +10,7 @@ use Data::Dumper;
 use Disbatch;
 use Encode;
 use Getopt::Long;
-use MongoDB::OID 1.0.0;
+use MongoDB::OID 1.0.4;
 use Try::Tiny::Retry;
 use Safe::Isa;
 

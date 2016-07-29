@@ -12,7 +12,7 @@ use Limper::SendFile;
 use Limper::SendJSON;
 use Limper;
 use Log::Log4perl;
-use MongoDB::OID 1.0.0;
+use MongoDB::OID 1.0.4;
 use Safe::Isa;
 use Time::Moment;
 use Try::Tiny::Retry;

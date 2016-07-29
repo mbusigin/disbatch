@@ -8,7 +8,7 @@ use Data::Dumper;
 use Disbatch::Roles;
 use File::Slurp;
 use Getopt::Long;
-use MongoDB;
+use MongoDB 1.0.4;
 use Safe::Isa;
 use Term::ReadKey;
 use Try::Tiny::Retry;

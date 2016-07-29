@@ -9,7 +9,7 @@ use Data::Dumper;
 use Encode;
 use File::Slurp;
 use Log::Log4perl;
-use MongoDB 1.0.0;
+use MongoDB 1.0.4;
 use POSIX 'setsid';
 use Safe::Isa;
 use Sys::Hostname;
