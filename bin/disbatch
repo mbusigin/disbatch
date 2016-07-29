@@ -23,9 +23,9 @@ my $ssl_ca_file;
 my $disable_ssl_verification = 0;
 my $collection;
 my $count = 0;
-my $terse = 0;
+my $terse = 1;
 my $pretty = 0;
-my $options = {};
+my $options;
 
 GetOptions(
     'url|u=s'       => \$url,
@@ -37,7 +37,7 @@ GetOptions(
     'disable_ssl_verification' => \$disable_ssl_verification,
     'collection=s'  => \$collection,
     'count'         => \$count,
-    'terse'         => \$terse,
+    'terse!'        => \$terse,
     'pretty'        => \$pretty,
     'options=s'     => \$options,
 );
@@ -194,7 +194,7 @@ sub post_tasks {	# <queue> <json_array>					# JSON array of task params objects
 
 sub post_search {	# <filter>						# {filter: filter, options: options, count: count, terse: terse}
     my ($filter) = @ARGV;
-    my $data = $json->encode({ filter => $json->decode($filter // '{}'), count => $count, terse => $terse, pretty => $pretty, options => $options });
+    my $data = $json->encode({ filter => $json->decode($filter // '{}'), count => $count, terse => $terse, pretty => $pretty, options => $json->decode($options // '{}') });
     my $response = $ua->post("$url/tasks/search", 'Content-Type' => 'application/json', Content => $data);
     if ($response->is_success) {
         if ($count) {
