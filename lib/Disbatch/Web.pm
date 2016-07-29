@@ -352,11 +352,11 @@ del qr'^/queues/(?<queue>.+)$' => sub {
 sub get_queue_oid {
     my ($queue) = @_;
     my $queue_id = try {
-        MongoDB::OID->new(value => $queue);
+        $disbatch->queues->find_one({_id => MongoDB::OID->new(value => $queue)});
     } catch {
-        my $q = try { $disbatch->queues->find_one({name => $queue}) } catch { Limper::warning "Could not find queue $queue: $_"; undef };
-        defined $q ? $q->{_id} : undef;
+        try { $disbatch->queues->find_one({name => $queue}) } catch { Limper::warning "Could not find queue $queue: $_"; undef };
     };
+    defined $queue_id ? $queue_id->{_id} : undef;
 }
 
 # creates a task for given queue _id and params, returning task _id
@@ -428,14 +428,7 @@ post '/tasks/search' => sub {
         return send_json { error => "limit cannot exceed $LIMIT" };
     }
 
-    if (defined $params->{filter}{queue}) {
-        $params->{filter}{queue} = try { MongoDB::OID->new(value => $params->{filter}{queue}) } catch { "Bad queue passed: $_" };
-        if (ref $params->{filter}{queue} ne 'MongoDB::OID') {
-            Limper::warning $params->{filter}{queue};
-            status 400;
-            return send_json { error => $params->{filter}{queue} };
-        }
-    }
+    $params->{filter}{queue} = { '$oid' => $params->{filter}{queue} } if defined $params->{filter}{queue} and !ref $params->{filter}{queue};
 
     my $oid_error = try { $params->{filter} = deserialize_oid($params->{filter}); undef } catch { "Bad OID passed: $_" };
     if (defined $oid_error) {
