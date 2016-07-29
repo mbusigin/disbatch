@@ -249,6 +249,7 @@ post '/queues' => sub {
     unless (defined $res->{inserted_id}) {
         status 400;
         $reponse->{error} = "$res";
+        $reponse->{ref $res}{result} = { ref $reponse->{ref $res}{result} => {%{$reponse->{ref $res}{result}}} } if ref $reponse->{ref $res}{result};
     }
     send_json $reponse, convert_blessed => 1;
 };
@@ -416,6 +417,7 @@ post '/tasks/search' => sub {
     $params->{options} //= {};
     $params->{count} // 0;
     $params->{terse} // 1;
+    $params->{pretty} // 0;
     unless (ref $params->{filter} eq 'HASH' and ref $params->{options} eq 'HASH') {
         status 400;
         return send_json { error => 'filter and options must be name/value objects' };
@@ -475,7 +477,7 @@ post '/tasks/search' => sub {
         }
     }
 
-    send_json \@tasks, convert_blessed => 1;
+    send_json \@tasks, convert_blessed => 1, pretty => $params->{pretty};
 };
 
 =item POST /tasks/:queue
