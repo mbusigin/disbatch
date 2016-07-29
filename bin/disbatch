@@ -217,7 +217,7 @@ disbatch - CLI to the Disbatch Command Interface (DCI).
 
 =head1 SYNOPSIS
 
-    disbatch.pl [<arguments>] <command> [<command arguments>]
+    disbatch [<arguments>] <command> [<command arguments>]
 
 =head2 ARGUMENTS
 
@@ -263,59 +263,157 @@ Note: the SSL settings in the Disbatch config file are for MongoDB, but ideally 
 
 =over 2
 
-=item status
+=item plugins
+
+List all allowed plugin names.
+
+  $ ./bin/disbatch plugins
+  Disbatch::Plugin::Demo
+
+=item queues
 
 List all queues this disbatch server processes.
 
-  $ disbatch.pl status
-  ID                       | Type                   | Name | Threads | Done | To-Do | Processing
-  -------------------------+------------------------+------+---------+------+-------+-----------
-  56eade3aeb6af81e0123ed21 | Disbatch::Plugin::Demo | demo | 0       | 0    | 0     | 0
+  $ disbatch queues
+  ID                       | Plugin                 | Name | Threads | Queued | Running | Completed |
+  -------------------------+------------------------+------+---------+--------+---------+-----------+-
+  56eade3aeb6af81e0123ed21 | Disbatch::Plugin::Demo | demo | 0       | 0      | 0       | 0         |
 
   1 total queues.
 
-=item queue set <queue> <key> <value>
+Note: C<status> is an alias for C<queues>.
 
-Change a field's value in a queue.
-The only valid field is C<threads>.
-
-  $ disbatch.pl queue set 56eade3aeb6af81e0123ed21 threads 10
-
-=item queue start <type> <name>
+=item create-queue <name> <plugin>
 
 Create a new queue.
 
-  $ disbatch.pl queue start Disbatch::Plugin::Demo foo
-  New Queue #5717f5edeb6af80362796221
+  $ disbatch create-queue fizz Disbatch::Plugin::Demo
+  Created queue fizz: 579a6735eb6af83e5a5297d5
 
-=item queue task <queue> [<key> <value> ...]
+Error examples:
+
+  $ ./bin/disbatch create-queue
+  Error posting http://localhost:8080/queues (400 Bad Request): {"plugin":"","error":"Unknown plugin"}
+  $ ./bin/disbatch create-queue test
+  Error posting http://localhost:8080/queues (400 Bad Request): {"plugin":"","error":"Unknown plugin"}
+  $ ./bin/disbatch create-queue test Disbatch::Plugin::Fake
+  Error posting http://localhost:8080/queues (400 Bad Request): {"plugin":"Disbatch::Plugin::Fake","error":"Unknown plugin"}
+
+=item update-queue <queue> <field> <value> [<field> <value> ...]
+
+Change a field's value in a queue.
+Valid fields are C<name>, C<plugin>, and C<threads>.
+
+  $ disbatch update-queue 579a6735eb6af83e5a5297d5 name buzz
+  Updated queue 579a6735eb6af83e5a5297d5: {"name":"buzz"}
+
+Error examples:
+
+  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1
+  Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"no params"}
+  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 bad field
+  Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"unknown param","param":"bad"}
+  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads
+FIXME:
+  Odd number of elements in hash assignment at ./bin/disbatch line 140.
+  Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"threads must be a non-negative integer"}
+  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads zero
+  Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"threads must be a non-negative integer"}
+  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 plugin Disbatch::Plugin::Fake
+  Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"plugin":"Disbatch::Plugin::Fake","error":"unknown plugin"}
+
+=item delete-queue <queue>
+
+Delete a queue.
+
+  $ ./bin/disbatch delete-queue 579a6735eb6af83e5a5297d5
+  Deleted queue 579a6735eb6af83e5a5297d5
+
+Error examples:
+
+  $ ./bin/disbatch delete-queue 579a6eaeeb6af87dc52d17e1
+  Error deleting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"MongoDB::DeleteResult=HASH(0x35344b8)","MongoDB::DeleteResult":{"deleted_count":0,"write_concern_errors":[],"write_errors":[]}}
+
+=item create-task <queue> [<key> <value> ...]
 
 Creates a task in the specified queue with the given params.
 
-  $ ./bin/disbatch.pl queue task 5717f5edeb6af80362796221 user1 ashley user2 ashley
-  [1,1,{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}},{"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[{"index":0,"_id":{"$oid":"5717f70ceb6af803671f7c71"}}],"write_concern_errors":[],"write_errors":[]},"success":1}]
+  $ disbatch create-task 579a49d6eb6af83e5b4ceec1 user1 ashley user2 ashley
+  Created 1 tasks in queue 579a49d6eb6af83e5b4ceec1
+  579a67b3eb6af83e612d8c58
 
-=item queue tasks <queue> <collection> [<filter key> <value> ...] -- -- [<param key> <value> ...]
+Error examples:
+
+  $ ./bin/disbatch create-task
+FIXME:
+  Use of uninitialized value $queue in concatenation (.) or string at ./bin/disbatch line 178.
+  Error posting http://localhost:8080/tasks/ (404 Not Found): This is the void
+
+
+=item create-tasks <queue> <array_of_params>
+
+Creates multiple tasks in the specified queue with the given params.
+
+  $ ./bin/disbatch create-tasks 579a49d6eb6af83e5b4ceec1 '[{"fizz":1}]'
+  Created 1 tasks in queue 579a49d6eb6af83e5b4ceec1
+  579a67dbeb6af83e5930fc72
+
+Error examples:
+
+  $ ./bin/disbatch create-tasks 579a7059eb6af87dcc6ef4e2
+  Error posting http://localhost:8080/tasks/579a7059eb6af87dcc6ef4e2 (400 Bad Request): {"error":"params must be a JSON array of task params"}
+  $ ./bin/disbatch create-tasks 579a7059eb6af87dcc6ef4e2 '{}'
+  Error posting http://localhost:8080/tasks/579a7059eb6af87dcc6ef4e2 (400 Bad Request): {"error":"params must be a JSON array of task params"}
+  $ ./bin/disbatch create-tasks 579a7059eb6af87dcc6ef4e2 '[]'
+  Error posting http://localhost:8080/tasks/579a7059eb6af87dcc6ef4e2 (400 Bad Request): {"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[],"write_concern_errors":[],"write_errors":[]},"error":"Unknown error"}
+
+=item create-tasks <queue> --collection <collection> <json_object>
 
 Creates multiple tasks in the specified queue with the given params, based off a filter from another collection.
+
+The C<json_object> must have fields C<filter> and C<params> whose values are Objects.
 
 In the below example, the C<users> collection is queried for all documents matching C<{migration: "foo"}>.
 These documents are then used to set task params, and the values from the query collection are accessed by prepending C<document.>.
 
-  $ ./bin/disbatch.pl queue tasks 5717f5edeb6af80362796221 users migration foo -- -- user1 document.username user2 document.username migration document.migration
-  [1,2]
+  $ disbatch create-tasks 56eade3aeb6af81e0123ed21 --collection users '{"filter":{"migration":"foo"},"params":{"user":"document.username","migration":"document.migration"}}'
+  Created 2 tasks in queue 56eade3aeb6af81e0123ed21
+  579b72a5eb6af86a8f5220f1
+  579b72a5eb6af86a8f5220f2
 
-=item queue search <queue> <json_query>
+Error examples:
 
-Returns a JSON array of task documents matching the JSON query given. Note that blessed values may be munged to be proper JSON.
+  $ ./bin/disbatch --collection DNE create-tasks 579a7059eb6af87dcc6ef4e2 '{"filter":{"migration":"foo"},"params":{"user":"document.username"}}'
+  Error posting http://localhost:8080/tasks/test/DNE (400 Bad Request): {"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[],"write_concern_errors":[],"write_errors":[]},"error":"Unknown error"}
 
-$ ./bin/disbatch.pl queue search 5717f5edeb6af80362796221 '{"params.migration": "foo"}'
-[{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c72"},"node":null,"params":{"migration":"foo","user1":"ashley","user2":"ashley"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"},{"ctime":1461189920,"stderr":null,"status":-2,"mtime":0,"_id":{"$oid":"5717fd20eb6af803671f7c73"},"node":null,"params":{"migration":"foo","user1":"matt","user2":"matt"},"queue":{"$oid":"5717f5edeb6af80362796221"},"stdout":null,"ctime_str":"2016-04-20T22:05:20"}]
+=item search [<json_filter>] [--options <options>] [--count | --terse]
 
-=item queue types
+Returns a JSON array of task documents matching the JSON query given. Note that blessed values may be munged to be proper JSON. Limit of C<100> documents returned.
 
-  $ ./bin/disbatch.pl queue types
-  Disbatch::Plugin::Demo
+  $ disbatch search '{"params.migration":"foo"}'
+  [{"ctime":1469805221.996,"stderr":null,"status":-2,"mtime":1469805221.996,"_id":{"$oid":"579b72a5eb6af86a8f5220f1"},"node":null,"params":{"migration":"foo","user":"ashley"},"queue":{"$oid":"56eade3aeb6af81e0123ed21"},"stdout":null},{"ctime":1469805221.996,"stderr":null,"status":-2,"mtime":1469805221.996,"_id":{"$oid":"579b72a5eb6af86a8f5220f2"},"node":null,"params":{"migration":"foo","user":"matt"},"queue":{"$oid":"56eade3aeb6af81e0123ed21"},"stdout":null}]
+
+The option C<--pretty> can be used to have the response pretty-printed.
+
+If the option C<--count> is used, returns a count of the matching task documents instead.
+
+  $ ./bin/disbatch search '{"params.migration":"foo"}' --count
+  2 tasks
+
+The option C<--options> can be used to pass additional options to L<MongoDB::Collection#find>. It's value is a JSON Object.
+Use C<--options '{"limit":20}'> to return only the first 20 documents (default is 100). This will fail if you try to set it above 100.
+
+The option C<--noterse> can be used to disable terse mode (on by default).
+If enabled, the GridFS id or C<"[terse mode]"> will be returned for C<stdout> and C<stderr> of each document.
+If disabled, the full content of C<stdout> and C<stderr> will be returned.
+
+Error examples:
+
+  $ ./bin/disbatch search '[]'
+  Error posting http://localhost:8080/tasks/search (400 Bad Request): {"error":"filter and options must be name/value objects"}
+  $ ./bin/disbatch search '"foo"'
+FIXME: catch error
+  JSON text must be an object or array (but found number, string, true, false or null, use allow_nonref to allow this) at ./bin/disbatch line 197.
 
 =back
 
