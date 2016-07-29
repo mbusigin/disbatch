@@ -267,7 +267,7 @@ Note: the SSL settings in the Disbatch config file are for MongoDB, but ideally 
 
 List all allowed plugin names.
 
-  $ ./bin/disbatch plugins
+  $ disbatch plugins
   Disbatch::Plugin::Demo
 
 =item queues
@@ -292,11 +292,11 @@ Create a new queue.
 
 Error examples:
 
-  $ ./bin/disbatch create-queue
+  $ disbatch create-queue
   Error posting http://localhost:8080/queues (400 Bad Request): {"plugin":"","error":"Unknown plugin"}
-  $ ./bin/disbatch create-queue test
+  $ disbatch create-queue test
   Error posting http://localhost:8080/queues (400 Bad Request): {"plugin":"","error":"Unknown plugin"}
-  $ ./bin/disbatch create-queue test Disbatch::Plugin::Fake
+  $ disbatch create-queue test Disbatch::Plugin::Fake
   Error posting http://localhost:8080/queues (400 Bad Request): {"plugin":"Disbatch::Plugin::Fake","error":"Unknown plugin"}
 
 =item update-queue <queue> <field> <value> [<field> <value> ...]
@@ -309,30 +309,41 @@ Valid fields are C<name>, C<plugin>, and C<threads>.
 
 Error examples:
 
-  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1
+  $ disbatch update-queue 579a6eaeeb6af87dc52d17e1
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"no params"}
-  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 bad field
+  $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 bad field
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"unknown param","param":"bad"}
-  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads
+  $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads
 FIXME:
   Odd number of elements in hash assignment at ./bin/disbatch line 140.
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"threads must be a non-negative integer"}
-  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads zero
+  $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads zero
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"threads must be a non-negative integer"}
-  $ ./bin/disbatch update-queue 579a6eaeeb6af87dc52d17e1 plugin Disbatch::Plugin::Fake
+  $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 plugin Disbatch::Plugin::Fake
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"plugin":"Disbatch::Plugin::Fake","error":"unknown plugin"}
+
+  $ disbatch update-queue 579a7059eb6af87dcc6ef4e3 threads 0
+  Error posting http://localhost:8080/queues/579a7059eb6af87dcc6ef4e3 (400 Bad Request): {"MongoDB::UpdateResult":{"matched_count":0,"upserted_id":null,"write_concern_errors":[],"write_errors":[],"modified_count":0},"error":"MongoDB::UpdateResult=HASH(0x401de18)"}
+  $ disbatch update-queue 579a7059eb6af87dcc6ef4e3 name demo
+  Error posting http://localhost:8080/queues/579a7059eb6af87dcc6ef4e3 (400 Bad Request): {"MongoDB::UpdateResult":{"matched_count":0,"upserted_id":null,"write_concern_errors":[],"write_errors":[],"modified_count":0},"error":"MongoDB::UpdateResult=HASH(0x401de18)"}
+
 
 =item delete-queue <queue>
 
 Delete a queue.
 
-  $ ./bin/disbatch delete-queue 579a6735eb6af83e5a5297d5
+  $ disbatch delete-queue 579a6735eb6af83e5a5297d5
   Deleted queue 579a6735eb6af83e5a5297d5
+  $ disbatch delete-queue fizz
+  Deleted queue fizz
 
 Error examples:
 
-  $ ./bin/disbatch delete-queue 579a6eaeeb6af87dc52d17e1
+  $ disbatch delete-queue 579a6eaeeb6af87dc52d17e1
   Error deleting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"MongoDB::DeleteResult=HASH(0x35344b8)","MongoDB::DeleteResult":{"deleted_count":0,"write_concern_errors":[],"write_errors":[]}}
+  $ disbatch delete-queue fizz
+  Error deleting http://localhost:8080/queues/fizz (400 Bad Request): {"error":"MongoDB::DeleteResult=HASH(0x3106520)","MongoDB::DeleteResult":{"deleted_count":0,"write_concern_errors":[],"write_errors":[]}}
+
 
 =item create-task <queue> [<key> <value> ...]
 
@@ -344,7 +355,7 @@ Creates a task in the specified queue with the given params.
 
 Error examples:
 
-  $ ./bin/disbatch create-task
+  $ disbatch create-task
 FIXME:
   Use of uninitialized value $queue in concatenation (.) or string at ./bin/disbatch line 178.
   Error posting http://localhost:8080/tasks/ (404 Not Found): This is the void
@@ -354,18 +365,23 @@ FIXME:
 
 Creates multiple tasks in the specified queue with the given params.
 
-  $ ./bin/disbatch create-tasks 579a49d6eb6af83e5b4ceec1 '[{"fizz":1}]'
+  $ disbatch create-tasks 579a49d6eb6af83e5b4ceec1 '[{"fizz":1}]'
   Created 1 tasks in queue 579a49d6eb6af83e5b4ceec1
   579a67dbeb6af83e5930fc72
 
 Error examples:
 
-  $ ./bin/disbatch create-tasks 579a7059eb6af87dcc6ef4e2
+  $ disbatch create-tasks 579a7059eb6af87dcc6ef4e2
   Error posting http://localhost:8080/tasks/579a7059eb6af87dcc6ef4e2 (400 Bad Request): {"error":"params must be a JSON array of task params"}
-  $ ./bin/disbatch create-tasks 579a7059eb6af87dcc6ef4e2 '{}'
+  $ disbatch create-tasks 579a7059eb6af87dcc6ef4e2 '{}'
   Error posting http://localhost:8080/tasks/579a7059eb6af87dcc6ef4e2 (400 Bad Request): {"error":"params must be a JSON array of task params"}
-  $ ./bin/disbatch create-tasks 579a7059eb6af87dcc6ef4e2 '[]'
+  $ disbatch create-tasks 579a7059eb6af87dcc6ef4e2 '[]'
   Error posting http://localhost:8080/tasks/579a7059eb6af87dcc6ef4e2 (400 Bad Request): {"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[],"write_concern_errors":[],"write_errors":[]},"error":"Unknown error"}
+  $ disbatch create-tasks 579ba809eb6af868d538f631 '[{"fizz":1},{"buzz":2}]'
+  Error posting http://localhost:8080/tasks/579ba809eb6af868d538f631 (400 Bad Request): {"error":"queue not found"}
+  $ disbatch create-tasks DNE '[{"fizz":1},{"buzz":2}]'
+  Error posting http://localhost:8080/tasks/fizzzzzzz (400 Bad Request): {"error":"queue not found"}
+
 
 =item create-tasks <queue> --collection <collection> <json_object>
 
@@ -383,7 +399,7 @@ These documents are then used to set task params, and the values from the query 
 
 Error examples:
 
-  $ ./bin/disbatch --collection DNE create-tasks 579a7059eb6af87dcc6ef4e2 '{"filter":{"migration":"foo"},"params":{"user":"document.username"}}'
+  $ disbatch --collection DNE create-tasks 579a7059eb6af87dcc6ef4e2 '{"filter":{"migration":"foo"},"params":{"user":"document.username"}}'
   Error posting http://localhost:8080/tasks/test/DNE (400 Bad Request): {"MongoDB::InsertManyResult":{"acknowledged":1,"inserted":[],"write_concern_errors":[],"write_errors":[]},"error":"Unknown error"}
 
 =item search [<json_filter>] [--options <options>] [--count | --terse]
@@ -397,7 +413,7 @@ The option C<--pretty> can be used to have the response pretty-printed.
 
 If the option C<--count> is used, returns a count of the matching task documents instead.
 
-  $ ./bin/disbatch search '{"params.migration":"foo"}' --count
+  $ disbatch search '{"params.migration":"foo"}' --count
   2 tasks
 
 The option C<--options> can be used to pass additional options to L<MongoDB::Collection#find>. It's value is a JSON Object.
@@ -409,9 +425,9 @@ If disabled, the full content of C<stdout> and C<stderr> will be returned.
 
 Error examples:
 
-  $ ./bin/disbatch search '[]'
+  $ disbatch search '[]'
   Error posting http://localhost:8080/tasks/search (400 Bad Request): {"error":"filter and options must be name/value objects"}
-  $ ./bin/disbatch search '"foo"'
+  $ disbatch search '"foo"'
 FIXME: catch error
   JSON text must be an object or array (but found number, string, true, false or null, use allow_nonref to allow this) at ./bin/disbatch line 197.
 
