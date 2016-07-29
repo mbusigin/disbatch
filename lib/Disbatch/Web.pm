@@ -415,9 +415,9 @@ post '/tasks/search' => sub {
 
     $params->{filter} //= {};
     $params->{options} //= {};
-    $params->{count} // 0;
-    $params->{terse} // 1;
-    $params->{pretty} // 0;
+    $params->{count} //= 0;
+    $params->{terse} //= 1;
+    $params->{pretty} //= 0;
     unless (ref $params->{filter} eq 'HASH' and ref $params->{options} eq 'HASH') {
         status 400;
         return send_json { error => 'filter and options must be name/value objects' };
