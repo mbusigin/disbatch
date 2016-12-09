@@ -121,8 +121,6 @@ my $disbatch = Disbatch->new(class => 'Disbatch', config_file => $config_file);
 $disbatch->load_config;
 $disbatch->ensure_indexes;
 
-# make sure node document exists:
-$disbatch->update_node_status;	# FIXME: add tests for this
 
 #####################################
 # Start web:
@@ -150,6 +148,8 @@ if ($webpid == 0) {
 
     my $queueid;	# OID
     my $threads;	# integer
+    my $node;		# node name (host name)
+    my $node_id;	# node _id
     my $name;	# queue name
     my $plugin;	# plugin name
     my $object;	# array of task parameter objects
@@ -194,7 +194,90 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     is $res->content, "[\"$plugin\"]", 'plugin array';
 
+    # Returns hash with key 'nodes' and value array of nodes.
+    # Each item has the following keys: id, _id, node, timestamp
+    # and optionally: maxthreads and queues (array: maxthreads, constructor, name, tasks_doing, tasks_done, preemptive, tasks_todo, tasks_backfill, id)
+    $res = Net::HTTP::Client->request(GET => "$uri/nodes");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    is $res->content, '{"nodes":[]}', 'empty nodes';
+
+    # make sure node document exists:
+    $disbatch->update_node_status;
+
+    # Returns hash with key 'nodes' and value array of nodes.
+    # Each item has the following keys: id, _id, node, timestamp
+    # and optionally: maxthreads and queues (array: maxthreads, constructor, name, tasks_doing, tasks_done, preemptive, tasks_todo, tasks_backfill, id)
+    $res = Net::HTTP::Client->request(GET => "$uri/nodes");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is defined $content->{nodes}, 1, 'nodes key defined';
+    is ref $content->{nodes}, 'ARRAY', 'nodes is ARRAY';
+    is scalar @{$content->{nodes}}, 1, 'nodes has 1 entry';
+    is defined $content->{nodes}[0]{id}, 1, 'id defined';		# FIXME: verify 24 char hex string
+    is defined $content->{nodes}[0]{_id}{'$oid'}, 1, 'id defined';	# FIXME: verify 24 char hex string
+    is $content->{nodes}[0]{id}, $content->{nodes}[0]{_id}{'$oid'}, 'id matches _id.$oid';
+    is defined $content->{nodes}[0]{timestamp}, 1, 'timestamp defined';	# FIXME: verify ms timestamp
+    is defined $content->{nodes}[0]{node}, 1, 'node defined';		# FIXME: verify FQDN
+    $node = $content->{nodes}[0]{node};
+    $node_id = $content->{nodes}[0]{id};
+    my $node_hash = $content->{nodes}[0];
+
+    # Returns hash of a single node, by name
+    $res = Net::HTTP::Client->request(GET => "$uri/nodes/$node");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is_deeply $content, $node_hash, 'content matches previous node hash';
+
+    # Returns hash of a single node, by id
+    $res = Net::HTTP::Client->request(GET => "$uri/nodes/$node_id");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is_deeply $content, $node_hash, 'content matches previous node hash';
+
     ### POST JSON ROUTES ####
+
+    # Set maxthreads to 5 via node name
+    $data = { maxthreads => 5 };
+    $res = Net::HTTP::Client->request(POST => "$uri/nodes/$node", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::UpdateResult'}{matched_count}, 1, 'matched success';
+    is $content->{'MongoDB::UpdateResult'}{modified_count}, 1, 'modified success';
+
+    # Returns hash of a single node, by id
+    $res = Net::HTTP::Client->request(GET => "$uri/nodes/$node_id");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is exists $content->{maxthreads}, 1, 'maxthreads exists';
+    is $content->{maxthreads}, 5, 'maxthreads is 5';
+
+    # Set maxthreads to null via node _id
+    $data = { maxthreads => undef };
+    $res = Net::HTTP::Client->request(POST => "$uri/nodes/$node_id", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::UpdateResult'}{matched_count}, 1, 'matched success';
+    is $content->{'MongoDB::UpdateResult'}{modified_count}, 1, 'modified success';
+
+    # Returns hash of a single node, by name
+    $res = Net::HTTP::Client->request(GET => "$uri/nodes/$node");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is exists $content->{maxthreads}, 1, 'maxthreads exists';
+    is $content->{maxthreads}, undef, 'maxthreads is null';
 
     # Returns array: C<< [ success, inserted_id, $reponse_object ] >>
     # Returns hash: C<< { ref $res: Object, id: $inserted_id } >>

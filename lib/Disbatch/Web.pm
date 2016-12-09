@@ -98,7 +98,7 @@ get qr'^/nodes/(?<node>.+)' => sub {
     undef $disbatch->{mongo};
     my $filter = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
     my $node = try { get_nodes($filter) } catch { status 400; "Could not get node $+{node}: $_" };
-    if (status == 400) {
+    if ((status() // 200) == 400) {
         Limper::warning $node;
         return send_json { error => $node };
     }
@@ -137,15 +137,16 @@ post qr'^/nodes/(?<node>.+)' => sub {
             return send_json { error => 'Invalid param', param => $param};
         }
     }
+    my $node = $+{node};	# regex on next line clears $+
     if (exists $params->{maxthreads} and defined $params->{maxthreads} and $params->{maxthreads} !~ /^\d+$/) {
         status 400;
         return send_json {error => 'maxthreads must be a non-negative integer or null'};
     }
-    my $filter = try { {_id => MongoDB::OID->new(value => $+{node})} } catch { {node => $+{node}} };
+    my $filter = try { {_id => MongoDB::OID->new(value => $node)} } catch { {node => $node} };
     my $res = try {
         $disbatch->nodes->update_one($filter, {'$set' => $params});
     } catch {
-        Limper::warning "Could not update node $+{node}: $_";
+        Limper::warning "Could not update node $node: $_";
         $_;
     };
     my $reponse = {
