@@ -302,6 +302,17 @@ if ($webpid == 0) {
     is scalar @{$content->{'MongoDB::InsertManyResult'}{inserted}}, 3, 'count';
     my @task_ids = map { $_->{_id}{'$oid'} } @{$content->{'MongoDB::InsertManyResult'}{inserted}};
 
+    # Returns {ref $res: Object}
+    $data = [ {commands => 'a'}, {commands => 'b'} ];
+    $res = Net::HTTP::Client->request(POST => "$uri/tasks/$name", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::InsertManyResult'}{acknowledged}, 1, 'success';
+    is scalar @{$content->{'MongoDB::InsertManyResult'}{inserted}}, 2, 'count';
+    push @task_ids, map { $_->{_id}{'$oid'} } @{$content->{'MongoDB::InsertManyResult'}{inserted}};
+
     # {filter: filter, options: options, count: count, terse: terse}
     $data = { filter => { queue => $queueid }, count => 1 };
     $res = Net::HTTP::Client->request(POST => "$uri/tasks/search", 'Content-Type' => 'application/json', encode_json($data));
@@ -309,7 +320,7 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
-    is $content->{count}, 3, 'count';
+    is $content->{count}, scalar @task_ids, 'count';
 
     $data = { filter => { queue => $queueid, 'params.commands' => 'b' }, count => 1 };
     $res = Net::HTTP::Client->request(POST => "$uri/tasks/search", 'Content-Type' => 'application/json', encode_json($data));
@@ -317,7 +328,7 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
-    is $content->{count}, 1, 'count';
+    is $content->{count}, 2, 'count';
 
     # Returns array of tasks (empty if there is an error in the query), C<< [ status, $count_or_error ] >> if "count" is true, or C<< [ 0, error ] >> if other error.
     # All parameters are optional.
@@ -331,7 +342,7 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'ARRAY', 'content is ARRAY';
-    is scalar @{$content}, 3, 'count';
+    is scalar @{$content}, scalar @task_ids, 'count';
     #say Dumper $content;
 
     # Returns {ref $res: Object}
@@ -349,7 +360,16 @@ if ($webpid == 0) {
     is ref $content, 'HASH', 'content is HASH';
     is $content->{'MongoDB::InsertManyResult'}{acknowledged}, 1, 'success';
     is scalar @{$content->{'MongoDB::InsertManyResult'}{inserted}}, 2, 'count';
+    push @task_ids, map { $_->{_id}{'$oid'} } @{$content->{'MongoDB::InsertManyResult'}{inserted}};
 
+    $res = Net::HTTP::Client->request(POST => "$uri/tasks/$name/$collection", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::InsertManyResult'}{acknowledged}, 1, 'success';
+    is scalar @{$content->{'MongoDB::InsertManyResult'}{inserted}}, 2, 'count';
+    push @task_ids, map { $_->{_id}{'$oid'} } @{$content->{'MongoDB::InsertManyResult'}{inserted}};
 
     $res = Net::HTTP::Client->request(GET => "$uri/queues");
     is $res->status_line, '200 OK', '200 status';
@@ -361,7 +381,8 @@ if ($webpid == 0) {
     is $content->[0]{plugin}, $plugin, 'plugin';
     is $content->[0]{name}, 'test_queue', 'name';
     is $content->[0]{threads}, undef, 'threads';
-    is $content->[0]{queued}, 5, 'queued';
+    is $content->[0]{queued}, scalar @task_ids, 'queued';
+
     is $content->[0]{running}, 0, 'running';
     is $content->[0]{completed}, 0, 'completed';
 
@@ -387,6 +408,24 @@ if ($webpid == 0) {
     $disbatch->validate_plugins;
     $disbatch->process_queues;
 
+    # Returns C<< { ref $res: Object } >> or C<< { "success": 0, "error": error } >>
+    $data = { threads => 0 };
+    $res = Net::HTTP::Client->request(POST => "$uri/queues/$name", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::UpdateResult'}{matched_count}, 1, 'matched success';
+    is $content->{'MongoDB::UpdateResult'}{modified_count}, 1, 'modified success';
+
+    $res = Net::HTTP::Client->request(GET => "$uri/queues");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'ARRAY', 'content is ARRAY';
+    is scalar @$content, 1, 'size';
+    is $content->[0]{threads}, 0, 'threads';
+
     # Make sure queue count updated:
     # {filter: filter, options: options, count: count, terse: terse}
     $data = { filter => { queue => $queueid, status => -2 }, count => 1 };
@@ -395,7 +434,7 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
-    is $content->{count}, 4, 'count';
+    is $content->{count}, scalar @task_ids - 1, 'count';
 
     # Get report for task:
     my $report = retry { $disbatch->mongo->coll('reports')->find_one() or die 'No report found' } catch { warn $_; {} };	# status done task_id
@@ -412,6 +451,36 @@ if ($webpid == 0) {
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
     is $content->{'MongoDB::DeleteResult'}{deleted_count}, 1, 'count';
+
+    $name = 'test_queue2';
+
+    # Returns array: C<< [ success, inserted_id, $reponse_object ] >>
+    # Returns hash: C<< { ref $res: Object, id: $inserted_id } >>
+    $data = { name => $name, plugin => $plugin };
+    $res = Net::HTTP::Client->request(POST => "$uri/queues", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is defined $content->{'MongoDB::InsertOneResult'}{'inserted_id'}{'$oid'}, 1, 'MongoDB::InsertOneResult inserted_id defined';
+    is defined $content->{id}{'$oid'}, 1, 'id defined';
+    $queueid = $content->{id}{'$oid'};
+
+    # Returns hash: {ref $res: Object}
+    $res = Net::HTTP::Client->request(DELETE => "$uri/queues/$name");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::DeleteResult'}{deleted_count}, 1, 'count';
+
+    # Returns array of queues.
+    # Each item has the following keys: id, plugin, name, threads, queued, running, completed
+    $res = Net::HTTP::Client->request(GET => "$uri/queues");
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    is $res->content, '[]', 'empty array';
+
 
     done_testing;
 }
