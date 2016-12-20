@@ -213,14 +213,14 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
-    is defined $content->{nodes}, 1, 'nodes key defined';
+    ok defined $content->{nodes}, 'nodes key defined';
     is ref $content->{nodes}, 'ARRAY', 'nodes is ARRAY';
     is scalar @{$content->{nodes}}, 1, 'nodes has 1 entry';
-    is defined $content->{nodes}[0]{id}, 1, 'id defined';		# FIXME: verify 24 char hex string
-    is defined $content->{nodes}[0]{_id}{'$oid'}, 1, 'id defined';	# FIXME: verify 24 char hex string
+    ok defined $content->{nodes}[0]{id}, 'id defined';			# FIXME: verify 24 char hex string
+    ok defined $content->{nodes}[0]{_id}{'$oid'}, 'id defined';	# FIXME: verify 24 char hex string
     is $content->{nodes}[0]{id}, $content->{nodes}[0]{_id}{'$oid'}, 'id matches _id.$oid';
-    is defined $content->{nodes}[0]{timestamp}, 1, 'timestamp defined';	# FIXME: verify ms timestamp
-    is defined $content->{nodes}[0]{node}, 1, 'node defined';		# FIXME: verify FQDN
+    ok defined $content->{nodes}[0]{timestamp}, 'timestamp defined';	# FIXME: verify ms timestamp
+    ok defined $content->{nodes}[0]{node}, 'node defined';		# FIXME: verify FQDN
     $node = $content->{nodes}[0]{node};
     $node_id = $content->{nodes}[0]{id};
     my $node_hash = $content->{nodes}[0];
@@ -258,7 +258,7 @@ if ($webpid == 0) {
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
-    is exists $content->{maxthreads}, 1, 'maxthreads exists';
+    ok exists $content->{maxthreads}, 'maxthreads exists';
     is $content->{maxthreads}, 5, 'maxthreads is 5';
 
     # Set maxthreads to null via node _id
@@ -276,7 +276,7 @@ if ($webpid == 0) {
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
-    is exists $content->{maxthreads}, 1, 'maxthreads exists';
+    ok exists $content->{maxthreads}, 'maxthreads exists';
     is $content->{maxthreads}, undef, 'maxthreads is null';
 
     # Returns array: C<< [ success, inserted_id, $reponse_object ] >>
@@ -287,8 +287,8 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
-    is defined $content->{'MongoDB::InsertOneResult'}{'inserted_id'}{'$oid'}, 1, 'MongoDB::InsertOneResult inserted_id defined';
-    is defined $content->{id}{'$oid'}, 1, 'id defined';
+    ok defined $content->{'MongoDB::InsertOneResult'}{'inserted_id'}{'$oid'}, 'MongoDB::InsertOneResult inserted_id defined';
+    ok defined $content->{id}{'$oid'}, 'id defined';
     $queueid = $content->{id}{'$oid'};
 
     # Returns {ref $res: Object}
@@ -462,8 +462,8 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
     is ref $content, 'HASH', 'content is HASH';
-    is defined $content->{'MongoDB::InsertOneResult'}{'inserted_id'}{'$oid'}, 1, 'MongoDB::InsertOneResult inserted_id defined';
-    is defined $content->{id}{'$oid'}, 1, 'id defined';
+    ok defined $content->{'MongoDB::InsertOneResult'}{'inserted_id'}{'$oid'}, 'MongoDB::InsertOneResult inserted_id defined';
+    ok defined $content->{id}{'$oid'}, 'id defined';
     $queueid = $content->{id}{'$oid'};
 
     # Returns hash: {ref $res: Object}
