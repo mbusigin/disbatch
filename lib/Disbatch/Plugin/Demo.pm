@@ -64,6 +64,54 @@ sub run {
         $self->{report}{errors}++;
     }
 
+    if ($self->{commands} =~ /1/) {
+        my $text = "This is command '1' for 1MB stdout.\n";
+        print $text;
+        $self->{stdout} .= "1" x (1024*1024*1);
+    }
+
+    if ($self->{commands} =~ /7/) {
+        my $text = "This is command '7' for 7MB stdout.\n";
+        print $text;
+        $self->{stdout} .= "7" x (1024*1024*7);
+    }
+
+    if ($self->{commands} =~ /8/) {
+        my $text = "This is command '8' for 8MB stdout.\n";
+        print $text;
+        $self->{stdout} .= "8" x (1024*1024*8);
+    }
+
+    if ($self->{commands} =~ /e/) {
+        my $text = "This is command 'e' for 15MB stdout.\n";
+        print $text;
+        $self->{stdout} .= "e" x (1024*1024*15);
+    }
+
+    if ($self->{commands} =~ /A/) {
+        my $text = "This is command 'A' for 1MB stderr.\n";
+        warn $text;
+        $self->{stderr} .= "A" x (1024*1024*1);
+    }
+
+    if ($self->{commands} =~ /B/) {
+        my $text = "This is command 'B' for 7MB stderr.\n";
+        warn $text;
+        $self->{stderr} .= "B" x (1024*1024*7);
+    }
+
+    if ($self->{commands} =~ /C/) {
+        my $text = "This is command 'C' for 8MB stderr.\n";
+        warn $text;
+        $self->{stderr} .= "C" x (1024*1024*8);
+    }
+
+    if ($self->{commands} =~ /E/) {
+        my $text = "This is command 'E' for 15MB stderr.\n";
+        warn $text;
+        $self->{stderr} .= "E" x (1024*1024*15);
+    }
+
     if ($self->{commands} =~ /c/) {
         my $text = "This is command 'c' for cry.\n";
         warn $text;
@@ -84,7 +132,8 @@ sub finish {
 
     # anything that must get done goes here:
 
-    warn "Finished with status $self->{status}\n\nSTDOUT:\n$self->{stdout}\n\nSTDERR:\n$self->{stderr}\n";
+#    warn "Finished with status $self->{status}\n\nSTDOUT:\n$self->{stdout}\n\nSTDERR:\n$self->{stderr}\n";
+    warn "Finished with status $self->{status}\n";
 
     $self->{status} += 0;
 
