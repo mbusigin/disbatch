@@ -167,7 +167,10 @@ sub delete_queue {
 }
 
 sub post_task {		# <queue> <key> <value> ...				# task params
-    my ($queue, %data) = @ARGV;
+    my $queue = shift @ARGV;
+    die "Must pass an even number of arguments as key/value pairs\n" if @ARGV %2;
+    my %data = @ARGV;
+
     @ARGV = ($queue, $json->encode([\%data]));	# yuck
     post_tasks();
 }
@@ -194,7 +197,11 @@ sub post_tasks {	# <queue> <json_array>					# JSON array of task params objects
 
 sub post_search {	# <filter>						# {filter: filter, options: options, count: count, terse: terse}
     my ($filter) = @ARGV;
-    my $data = $json->encode({ filter => $json->decode($filter // '{}'), count => $count, terse => $terse, pretty => $pretty, options => $json->decode($options // '{}') });
+
+    $filter = try { $json->decode($filter) } catch { die "Invalid filter is not JSON: '$filter'\n" } if defined $filter;
+    $options = try { $json->decode($options) } catch { die "Invalid --options is not JSON: '$options'\n" } if defined $options;
+
+    my $data = $json->encode({ filter => $filter, count => $count, terse => $terse, pretty => $pretty, options => $options });
     my $response = $ua->post("$url/tasks/search", 'Content-Type' => 'application/json', Content => $data);
     if ($response->is_success) {
         if ($count) {
