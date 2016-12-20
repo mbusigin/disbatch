@@ -461,7 +461,7 @@ post '/tasks/search' => sub {
     for my $task (@tasks) {
         for my $type (qw/stdout stderr/) {
             if ($params->{terse}) {
-                $task->{$type} = '[terse mode]' if defined $task->{$type} and !$task->{$type}->$_isa('MongoDB::OID');
+                $task->{$type} = '[terse mode]' if defined $task->{$type} and !$task->{$type}->$_isa('MongoDB::OID') and $task->{$type};
             } elsif ($task->{$type}->$_isa('MongoDB::OID')) {
                 $task->{$type} = try { $disbatch->get_gfs($task->{$type}) } catch { Limper::warning "Could not get task $task->{_id} $type: $_"; $task->{$type} };
             }
@@ -492,9 +492,13 @@ Note: replaces /queue-create-tasks-json
 post qr'^/tasks/(?<queue>[^/]+)$' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
-    unless (defined $params and ref $params eq 'ARRAY') {
+    unless (defined $params and ref $params eq 'ARRAY' and @$params and ! grep { ref $_ ne 'HASH' } @$params) {
         status 400;
-        return send_json { error => 'params must be a JSON array of task params' };
+        return send_json { error => 'params must be a JSON array of task params objects' };
+    }
+    if (grep { keys $_ == 0 } @$params) {
+        status 400;
+        return send_json { error => 'params must be a JSON array of task params objects with key/value pairs' };
     }
 
     my $queue_id = get_queue_oid($+{queue});
