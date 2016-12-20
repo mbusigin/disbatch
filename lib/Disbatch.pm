@@ -228,7 +228,7 @@ sub orphaned_tasks {
             node => $self->{node},
             status => -1,
             '$or' => [
-                { '$and' => [{mtime => {'$type' => 9}}, {mtime => {'$lt' => Time::Moment->now_utc->(5)}}] },
+                { '$and' => [{mtime => {'$type' => 9}}, {mtime => {'$lt' => Time::Moment->now_utc->minus_minutes(5)}}] },
                 { '$and' => [{mtime => {'$not' => {'$type' => 9}}}, {mtime => {'$lt' => time - 300}}] },
             ],
         },
