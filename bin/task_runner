@@ -14,14 +14,16 @@ use MongoDB::OID 1.0.4;
 use Try::Tiny::Retry;
 use Safe::Isa;
 
-my ($task_id, $gfs, $config_file);
+my ($task_id, $gfs, $config_file, $quiet);
 
 GetOptions(
     'task=s'     => \$task_id,
     'gfs:s'      => \$gfs,
     'config=s'   => \$config_file,
+    'quiet'      => \$quiet,
 );
 
+$quiet //= 0;
 $gfs //= 0;		# default is disabled
 $gfs = 1 if $gfs eq '';	# '--gfs' was passed with no value
 
@@ -95,8 +97,8 @@ $result->{status} += 0;		# force integer-as-string to integer
 
 my $status = $result->{status} == 1 ? 'succeeded' : 'failed';
 $logger->info("Task $task_id $status.");
-warn "STDOUT: $result->{stdout}";
-warn "STDERR: $result->{stderr}";
+warn "STDOUT: $result->{stdout}" unless $quiet;
+warn "STDERR: $result->{stderr}" unless $quiet;
 
 # set status first:
 retry { $disbatch->tasks->update_one({_id => $oid, status => 0, node => $disbatch->{node}}, {'$set' => {status => $result->{status}}}) }
