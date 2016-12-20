@@ -57,6 +57,7 @@ my $config = {
     plugins => [ 'Disbatch::Plugin::Demo' ],
     web_root => 'etc/disbatch/htdocs/',
     task_runner => './bin/task_runner',
+    gfs => 'auto',	# default
     log4perl => {
         level => 'TRACE',
         appenders => {
@@ -452,6 +453,8 @@ if ($webpid == 0) {
     is ref $content, 'HASH', 'content is HASH';
     is $content->{'MongoDB::DeleteResult'}{deleted_count}, 1, 'count';
 
+    # GFS TESTING
+
     $name = 'test_queue2';
 
     # Returns array: C<< [ success, inserted_id, $reponse_object ] >>
@@ -465,6 +468,110 @@ if ($webpid == 0) {
     ok defined $content->{'MongoDB::InsertOneResult'}{'inserted_id'}{'$oid'}, 'MongoDB::InsertOneResult inserted_id defined';
     ok defined $content->{id}{'$oid'}, 'id defined';
     $queueid = $content->{id}{'$oid'};
+
+    $data = { threads => 1 };
+    $res = Net::HTTP::Client->request(POST => "$uri/queues/$name", 'Content-Type' => 'application/json', encode_json($data));
+    is $res->status_line, '200 OK', '200 status';
+    is $res->content_type, 'application/json', 'application/json';
+    $content = decode_json($res->content);
+    is ref $content, 'HASH', 'content is HASH';
+    is $content->{'MongoDB::UpdateResult'}{matched_count}, 1, 'matched success';
+    is $content->{'MongoDB::UpdateResult'}{modified_count}, 1, 'modified success';
+
+    my $gfs_tests = {
+        'e'   => { auto => ['STR','NUL'], 0 => ['STR','NUL'] }, # 15,   0       15
+        'eb'  => { auto => ['OID','STR'], 0 => ['STR','STR'] }, # 15,   0+      15+
+        'aE'  => { auto => ['OID','STR'], 0 => ['STR','STR'] }, #  0+, 15       15+
+        'ea'  => { auto => ['OID','NUL'], 0 => ['STR','NUL'] }, # 15+,  0       15+
+        'E'   => { auto => ['NUL','STR'], 0 => ['NUL','STR'] }, #  0,  15       15
+        'eA'  => { auto => ['OID','STR'], 0 => ['STR','STR'] }, # 15,   1       16      stdout will have error msg for document too large
+        '1E'  => { auto => ['OID','STR'], 0 => ['STR','STR'] }, #  1,  15       16      stdout will have error msg for document too large
+        '7aC' => { auto => ['OID','STR'], 0 => ['STR','STR'] }, #  7+,  8       15+
+        '7C'  => { auto => ['STR','STR'], 0 => ['STR','STR'] }, #  7,   8       15
+        'Eb'  => { auto => ['OID','OID'], 0 => ['NUL','STR'] }, #  0,  15+      15+
+    };
+
+    note "GFS loop start";
+    $disbatch->{config}{quiet} = 1;
+    for my $gfs ('auto', 1, 0) {
+        $disbatch->{config}{gfs} = $gfs;
+        for my $key (keys  %$gfs_tests) {
+            #note "GFS: $gfs $key $gfs_tests->{$key}{$gfs}[0] $gfs_tests->{$key}{$gfs}[1]";
+            $data = [ {commands => $key} ];
+            $res = Net::HTTP::Client->request(POST => "$uri/tasks/$name", 'Content-Type' => 'application/json', encode_json($data));
+            is $res->status_line, '200 OK', '200 status';
+            $content = decode_json($res->content);
+            is scalar @{$content->{'MongoDB::InsertManyResult'}{inserted}}, 1, 'count';
+            my ($task_id) = map { $_->{_id} } @{$content->{'MongoDB::InsertManyResult'}{inserted}};
+
+            # This will run 1 task:
+            $disbatch->validate_plugins;
+            $disbatch->process_queues;
+
+            # get task, verify if stdout and stderr is in task or gfs
+            $data = { filter => { _id => $task_id, queue => $queueid, 'params.commands' => $key }};
+            my $max = 10;
+            my $c = 0;
+            do {
+                select(undef, undef, undef, 0.5);
+                $res = Net::HTTP::Client->request(POST => "$uri/tasks/search", 'Content-Type' => 'application/json', encode_json($data));
+                $content = decode_json($res->content);
+                note "status is $content->[0]{status}";
+                if ($content->[0]{status} > 0) {
+                    $c++;
+                    BAIL_OUT("too many loops looking for complete") if $c >= $max;
+                }
+            } while (!exists $content->[0]{complete});
+            is $res->status_line, '200 OK', '200 status';
+            #is $res->content_type, 'application/json', 'application/json';
+            is ref $content, 'ARRAY', 'content is ARRAY';
+            is scalar @$content, 1, 'count';
+            is $content->[0]{status}, 1, 'status 1';
+            ok exists $content->[0]{stdout}, 'stdout exists';
+            ok exists $content->[0]{stderr}, 'stderr exists';
+            if (!$gfs) {
+                if ($gfs_tests->{$key}{0}[0] eq 'NUL') {
+                    ok !defined $content->[0]{stdout}, 'stdout undefined';
+                } elsif ($gfs_tests->{$key}{0}[0] eq 'STR') {
+                    ok((defined $content->[0]{stdout} and !ref $content->[0]{stdout}), 'stdout string');
+                #} elsif ($gfs_tests->{$key}{0}[0] eq 'OID') {
+                } else {
+                    die;
+                }
+                if ($gfs_tests->{$key}{0}[1] eq 'NUL') {
+                    ok !defined $content->[0]{stderr}, 'stderr undefined';
+                } elsif ($gfs_tests->{$key}{0}[1] eq 'STR') {
+                    ok((defined $content->[0]{stderr} and !ref $content->[0]{stderr}), 'stderr string');
+                #} elsif ($gfs_tests->{$key}{0}[1] eq 'OID') {
+                } else {
+                    die;
+                }
+            } elsif ($gfs eq 'auto') {
+                if ($gfs_tests->{$key}{auto}[0] eq 'NUL') {
+                    ok !defined $content->[0]{stdout}, 'stdout undefined';
+                } elsif ($gfs_tests->{$key}{auto}[0] eq 'STR') {
+                    ok((defined $content->[0]{stdout} and !ref $content->[0]{stdout}), 'stdout string');
+                } elsif ($gfs_tests->{$key}{auto}[0] eq 'OID') {
+                    ok defined $content->[0]{stdout}{'$oid'}, 'stdout OID';
+                } else {
+                    die;
+                }
+                if ($gfs_tests->{$key}{auto}[1] eq 'NUL') {
+                    ok !defined $content->[0]{stderr}, 'stderr undefined';
+                } elsif ($gfs_tests->{$key}{auto}[1] eq 'STR') {
+                    ok((defined $content->[0]{stderr} and !ref $content->[0]{stderr}), 'stderr string');
+                } elsif ($gfs_tests->{$key}{auto}[1] eq 'OID') {
+                    ok defined $content->[0]{stderr}{'$oid'}, 'stderr OID';
+                } else {
+                    die;
+                }
+            } else {
+                ok defined $content->[0]{stdout}{'$oid'}, 'stdout OID';
+                ok defined $content->[0]{stderr}{'$oid'}, 'stderr OID';
+            }
+        }
+    }
+    note "GFS loop end";
 
     # Returns hash: {ref $res: Object}
     $res = Net::HTTP::Client->request(DELETE => "$uri/queues/$name");
