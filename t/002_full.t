@@ -12,6 +12,7 @@ use File::Slurp;
 use MongoDB 1.0.4;
 use Net::HTTP::Client;
 use POSIX qw(setsid);
+use Sys::Hostname;
 use Try::Tiny::Retry;
 
 use lib 'lib';
@@ -201,6 +202,7 @@ if ($webpid == 0) {
     is $res->content_type, 'application/json', 'application/json';
     is $res->content, '[]', 'empty nodes';
 
+    my $time_in_ms = time * 1000;
     # make sure node document exists:
     $disbatch->update_node_status;
 
@@ -213,11 +215,11 @@ if ($webpid == 0) {
     $content = decode_json($res->content);
     is ref $content, 'ARRAY', 'nodes is ARRAY';
     is scalar @$content, 1, 'nodes has 1 entry';
-    ok defined $content->[0]{id}, 'id defined';			# FIXME: verify 24 char hex string
-    ok defined $content->[0]{_id}{'$oid'}, 'id defined';	# FIXME: verify 24 char hex string
+    like $content->[0]{id}, qr/^[0-9a-f]{24}$/, 'id is 24 char hex string';
+    like $content->[0]{_id}{'$oid'}, qr/^[0-9a-f]{24}$/, '_id is 24 char hex string';
     is $content->[0]{id}, $content->[0]{_id}{'$oid'}, 'id matches _id.$oid';
-    ok defined $content->[0]{timestamp}, 'timestamp defined';	# FIXME: verify ms timestamp
-    ok defined $content->[0]{node}, 'node defined';		# FIXME: verify FQDN
+    cmp_ok $content->[0]{timestamp}, '>' , $time_in_ms, 'timestamp is in milliseconds';
+    is $content->[0]{node}, hostname, 'node is hostname';
     $node = $content->[0]{node};
     $node_id = $content->[0]{id};
     my $node_hash = $content->[0];
