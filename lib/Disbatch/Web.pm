@@ -73,7 +73,7 @@ Note: new in Disbatch 4
 get '/nodes' => sub {
     undef $disbatch->{mongo};
     my $nodes = try { get_nodes } catch { status 400; "Could not get current nodes: $_" };
-    if (status == 400) {
+    if ((status() // 200) == 400) {
         Limper::warning $nodes;
         return send_json { error => $nodes };
     }
