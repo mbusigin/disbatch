@@ -56,6 +56,7 @@ my $config = {
     plugins => [ 'Disbatch::Plugin::Demo' ],
     web_root => 'etc/disbatch/htdocs/',
     task_runner => './bin/task_runner',
+    testing => 1,	# for task_runner to use lib 'lib'
     gfs => 'auto',	# default
     log4perl => {
         level => 'TRACE',

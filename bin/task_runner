@@ -3,29 +3,34 @@
 use 5.12.0;
 use warnings;
 
-use lib 'lib';	# FIXME: this is only needed for dev
-
 use Cpanel::JSON::XS;
 use Data::Dumper;
-use Disbatch;
 use Encode;
 use Getopt::Long;
 use MongoDB::OID 1.0.4;
 use Try::Tiny::Retry;
 use Safe::Isa;
 
-my ($task_id, $gfs, $config_file, $quiet);
+my ($task_id, $gfs, $config_file, $quiet, $testing);
 
 GetOptions(
     'task=s'     => \$task_id,
     'gfs:s'      => \$gfs,
     'config=s'   => \$config_file,
     'quiet'      => \$quiet,
+    'testing'    => \$testing,
 );
 
 $quiet //= 0;
+$testing //= 0;
 $gfs //= 0;		# default is disabled
 $gfs = 1 if $gfs eq '';	# '--gfs' was passed with no value
+
+if ($testing) {
+    require lib;
+    lib->import('lib');
+}
+require Disbatch;
 
 my $json = Cpanel::JSON::XS->new->utf8->convert_blessed;
 
@@ -180,6 +185,14 @@ Both C<stdout> and C<stderr> will be stored in the task document if they will fi
 and C<stdout> in GridFS, and finally both with be stored in GridFS if C<stderr> will not fit.
 
 In the config file, this is disabled with C<"gfs": false>, enabled with C<"gfs": true>, and automatic with C<"gfs": "auto"> (Note that automatic is the Disbatch default).
+
+=item --quiet
+
+Suppress STDOUT and STDERR output at end (mainly for testing).
+
+=item --testing
+
+Do C<< require lib 'lib'; lib->import('lib'); >> before C<require Disbatch;>.
 
 =back
 

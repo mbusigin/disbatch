@@ -96,6 +96,7 @@ sub load_config {
         $self->{config}{gfs} //= 'auto';
         $self->{config}{quiet} //= false;
         $self->{config}{task_runner} //= '/usr/bin/task_runner';
+        $self->{config}{testing} //= false;
         $self->{config}{log4perl} //= $default_log4perl;
         $self->{config}{activequeues} //= [];
         $self->{config}{ignorequeues} //= [];
@@ -266,6 +267,7 @@ sub start_task {
     );
     push @args, '--gfs', $self->{config}{gfs} if $self->{config}{gfs};
     push @args, '--quiet' if $self->{config}{quiet};
+    push @args, '--testing' if $self->{config}{testing};
     $self->logger->info(join ' ', $command, @args);
     unless (fork) {
         setsid != -1 or die "Can't start a new session: $!";
