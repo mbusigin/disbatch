@@ -137,7 +137,10 @@ sub post_queues {
 }
 
 sub update_queue {
-    my ($queue, %data) = @ARGV;
+    my $queue = shift @ARGV;
+    die "Must pass an even number of arguments as key/value pairs\n" if @ARGV %2;
+    my %data = @ARGV;
+
     my $response = $ua->post("$url/queues/$queue", \%data);
     if ($response->is_success) {
         my $result = $json->decode($response->decoded_content);
@@ -178,6 +181,7 @@ sub post_task {		# <queue> <key> <value> ...				# task params
 sub post_tasks {	# <queue> <json_array>					# JSON array of task params objects
 			# --collection <collection> <queue> <json_object>	# {filter: filter, params: params}
     my ($queue, $data) = @ARGV;
+    die "Queue name not given\n" unless defined $queue;
     my $full_url = "$url/tasks/$queue";
     $full_url .= "/$collection" if defined $collection;
     my $response = $ua->post($full_url, 'Content-Type' => 'application/json', Content => $data // '{}');
@@ -321,9 +325,7 @@ Error examples:
   $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 bad field
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"unknown param","param":"bad"}
   $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads
-FIXME:
-  Odd number of elements in hash assignment at ./bin/disbatch line 140.
-  Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"threads must be a non-negative integer"}
+  Must pass an even number of arguments as key/value pairs
   $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 threads zero
   Error posting http://localhost:8080/queues/579a6eaeeb6af87dc52d17e1 (400 Bad Request): {"error":"threads must be a non-negative integer"}
   $ disbatch update-queue 579a6eaeeb6af87dc52d17e1 plugin Disbatch::Plugin::Fake
@@ -363,9 +365,7 @@ Creates a task in the specified queue with the given params.
 Error examples:
 
   $ disbatch create-task
-FIXME:
-  Use of uninitialized value $queue in concatenation (.) or string at ./bin/disbatch line 178.
-  Error posting http://localhost:8080/tasks/ (404 Not Found): This is the void
+  Queue name not given
 
 
 =item create-tasks <queue> <array_of_params>
@@ -435,8 +435,7 @@ Error examples:
   $ disbatch search '[]'
   Error posting http://localhost:8080/tasks/search (400 Bad Request): {"error":"filter and options must be name/value objects"}
   $ disbatch search '"foo"'
-FIXME: catch error
-  JSON text must be an object or array (but found number, string, true, false or null, use allow_nonref to allow this) at ./bin/disbatch line 197.
+  Invalid filter is not JSON: '"foo"'
 
 =back
 

@@ -184,20 +184,24 @@ get '/plugins' => sub {
 
 Parameters: none.
 
-Returns an Array of queue Objects.
+Returns an Array of queue Objects on success, C<< { "error": "Could not get current queues: $_" } >> on error.
 
 Each item has the following keys: id, plugin, name, threads, queued, running, completed
 
-Note: replaces /scheduler-json
+Sets HTTP status to C<400> on error.
 
-FIXME: calls scheduler_report, which silently ignores some errors while throwing other ones
+Note: replaces /scheduler-json
 
 =cut
 
 get '/queues' => sub {
     undef $disbatch->{mongo};
-    # FIXME: scheduler_report silently ignores some errors while throwing other ones
-    send_json $disbatch->scheduler_report;
+    my $queues = try { $disbatch->scheduler_report } catch { status 400; "Could not get current queues: $_" };
+    if ((status() // 200) == 400) {
+        Limper::warning $queues;
+        return send_json { error => $queues };
+    }
+    send_json $queues;
 };
 
 sub map_plugins {
@@ -616,7 +620,7 @@ sub deserialize_oid {
 
 get '/scheduler-json' => sub {
     undef $disbatch->{mongo};
-    send_json $disbatch->scheduler_report;
+    send_json $disbatch->scheduler_report_old_api;
 };
 
 post '/set-queue-attr-json' => sub {

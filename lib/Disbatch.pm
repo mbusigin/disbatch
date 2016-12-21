@@ -164,6 +164,24 @@ sub revalidate_plugins {
 sub scheduler_report {
     my ($self) = @_;
     my @result;
+    my @queues = $self->queues->find->all;
+    for my $queue (@queues) {
+        push @result, {
+            id             => $queue->{_id}{value},
+            plugin         => $queue->{plugin},
+            name           => $queue->{name},
+            threads        => $queue->{threads},
+            queued         => $self->count_queued($queue->{_id}),
+            running        => $self->count_running($queue->{_id}),
+            completed      => $self->count_completed($queue->{_id}),
+        };
+    }
+    \@result;
+}
+
+sub scheduler_report_old_api {
+    my ($self) = @_;
+    my @result;
     my @queues = try { $self->queues->find->all } catch { $self->logger->error("Could not find queues: $_"); () };
     for my $queue (@queues) {
         push @result, {
@@ -483,6 +501,8 @@ Parameters: none
 Used by the Disbatch Command Interface to get queue information.
 
 Returns an C<ARRAY> containing C<HASH>es of queue information.
+
+Throws errors.
 
 =item update_node_status
 
