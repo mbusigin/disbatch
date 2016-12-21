@@ -77,7 +77,7 @@ get '/nodes' => sub {
         Limper::warning $nodes;
         return send_json { error => $nodes };
     }
-    send_json { nodes => $nodes }, convert_blessed => 1;
+    send_json $nodes, convert_blessed => 1;
 };
 
 =item GET /nodes/:node

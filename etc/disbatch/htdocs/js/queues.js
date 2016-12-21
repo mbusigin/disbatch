@@ -73,7 +73,8 @@ window.onload = function() {
       data[this.getColumnName(columnIndex)] = newValue;
       postJSON('/nodes/' + this.getRowAttribute(rowIndex, 'columns')[this.getColumnIndex('node')], data, loadNodes);
     } else {
-      postJSON('/queues/' + row.rowId, { this.getColumnName(columnIndex), newValue}, loadQueues);
+      var columnName = this.getColumnName(columnIndex);
+      postJSON('/queues/' + row.rowId, { columnName: newValue}, loadQueues);
     }
   };
 

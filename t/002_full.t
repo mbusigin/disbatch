@@ -201,7 +201,7 @@ if ($webpid == 0) {
     $res = Net::HTTP::Client->request(GET => "$uri/nodes");
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
-    is $res->content, '{"nodes":[]}', 'empty nodes';
+    is $res->content, '[]', 'empty nodes';
 
     # make sure node document exists:
     $disbatch->update_node_status;
@@ -213,18 +213,16 @@ if ($webpid == 0) {
     is $res->status_line, '200 OK', '200 status';
     is $res->content_type, 'application/json', 'application/json';
     $content = decode_json($res->content);
-    is ref $content, 'HASH', 'content is HASH';
-    ok defined $content->{nodes}, 'nodes key defined';
-    is ref $content->{nodes}, 'ARRAY', 'nodes is ARRAY';
-    is scalar @{$content->{nodes}}, 1, 'nodes has 1 entry';
-    ok defined $content->{nodes}[0]{id}, 'id defined';			# FIXME: verify 24 char hex string
-    ok defined $content->{nodes}[0]{_id}{'$oid'}, 'id defined';	# FIXME: verify 24 char hex string
-    is $content->{nodes}[0]{id}, $content->{nodes}[0]{_id}{'$oid'}, 'id matches _id.$oid';
-    ok defined $content->{nodes}[0]{timestamp}, 'timestamp defined';	# FIXME: verify ms timestamp
-    ok defined $content->{nodes}[0]{node}, 'node defined';		# FIXME: verify FQDN
-    $node = $content->{nodes}[0]{node};
-    $node_id = $content->{nodes}[0]{id};
-    my $node_hash = $content->{nodes}[0];
+    is ref $content, 'ARRAY', 'nodes is ARRAY';
+    is scalar @$content, 1, 'nodes has 1 entry';
+    ok defined $content->[0]{id}, 'id defined';			# FIXME: verify 24 char hex string
+    ok defined $content->[0]{_id}{'$oid'}, 'id defined';	# FIXME: verify 24 char hex string
+    is $content->[0]{id}, $content->[0]{_id}{'$oid'}, 'id matches _id.$oid';
+    ok defined $content->[0]{timestamp}, 'timestamp defined';	# FIXME: verify ms timestamp
+    ok defined $content->[0]{node}, 'node defined';		# FIXME: verify FQDN
+    $node = $content->[0]{node};
+    $node_id = $content->[0]{id};
+    my $node_hash = $content->[0];
 
     # Returns hash of a single node, by name
     $res = Net::HTTP::Client->request(GET => "$uri/nodes/$node");
