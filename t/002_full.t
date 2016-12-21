@@ -1,7 +1,5 @@
 #!/usr/bin/env perl
 
-# FIXME: test gfs true, false, and auto (with things that fit and things that don't)
-
 use Test::More;
 
 use 5.12.0;
@@ -492,6 +490,10 @@ if ($webpid == 0) {
     note "GFS loop start";
     $disbatch->{config}{quiet} = 1;
     for my $gfs ('auto', 1, 0) {
+        if (exists $ENV{GFS_TESTS}) {
+            next unless $ENV{GFS_TESTS} eq "$gfs";
+            note "GFS: $gfs";
+        }
         $disbatch->{config}{gfs} = $gfs;
         for my $key (keys  %$gfs_tests) {
             #note "GFS: $gfs $key $gfs_tests->{$key}{$gfs}[0] $gfs_tests->{$key}{$gfs}[1]";
