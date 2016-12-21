@@ -77,7 +77,7 @@ See [SSL_DCI](docs/SSL_DCI.md)
 
 Ashley Willis (<awillis@synacor.com>)
 
-Matt Busigin
+Matt Busigin (<mbusigin@hovernetworks.com>)
 
 
 #### Copyright and License
