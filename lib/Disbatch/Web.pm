@@ -226,7 +226,7 @@ Note: replaces /start-queue-json
 post '/queues' => sub {
     undef $disbatch->{mongo};
     my $params = parse_params;
-    unless (defined $params->{name} and defined $params->{plugin}) {
+    unless (($params->{name} // '') and ($params->{plugin} // '')) {
         status 400;
         return send_json { error => 'name and plugin required' };
     }
@@ -296,7 +296,7 @@ post qr'^/queues/(?<queue>.+)$' => sub {
         status 400;
         return send_json {error => 'threads must be a non-negative integer'};
     }
-    if (exists $params->{name} and (ref $params->{name} or !defined $params->{name})){
+    if (exists $params->{name} and (ref $params->{name} or !($params->{name} // ''))){
         status 400;
         return send_json {error => 'name must be a string'};
     }
