@@ -68,13 +68,12 @@ function reload(grid, data) {
 window.onload = function() {
   EditableGrid.prototype.modelChanged = function(rowIndex, columnIndex, oldValue, newValue, row) {
     //alert('changed ' + rowIndex + ',' + columnIndex + '\n' + 'from: "' + oldValue + '" to "' + newValue + '"\n' + 'id: ' + row.rowId + '\n' + 'field: ' + this.getColumnName(columnIndex));
+    var data = {};
+    data[this.getColumnName(columnIndex)] = newValue;
     if (this.currentTableid == 'nodes') {
-      var data = {};
-      data[this.getColumnName(columnIndex)] = newValue;
       postJSON('/nodes/' + this.getRowAttribute(rowIndex, 'columns')[this.getColumnIndex('node')], data, loadNodes);
     } else {
-      var columnName = this.getColumnName(columnIndex);
-      postJSON('/queues/' + row.rowId, { columnName: newValue}, loadQueues);
+      postJSON('/queues/' + row.rowId, data, loadQueues);
     }
   };
 
