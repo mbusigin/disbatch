@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Daemon::Control;
 
-my @program_args = ('--listen' => ':8080', '--workers' => 10, '/etc/disbatch/app.psgi');
+my @program_args = ('--listen' => '127.0.0.1:8080', '--workers' => 10, '/etc/disbatch/app.psgi');
 
 Daemon::Control->new({
     name         => 'disbatch-web',

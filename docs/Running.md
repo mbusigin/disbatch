@@ -15,7 +15,7 @@
     This can run on the same servers as `disbatchd`, or on completely different
     ones.
 
-* Web interface, by default running on port 8080
+* Web interface, by default listening on 127.0.0.1:8080
 
   * Create a new queue by clicking on `New Queue`, entering a `Name`, selecting
     a `Type` from the drop-down menu, and clicking `Create`.
