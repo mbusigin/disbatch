@@ -204,6 +204,33 @@ get '/queues' => sub {
     send_json $queues;
 };
 
+=item GET /queues/:queue
+
+URL: C<:queue> is the C<_id> if it matches C</\A[0-9a-f]{24}\z/>, or C<name> if it does not.
+
+Parameters: none.
+
+Returns a queue Object on success, C<< { "error": "Could not get current queues: $_" } >> on error.
+
+Each item has the following keys: id, plugin, name, threads, queued, running, completed
+
+Sets HTTP status to C<400> on error.
+
+=cut
+
+get qr'^/queues/(?<queue>.+)$' => sub {
+    undef $disbatch->{mongo};
+
+    my $key = try { MongoDB::OID->new(value => $+{queue}); 'id' } catch { 'name' };
+    my $queues = try { $disbatch->scheduler_report } catch { status 400; "Could not get current queues: $_" };
+    if ((status() // 200) == 400) {
+        Limper::warning $queues;
+        return send_json { error => $queues };
+    }
+    my ($queue) = grep { $_->{$key} eq $+{queue} } @$queues;
+    send_json $queue;
+};
+
 sub map_plugins {
     my %plugins = map { $_ => 1 } @{$disbatch->{config}{plugins}};
     \%plugins;
