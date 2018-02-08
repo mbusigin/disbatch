@@ -140,7 +140,7 @@ sub finish {
     $self->{report}{completed} = time;
     $self->{report}{status} = $self->{status} == 1 ? 'SUCCESS' : 'FAILED',
 
-    $self->{workerthread}->mongo->get_collection('reports')->insert($self->{report}) unless $self->{noreport} // false;
+    $self->{workerthread}->mongo->get_collection('reports')->insert_one($self->{report}) unless $self->{noreport} // false;
 
     {status => $self->{status}, stdout => $self->{stdout}, stderr => $self->{stderr}};
 }

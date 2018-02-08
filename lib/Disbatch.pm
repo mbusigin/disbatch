@@ -374,11 +374,11 @@ sub put_gfs {
         die 'metadata must be a HASH' unless ref $metadata eq 'HASH';
         $file_doc->{metadata} = $metadata;
     }
-    my $files_id = $self->mongo->coll('tasks.files')->insert($file_doc);
+    my $files_id = $self->mongo->coll('tasks.files')->insert_one($file_doc);
     my $n = 0;
     for (my $n = 0; length $content; $n++) {
         my $data = substr $content, 0, $chunk_size, '';
-        $self->mongo->coll('tasks.chunks')->insert({ n => $n, data => bless(\$data, 'MongoDB::BSON::String'), files_id => $files_id });
+        $self->mongo->coll('tasks.chunks')->insert_one({ n => $n, data => bless(\$data, 'MongoDB::BSON::String'), files_id => $files_id });
     }
     $files_id;
 }
@@ -394,7 +394,7 @@ sub get_gfs {
         my $query = {};
         $query->{filename} = $filename_or_id if defined $filename_or_id;
         $query->{metadata} = $metadata if defined $metadata;
-        $file_id = $self->mongo->coll('tasks.files')->find($query)->next->{_id};
+        $file_id = $self->mongo->coll('tasks.files')->find($query)->next->{_id};	# FIXME: why is this not find_one??
     }
     # this does no error-checking:
     my $result = $self->mongo->coll('tasks.chunks')->find({files_id => $file_id})->sort({n => 1})->result;
