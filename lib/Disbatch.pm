@@ -374,7 +374,7 @@ sub put_gfs {
         die 'metadata must be a HASH' unless ref $metadata eq 'HASH';
         $file_doc->{metadata} = $metadata;
     }
-    my $files_id = $self->mongo->coll('tasks.files')->insert_one($file_doc);
+    my $files_id = $self->mongo->coll('tasks.files')->insert_one($file_doc)->inserted_id;
     my $n = 0;
     for (my $n = 0; length $content; $n++) {
         my $data = substr $content, 0, $chunk_size, '';
