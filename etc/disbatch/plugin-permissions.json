@@ -13,9 +13,9 @@
 #{
 #    "": [ "find" ],		# allow reading of all collections in the database
 #    "queues": [ "update" ],	# used to set threads to 0 in case of serious error
-#    "users": [ "update" ],
+#    "users": [ "insert", "update", "createIndex" ],
 #    "reports": [ "insert" ],
-#    "complete": [ "update" ],
-#    "status": [ "update", "createIndex" ],
-#    "nodeQueues": [ "update" ],
+#    "complete": [ "insert", "update", "createIndex" ],
+#    "status": [ "insert", "update", "createIndex" ],
+#    "yams": [ "insert", "update", "createIndex" ],
 #}
