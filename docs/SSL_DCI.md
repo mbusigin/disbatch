@@ -12,6 +12,11 @@ create 301 redirects for ports 80 and 8080.
   change the paths for the certficate files in `ssl_certificate` and
   `ssl_certificate_key` to the appropriate values.
 
+* Or run `sudo /etc/disbatch/configure-nginx` which works in my environment
+  (CentOS 6) and with options should work in any.
+
+* Restart nginx
+
 #### Using the CLI
 
 To use the `disbatch.pl` CLI on the same server as nginx is running, no changes
